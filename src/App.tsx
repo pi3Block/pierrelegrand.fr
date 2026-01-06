@@ -8,15 +8,20 @@ import { DebugOverlay } from '@components/ui/DebugOverlay'
 import { BiomeIndicator } from '@components/ui/BiomeIndicator'
 import { Crosshair } from '@components/ui/Crosshair'
 import { useGameStore } from '@stores/gameStore'
+import { useUIStore } from '@stores/uiStore'
 import { useCheatCode } from '@hooks/useCheatCode'
 import { usePointerLock } from '@hooks/usePointerLock'
 
 export default function App() {
   const unlockedFeatures = useGameStore((s) => s.unlockedFeatures)
+  const isVideo3DPlaying = useUIStore((s) => s.isVideo3DPlaying)
   const { isOpen, setIsOpen, isLoading, error, success, submitCode } = useCheatCode()
   const { isLocked, requestLock } = usePointerLock()
 
   const showDebug = unlockedFeatures.includes('debug_mode')
+  
+  // Ne pas afficher l'overlay si une vidéo 3D est en lecture
+  const showPointerLockOverlay = !isLocked && !isVideo3DPlaying
 
   return (
     <>
@@ -40,8 +45,8 @@ export default function App() {
       {/* Crosshair - Visible uniquement quand pointer locké */}
       {isLocked && <Crosshair />}
 
-      {/* Overlay "Cliquez pour jouer" quand pointer non locké */}
-      {!isLocked && (
+      {/* Overlay "Cliquez pour jouer" - masqué si vidéo 3D en lecture */}
+      {showPointerLockOverlay && (
         <div className="pointer-lock-overlay" onClick={requestLock}>
           <div className="pointer-lock-message">
             <h2>Cliquez pour jouer</h2>
@@ -72,6 +77,7 @@ export default function App() {
         error={error}
         success={success}
       />
+
     </>
   )
 }

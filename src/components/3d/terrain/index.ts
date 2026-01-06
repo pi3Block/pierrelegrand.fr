@@ -1,3 +1,5 @@
 export { TerrainMaterial, TerrainShaderMaterial, useHeightmapTexture } from './TerrainMaterial'
 export { ProceduralTerrain, CircularProceduralTerrain } from './ProceduralTerrain'
 export { BiomeTransitionGround, BiomeTransitionDebug } from './BiomeTransitionGround'
+export { GPGPUHeightmapGenerator, GPGPUHeightmapDisplay, useGPGPUHeightmap } from './GPGPUHeightmap'
+export { simulateErosionCPU, simulateDropletErosion, useErosion, ErosionVisualizer } from './ErosionSimulation'

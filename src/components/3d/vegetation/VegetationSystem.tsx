@@ -178,7 +178,7 @@ function VegetationLayer({ type, instances, config }: VegetationLayerProps) {
       args={[geometry, material, instances.length]}
       castShadow
       receiveShadow
-      frustumCulled
+      frustumCulled={false}
     />
   )
 }

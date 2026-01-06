@@ -120,6 +120,7 @@ function InstancedServers({ positions, primaryColor, seed }: InstancedServersPro
       ref={meshRef}
       args={[geometry, primaryMaterial, count]}
       castShadow
+      frustumCulled={false}
     />
   )
 }
@@ -194,6 +195,7 @@ function InstancedHologramRings({ positions, color, seed }: InstancedHologramRin
     <instancedMesh
       ref={meshRef}
       args={[geometry, material, count]}
+      frustumCulled={false}
     />
   )
 }

@@ -13,10 +13,13 @@ import {
   InstancedCryptoDecorations,
   InstancedTechDecorations,
 } from './instanced'
-import { BiomeTransitionGround } from './terrain'
+import { BiomeTransitionGround, CircularProceduralTerrain } from './terrain'
+import type { BiomeType } from '@/config/proceduralConfig'
 
 interface BiomeZoneProps {
   category: ContentCategory
+  /** ID unique du biome pour le système de heightmap */
+  biomeId?: string
   center: [number, number, number]
   colors: { primary: string; secondary: string; ground: string }
   radius?: number
@@ -28,6 +31,10 @@ interface BiomeZoneProps {
   useTransitions?: boolean
   /** Largeur de la zone de transition */
   transitionWidth?: number
+  /** Activer le terrain 3D avec relief */
+  use3DTerrain?: boolean
+  /** Échelle de hauteur pour le terrain 3D */
+  heightScale?: number
 }
 
 /**
@@ -45,6 +52,7 @@ interface BiomeZoneProps {
  */
 export function BiomeZone({
   category,
+  biomeId,
   center,
   colors,
   radius = 18,
@@ -52,7 +60,12 @@ export function BiomeZone({
   seed = 42,
   useTransitions = false,
   transitionWidth = 4,
+  use3DTerrain = true,
+  heightScale = 4,
 }: BiomeZoneProps) {
+  // ID du biome pour le système de heightmap (fallback sur category)
+  const effectiveBiomeId = biomeId ?? category
+
   // Seed unique par biome basé sur la catégorie
   const biomeSeed = useMemo(() => {
     const categorySeeds: Record<ContentCategory, number> = {
@@ -63,24 +76,45 @@ export function BiomeZone({
     return categorySeeds[category]
   }, [category, seed])
 
+  // Mapper ContentCategory vers BiomeType
+  const biomeType: BiomeType = category
+
   return (
     <group position={center}>
-      {/* Sol du biome - style unique selon la catégorie */}
-      {useTransitions ? (
-        <BiomeTransitionGround
-          biome={category}
-          center={[0, 0, 0]}
+      {/* Terrain 3D avec relief (optionnel) */}
+      {use3DTerrain && (
+        <CircularProceduralTerrain
           radius={radius}
-          transitionWidth={transitionWidth}
+          resolution={64}
+          seed={biomeSeed}
+          biome={biomeType}
+          biomeId={effectiveBiomeId}
+          heightScale={heightScale}
+          position={[0, 0.1, 0]}
+          worldCenter={center}
         />
-      ) : (
-        <EnhancedBiomeGround category={category} radius={radius} />
+      )}
+
+      {/* Sol du biome - style unique selon la catégorie (sous le terrain 3D) */}
+      {!use3DTerrain && (
+        useTransitions ? (
+          <BiomeTransitionGround
+            biome={category}
+            center={[0, 0, 0]}
+            radius={radius}
+            transitionWidth={transitionWidth}
+          />
+        ) : (
+          <EnhancedBiomeGround category={category} radius={radius} />
+        )
       )}
 
       {/* Décorations spécifiques au biome */}
       {useInstanced ? (
         <InstancedBiomeDecorations
           category={category}
+          biomeId={effectiveBiomeId}
+          worldCenter={center}
           colors={colors}
           radius={radius}
           seed={biomeSeed}
@@ -125,20 +159,38 @@ function EnhancedBiomeGround({ category, radius }: { category: ContentCategory; 
 /**
  * Décorations instanciées selon le biome
  * Utilise InstancedMesh pour des performances optimales
+ * Passe le biomeId et worldCenter pour le positionnement height-aware
  */
 interface InstancedBiomeDecorationsProps {
   category: ContentCategory
+  biomeId: string
+  worldCenter: [number, number, number]
   colors: { primary: string; secondary: string }
   radius: number
   seed: number
 }
 
-function InstancedBiomeDecorations({ category, colors, radius, seed }: InstancedBiomeDecorationsProps) {
+function InstancedBiomeDecorations({
+  category,
+  biomeId,
+  worldCenter,
+  colors,
+  radius,
+  seed,
+}: InstancedBiomeDecorationsProps) {
   switch (category) {
     case 'tech':
       return <InstancedTechDecorations radius={radius} colors={colors} seed={seed} />
     case 'nature':
-      return <InstancedNatureDecorations radius={radius} colors={colors} seed={seed} />
+      return (
+        <InstancedNatureDecorations
+          radius={radius}
+          colors={colors}
+          seed={seed}
+          worldCenter={worldCenter}
+          biomeId={biomeId}
+        />
+      )
     case 'crypto':
       return <InstancedCryptoDecorations radius={radius} colors={colors} seed={seed} />
     default:

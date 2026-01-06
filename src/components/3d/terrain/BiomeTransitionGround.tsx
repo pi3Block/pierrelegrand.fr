@@ -8,6 +8,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { shaderMaterial } from '@react-three/drei'
 import { extend } from '@react-three/fiber'
+import { RigidBody, CylinderCollider } from '@react-three/rapier'
 import type { BiomeType } from '@/config/proceduralConfig'
 
 // Couleurs par défaut des biomes
@@ -222,8 +223,18 @@ export function BiomeTransitionGround({
     return mat
   }, [centerVec, radius, transitionWidth, colors, hubColor])
 
+  const colliderRadius = radius + transitionWidth
+
   return (
-    <mesh ref={meshRef} geometry={geometry} material={material} position={center} receiveShadow />
+    <group position={center}>
+      {/* Collider physique pour la zone de transition */}
+      <RigidBody type="fixed" friction={0.7} restitution={0}>
+        <CylinderCollider args={[0.02, colliderRadius]} position={[0, 0.02, 0]} />
+      </RigidBody>
+
+      {/* Mesh visuel avec shader - légèrement au-dessus pour éviter le z-fighting */}
+      <mesh ref={meshRef} geometry={geometry} material={material} position={[0, 0.02, 0]} receiveShadow />
+    </group>
   )
 }
 

@@ -165,21 +165,25 @@ function InstancedCrystals({ positions, primaryColor, secondaryColor, seed }: In
         ref={mainCrystalRef}
         args={[mainGeometry, mainMaterial, count]}
         castShadow
+        frustumCulled={false}
       />
       <instancedMesh
         ref={smallCrystal1Ref}
         args={[smallGeometry, secondaryMaterial, count]}
         castShadow
+        frustumCulled={false}
       />
       <instancedMesh
         ref={smallCrystal2Ref}
         args={[smallGeometry, secondaryMaterial, count]}
         castShadow
+        frustumCulled={false}
       />
       <instancedMesh
         ref={smallCrystal3Ref}
         args={[smallGeometry, secondaryMaterial, count]}
         castShadow
+        frustumCulled={false}
       />
     </>
   )
@@ -257,6 +261,7 @@ function InstancedCoins({ positions, color, seed }: InstancedCoinsProps) {
       ref={meshRef}
       args={[geometry, material, count]}
       castShadow
+      frustumCulled={false}
     />
   )
 }
@@ -331,6 +336,7 @@ function InstancedDataBlocks({ positions, color, seed }: InstancedDataBlocksProp
       ref={meshRef}
       args={[geometry, material, count]}
       castShadow
+      frustumCulled={false}
     />
   )
 }

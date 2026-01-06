@@ -1,17 +1,33 @@
 /**
  * Décorations instanciées pour le biome Nature
  * Utilise InstancedMesh pour un seul draw call par type d'objet
+ * Positionne les objets SUR le terrain via HeightmapService
  */
 
-import { useRef, useMemo, useEffect } from 'react'
+import { useRef, useMemo, useEffect, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { poissonDiscSamplingCircular } from '@utils/procedural'
+import { useWorldStore } from '@stores/worldStore'
 
 interface InstancedNatureDecorationsProps {
   radius: number
   colors: { primary: string; secondary: string }
   seed?: number
+  /** Centre du biome en coordonnées monde */
+  worldCenter?: [number, number, number]
+  /** ID du biome pour les requêtes de hauteur */
+  biomeId?: string
+  /** Offset Y du terrain (pour aligner les décorations) */
+  terrainOffset?: number
+}
+
+/**
+ * Position avec hauteur terrain
+ */
+interface PositionWithHeight {
+  localPos: THREE.Vector2
+  worldY: number
 }
 
 /**
@@ -21,19 +37,89 @@ export function InstancedNatureDecorations({
   radius,
   colors,
   seed = 42,
+  worldCenter = [0, 0, 0],
+  biomeId = 'nature',
+  terrainOffset = 0.1,
 }: InstancedNatureDecorationsProps) {
-  // Générer les positions une seule fois
-  const positions = useMemo(() => {
-    const treePositions = poissonDiscSamplingCircular(0, 0, radius * 0.7, 4, seed)
-    const rockPositions = poissonDiscSamplingCircular(0, 0, radius * 0.8, 5, seed + 100)
-    const mushroomPositions = poissonDiscSamplingCircular(0, 0, radius * 0.6, 2.5, seed + 200)
+  // État pour stocker les positions finales (ne change plus après initialisation)
+  const [finalPositions, setFinalPositions] = useState<{
+    trees: PositionWithHeight[]
+    rocks: PositionWithHeight[]
+    mushrooms: PositionWithHeight[]
+  } | null>(null)
+  const [avgHeight, setAvgHeight] = useState(terrainOffset + 2)
+
+  // Ref pour éviter les recalculs
+  const hasInitializedRef = useRef(false)
+
+  // Requête de hauteur depuis le WorldStore (stable reference)
+  const queryHeight = useWorldStore((state) => state.queryHeight)
+  const isInitialized = useWorldStore((state) => state.isInitialized)
+  const biomeStates = useWorldStore((state) => state.biomeStates)
+
+  // Vérifier si la heightmap du biome est enregistrée
+  const biomeState = biomeStates.get(biomeId)
+  const hasHeightmap = biomeState?.hasHeightmap ?? false
+
+  // Générer les positions 2D une seule fois (stable)
+  const positions2D = useMemo(() => ({
+    trees: poissonDiscSamplingCircular(0, 0, radius * 0.7, 4, seed),
+    rocks: poissonDiscSamplingCircular(0, 0, radius * 0.8, 5, seed + 100),
+    mushrooms: poissonDiscSamplingCircular(0, 0, radius * 0.6, 2.5, seed + 200),
+  }), [radius, seed])
+
+  // Calculer les hauteurs une seule fois quand la heightmap est prête
+  useEffect(() => {
+    // Ne calculer qu'une fois, quand le système est prêt
+    if (hasInitializedRef.current) return
+    if (!isInitialized || !hasHeightmap) return
+
+    hasInitializedRef.current = true
+
+    // Fonction pour convertir 2D en 3D avec hauteur terrain
+    const to3DWithHeight = (pos2D: THREE.Vector2[], maxCount: number): PositionWithHeight[] => {
+      return pos2D.slice(0, maxCount).map(pos => {
+        const worldX = worldCenter[0] + pos.x
+        const worldZ = worldCenter[2] + pos.y
+        const terrainHeight = queryHeight(worldX, worldZ, biomeId) + terrainOffset
+
+        return {
+          localPos: pos,
+          worldY: terrainHeight,
+        }
+      })
+    }
+
+    setFinalPositions({
+      trees: to3DWithHeight(positions2D.trees, 15),
+      rocks: to3DWithHeight(positions2D.rocks, 10),
+      mushrooms: to3DWithHeight(positions2D.mushrooms, 20),
+    })
+
+    // Calculer la hauteur moyenne pour les fireflies
+    const centerHeight = queryHeight(worldCenter[0], worldCenter[2], biomeId)
+    setAvgHeight(centerHeight + terrainOffset + 2)
+
+  }, [isInitialized, hasHeightmap, positions2D, worldCenter, biomeId, queryHeight, terrainOffset])
+
+  // Positions temporaires avant l'initialisation complète
+  const tempPositions = useMemo(() => {
+    const to3DWithDefaultHeight = (pos2D: THREE.Vector2[], maxCount: number): PositionWithHeight[] => {
+      return pos2D.slice(0, maxCount).map(pos => ({
+        localPos: pos,
+        worldY: terrainOffset,
+      }))
+    }
 
     return {
-      trees: treePositions.slice(0, 15),       // Max 15 arbres
-      rocks: rockPositions.slice(0, 10),       // Max 10 rochers
-      mushrooms: mushroomPositions.slice(0, 20), // Max 20 champignons
+      trees: to3DWithDefaultHeight(positions2D.trees, 15),
+      rocks: to3DWithDefaultHeight(positions2D.rocks, 10),
+      mushrooms: to3DWithDefaultHeight(positions2D.mushrooms, 20),
     }
-  }, [radius, seed])
+  }, [positions2D, terrainOffset])
+
+  // Utiliser les positions finales si disponibles, sinon les temporaires
+  const positions = finalPositions ?? tempPositions
 
   return (
     <>
@@ -54,7 +140,7 @@ export function InstancedNatureDecorations({
         seed={seed + 150}
       />
       <InstancedFireflies
-        center={[0, 2, 0]}
+        center={[0, avgHeight, 0]}
         color={colors.secondary}
         count={12}
         radius={radius * 0.5}
@@ -68,7 +154,7 @@ export function InstancedNatureDecorations({
  * Chaque arbre = 1 tronc (cylindre) + 3 feuillages (sphères)
  */
 interface InstancedTreesProps {
-  positions: THREE.Vector2[]
+  positions: PositionWithHeight[]
   primaryColor: string
   secondaryColor: string
   seed: number
@@ -119,33 +205,38 @@ function InstancedTrees({ positions, primaryColor, secondaryColor, seed }: Insta
     const quaternion = new THREE.Quaternion()
     const scale = new THREE.Vector3()
 
-    positions.forEach((pos, i) => {
+    positions.forEach((posData, i) => {
       const v = variations[i]
       if (!v) return
       const trunkHeight = v.height * 0.6
 
+      // Utiliser la position locale + hauteur terrain
+      const baseX = posData.localPos.x
+      const baseZ = posData.localPos.y
+      const baseY = posData.worldY // Hauteur du terrain
+
       // Tronc
-      position.set(pos.x, trunkHeight / 2, pos.y)
+      position.set(baseX, baseY + trunkHeight / 2, baseZ)
       quaternion.setFromEuler(new THREE.Euler(0, v.rotationY, 0))
       scale.set(v.scale, trunkHeight, v.scale)
       matrix.compose(position, quaternion, scale)
       trunkRef.current!.setMatrixAt(i, matrix)
 
       // Feuillage principal (haut)
-      const foliageY = v.height * 0.7
-      position.set(pos.x, foliageY, pos.y)
+      const foliageY = baseY + v.height * 0.7
+      position.set(baseX, foliageY, baseZ)
       scale.set(v.height * 0.35, v.height * 0.35, v.height * 0.35)
       matrix.compose(position, quaternion, scale)
       foliage1Ref.current!.setMatrixAt(i, matrix)
 
       // Feuillage secondaire (droite)
-      position.set(pos.x + v.height * 0.2, v.height * 0.6, pos.y)
+      position.set(baseX + v.height * 0.2, baseY + v.height * 0.6, baseZ)
       scale.set(v.height * 0.25, v.height * 0.25, v.height * 0.25)
       matrix.compose(position, quaternion, scale)
       foliage2Ref.current!.setMatrixAt(i, matrix)
 
       // Feuillage tertiaire (gauche)
-      position.set(pos.x - v.height * 0.15, v.height * 0.55, pos.y + v.height * 0.1)
+      position.set(baseX - v.height * 0.15, baseY + v.height * 0.55, baseZ + v.height * 0.1)
       scale.set(v.height * 0.2, v.height * 0.2, v.height * 0.2)
       matrix.compose(position, quaternion, scale)
       foliage3Ref.current!.setMatrixAt(i, matrix)
@@ -165,21 +256,25 @@ function InstancedTrees({ positions, primaryColor, secondaryColor, seed }: Insta
         ref={trunkRef}
         args={[trunkGeometry, trunkMaterial, count]}
         castShadow
+        frustumCulled={false}
       />
       <instancedMesh
         ref={foliage1Ref}
         args={[foliageGeometry, foliageMaterial1, count]}
         castShadow
+        frustumCulled={false}
       />
       <instancedMesh
         ref={foliage2Ref}
         args={[foliageGeometry, foliageMaterial2, count]}
         castShadow
+        frustumCulled={false}
       />
       <instancedMesh
         ref={foliage3Ref}
         args={[foliageGeometry, foliageMaterial1, count]}
         castShadow
+        frustumCulled={false}
       />
     </>
   )
@@ -189,7 +284,7 @@ function InstancedTrees({ positions, primaryColor, secondaryColor, seed }: Insta
  * Rochers moussus instanciés
  */
 interface InstancedRocksProps {
-  positions: THREE.Vector2[]
+  positions: PositionWithHeight[]
   mossColor: string
   seed: number
 }
@@ -229,19 +324,24 @@ function InstancedRocks({ positions, mossColor, seed }: InstancedRocksProps) {
     const quaternion = new THREE.Quaternion()
     const scale = new THREE.Vector3()
 
-    positions.forEach((pos, i) => {
+    positions.forEach((posData, i) => {
       const v = variations[i]
       if (!v) return
 
+      // Utiliser la position locale + hauteur terrain
+      const baseX = posData.localPos.x
+      const baseZ = posData.localPos.y
+      const baseY = posData.worldY // Hauteur du terrain
+
       // Rocher
-      position.set(pos.x, v.scale * 0.4, pos.y)
+      position.set(baseX, baseY + v.scale * 0.4, baseZ)
       quaternion.setFromEuler(new THREE.Euler(v.rotationX, v.rotationY, 0))
       scale.set(v.scale, v.scale, v.scale)
       matrix.compose(position, quaternion, scale)
       rockRef.current!.setMatrixAt(i, matrix)
 
       // Mousse sur le dessus
-      position.set(pos.x, v.scale * 0.8, pos.y)
+      position.set(baseX, baseY + v.scale * 0.8, baseZ)
       scale.set(v.scale * 0.6, v.scale * 0.4, v.scale * 0.6)
       matrix.compose(position, quaternion, scale)
       mossRef.current!.setMatrixAt(i, matrix)
@@ -273,7 +373,7 @@ function InstancedRocks({ positions, mossColor, seed }: InstancedRocksProps) {
  * Champignons lumineux instanciés
  */
 interface InstancedMushroomsProps {
-  positions: THREE.Vector2[]
+  positions: PositionWithHeight[]
   glowColor: string
   seed: number
 }
@@ -319,19 +419,24 @@ function InstancedMushrooms({ positions, glowColor, seed }: InstancedMushroomsPr
     const quaternion = new THREE.Quaternion()
     const scale = new THREE.Vector3()
 
-    positions.forEach((pos, i) => {
+    positions.forEach((posData, i) => {
       const v = variations[i]
       if (!v) return
 
+      // Utiliser la position locale + hauteur terrain
+      const baseX = posData.localPos.x
+      const baseZ = posData.localPos.y
+      const baseY = posData.worldY // Hauteur du terrain
+
       // Pied
-      position.set(pos.x, v.scale * 0.15, pos.y)
+      position.set(baseX, baseY + v.scale * 0.15, baseZ)
       quaternion.setFromEuler(new THREE.Euler(0, v.rotationY, 0))
       scale.set(v.scale, v.scale, v.scale)
       matrix.compose(position, quaternion, scale)
       stemRef.current!.setMatrixAt(i, matrix)
 
       // Chapeau
-      position.set(pos.x, v.scale * 0.35, pos.y)
+      position.set(baseX, baseY + v.scale * 0.35, baseZ)
       matrix.compose(position, quaternion, scale)
       capRef.current!.setMatrixAt(i, matrix)
     })

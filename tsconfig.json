@@ -30,7 +30,10 @@
       "@stores/*": ["src/stores/*"],
       "@api/*": ["src/api/*"],
       "@utils/*": ["src/utils/*"],
-      "@data/*": ["src/data/*"]
+      "@data/*": ["src/data/*"],
+      "@config/*": ["src/config/*"],
+      "@services/*": ["src/services/*"],
+      "@factories/*": ["src/factories/*"]
     }
   },
   "include": ["src"],

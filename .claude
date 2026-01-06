@@ -17,10 +17,19 @@ Portfolio 3D immersif avec système de cheat codes et navigation par exploration
 pierrelegrand.fr/
 ├── src/                      # Frontend React + R3F
 │   ├── components/3d/        # Composants 3D (biomes, objets)
+│   │   ├── terrain/          # ProceduralTerrain, BiomeTransitionGround
+│   │   ├── water/            # WaterSystem (Lake, Moat, Fountain...)
+│   │   ├── instanced/        # InstancedNatureDecorations, etc.
+│   │   ├── vegetation/       # VegetationSystem, BiomeVegetation
+│   │   ├── grounds/          # CircularGrounds (shaders par biome)
+│   │   └── chunks/           # ChunkManager (LOD, Web Workers)
+│   ├── config/               # worldConfig.ts, proceduralConfig.ts
+│   ├── services/             # HeightmapService.ts
+│   ├── factories/            # DecorationFactory, WaterFactory
+│   ├── stores/               # gameStore, worldStore
 │   ├── hooks/                # useCheatCode, usePrivilegeLevel
-│   ├── stores/               # Zustand stores
 │   ├── api/                  # Client API
-│   └── utils/
+│   └── utils/                # procedural.ts (noise, Poisson disc)
 ├── server/                   # Backend Node.js + Hono
 │   ├── src/
 │   │   ├── routes/           # codes.ts, health.ts
@@ -45,6 +54,31 @@ pierrelegrand.fr/
 - `frameloop="demand"` quand possible
 - Drei pour helpers (Instances, Detailed, AdaptiveDpr)
 
+### Génération Procédurale (Architecture Enterprise)
+- **WorldStore** (Zustand): État global du monde, heightmaps enregistrées par biome
+- **HeightmapService**: Requêtes de hauteur avec interpolation bilinéaire
+- **WaterFactory**: Positionnement eau relatif au terrain (`yMode: 'terrainLowest'`)
+- **DecorationFactory**: Placement height-aware via Poisson Disc Sampling
+- **worldConfig.ts**: Source unique de vérité pour tous les paramètres monde
+
+### Terrain & Heightmaps
+- ProceduralTerrain génère et enregistre sa heightmap dans WorldStore
+- Utiliser `worldCenter` prop pour coordonnées monde (pas locales)
+- HeightmapData contient déjà le falloff, ne pas le réappliquer
+- Éviter recalculs: useRef + hasInitializedRef pattern
+
+### Eau (WaterSystem)
+- Toujours utiliser `side={THREE.FrontSide}` (pas DoubleSide sauf cascade verticale)
+- Ajouter `depthWrite={false}` pour éviter artefacts
+- Offset Y de 0.02-0.03 pour éviter z-fighting
+- Géométries custom pour Lake/Moat (pas CircleGeometry/RingGeometry natifs)
+
+### Instanced Decorations
+- Pattern anti-flickering: useState + useRef + useEffect
+- Attendre `hasHeightmap` avant calcul des positions finales
+- Positions temporaires en fallback pendant chargement
+- Ne recalculer qu'une fois (hasInitializedRef.current)
+
 ### Ecctrl (Character Controller)
 - Ne PAS utiliser `EcctrlAnimation` - gérer animations manuellement
 - Utiliser `useGame` store d'ecctrl pour animations (`curAnimation`, `initializeAnimationSet`, `reset`)
@@ -65,10 +99,15 @@ pierrelegrand.fr/
 - Routes API: kebab-case (/api/codes/validate)
 - Variables env: SCREAMING_SNAKE_CASE
 
-## 3 Biomes
-1. **Lab** (tech) - Zone industrielle/futuriste
-2. **Temple** (coaching) - Zone zen/organique
-3. **Bank** (crypto) - Zone dorée/cryptographique
+## 3 Biomes (Procédural World)
+1. **Tech** - Zone industrielle/futuriste (centre: [30, 0, -30], heightScale: 3)
+2. **Nature** - Zone organique/forêt (centre: [-30, 0, -30], heightScale: 6)
+3. **Crypto** - Zone dorée/blockchain (centre: [0, 0, 40], heightScale: 5)
+
+Configuration dans `worldConfig.ts`:
+- Rayon biome: 22 unités
+- Transition width: 12 unités
+- Hub central: rayon 15, plateforme height 0.5
 
 ## Cheat Codes System
 - Touche BACKTICK ou K ouvre le terminal
@@ -126,10 +165,16 @@ npm run type-check
 - `vite.config.ts` - Config build frontend
 - `server/src/index.ts` - Entry point API
 - `src/stores/gameStore.ts` - State global Zustand
+- `src/stores/worldStore.ts` - État monde procédural (heightmaps, biomes)
+- `src/config/worldConfig.ts` - Configuration unifiée du monde
+- `src/services/HeightmapService.ts` - Requêtes de hauteur terrain
 - `src/components/3d/Player.tsx` - Personnage + ecctrl + animations
 - `src/components/3d/Experience.tsx` - Scene principale (Physics, KeyboardControls)
-- `src/components/3d/World.tsx` - Environnement (plateformes, portails, objets)
-- `src/components/3d/ShootingSystem.tsx` - Tir de cubes (clic gauche ou F)
+- `src/components/3d/ProceduralWorld.tsx` - Monde procédural (biomes, eau, terrain)
+- `src/components/3d/BiomeZone.tsx` - Zone de biome avec décorations
+- `src/components/3d/terrain/ProceduralTerrain.tsx` - Terrain heightmap
+- `src/components/3d/water/WaterSystem.tsx` - Système d'eau (Lake, Moat, Fountain)
+- `src/components/3d/instanced/InstancedNatureDecorations.tsx` - Décorations optimisées
 
 ## Ne Pas Faire
 - Jamais de console.log en production (drop_console: true)
@@ -138,6 +183,11 @@ npm run type-check
 - Éviter draw calls > 200
 - Éviter textures > 2048px
 - Ne PAS utiliser `EcctrlAnimation` (bugs avec React 19)
+- Ne PAS utiliser `THREE.DoubleSide` pour l'eau horizontale (artefacts)
+- Ne PAS réappliquer le falloff dans HeightmapService (déjà dans les données)
+- Ne PAS mettre queryHeight dans les dépendances useMemo (cause re-renders)
+- Ne PAS utiliser CircleGeometry/RingGeometry natifs pour eau (trous au centre)
+- Éviter coordonnées locales pour heightmap (toujours worldCenter)
 
 ## Contrôles
 - WASD / Flèches: Déplacement
@@ -145,3 +195,39 @@ npm run type-check
 - Shift: Sprint
 - Clic gauche / F: Tir de cubes
 - 1-4: Actions (Wave, Dance, Cheer, Attack)
+
+## Patterns Techniques Découverts
+
+### Anti-Flickering pour Instanced Meshes
+```typescript
+const [finalPositions, setFinalPositions] = useState(null)
+const hasInitializedRef = useRef(false)
+
+useEffect(() => {
+  if (hasInitializedRef.current) return
+  if (!isInitialized || !hasHeightmap) return
+  hasInitializedRef.current = true
+  // Calcul unique des positions
+  setFinalPositions(...)
+}, [isInitialized, hasHeightmap])
+```
+
+### Géométrie Custom pour Eau (évite trous)
+```typescript
+// Lake avec rings concentriques
+const rings = 16
+positions.push(0, 0, 0) // Centre
+for (ring = 1; ring <= rings; ring++) {
+  for (seg = 0; seg < segments; seg++) {
+    // Générer vertices en cercles
+  }
+}
+// Triangles centre -> premier ring, puis ring -> ring
+```
+
+### Z-Fighting Prevention
+- BaseGround: Y = -0.05
+- BiomeTransitionGround: Y = 0.02
+- Terrain: Y = 0.1
+- Eau: Y = terrain + 0.02/0.03
+- Décorations: Y = terrain + terrainOffset (0.1)

@@ -1,6 +1,7 @@
 /**
  * ProceduralTerrain - Terrain procédural avec heightmap
  * Génère un terrain basé sur le bruit de Perlin/Simplex
+ * Enregistre automatiquement la heightmap dans le WorldStore
  */
 
 import { useRef, useMemo, useEffect } from 'react'
@@ -9,6 +10,8 @@ import { RigidBody } from '@react-three/rapier'
 import { createFractalNoise2D } from '@utils/procedural'
 import type { BiomeType } from '@/config/proceduralConfig'
 import { BIOME_TERRAIN_CONFIG } from '@/config/proceduralConfig'
+import { useWorldStore } from '@stores/worldStore'
+import type { HeightmapData } from '@services/HeightmapService'
 
 interface ProceduralTerrainProps {
   /** Taille du terrain */
@@ -19,16 +22,22 @@ interface ProceduralTerrainProps {
   seed?: number
   /** Type de biome pour les paramètres de terrain */
   biome?: BiomeType
+  /** ID unique du biome (pour enregistrer la heightmap) */
+  biomeId?: string
   /** Échelle de hauteur */
   heightScale?: number
-  /** Position dans le monde */
+  /** Position locale dans le groupe parent */
   position?: [number, number, number]
+  /** Centre du biome en coordonnées monde (pour heightmap) */
+  worldCenter?: [number, number, number]
   /** Afficher en wireframe */
   wireframe?: boolean
   /** Activer la physique */
   enablePhysics?: boolean
   /** Schéma de couleurs */
   colorScheme?: 'height' | 'slope' | 'biome'
+  /** Rayon du biome (pour falloff) */
+  biomeRadius?: number
 }
 
 /**
@@ -40,19 +49,31 @@ export function ProceduralTerrain({
   resolution = 128,
   seed = 12345,
   biome = 'nature',
+  biomeId,
   heightScale = 10,
   position = [0, 0, 0],
+  worldCenter,
   wireframe = false,
   enablePhysics = true,
   colorScheme = 'height',
+  biomeRadius,
 }: ProceduralTerrainProps) {
+  // Coordonnées monde effectives (worldCenter si fourni, sinon position)
+  const effectiveWorldCenter = worldCenter ?? position
   const meshRef = useRef<THREE.Mesh>(null)
+
+  // WorldStore pour enregistrer la heightmap
+  const registerHeightmap = useWorldStore((state) => state.registerHeightmap)
+  const unregisterHeightmap = useWorldStore((state) => state.unregisterHeightmap)
 
   // Configuration selon le biome
   const biomeConfig = BIOME_TERRAIN_CONFIG[biome]
 
+  // Rayon effectif (utilise biomeRadius si fourni, sinon size/2)
+  const effectiveRadius = biomeRadius ?? size / 2
+
   // Générer la géométrie avec heightmap intégré
-  const geometry = useMemo(() => {
+  const { geometry, heightmapData } = useMemo(() => {
     const geo = new THREE.PlaneGeometry(size, size, resolution, resolution)
     geo.rotateX(-Math.PI / 2)
 
@@ -65,26 +86,33 @@ export function ProceduralTerrain({
     })
 
     const positions = geo.attributes.position
-    if (!positions) return geo
+    if (!positions) return { geometry: geo, heightmapData: null }
 
     const colors = new Float32Array(positions.count * 3)
+
+    // Créer le tableau pour stocker les hauteurs normalisées (pour heightmap)
+    const heightData = new Float32Array((resolution + 1) * (resolution + 1))
 
     {
       for (let i = 0; i < positions.count; i++) {
         const x = positions.getX(i)
         const z = positions.getZ(i)
 
-        // Générer la hauteur
-        const worldX = x + position[0]
-        const worldZ = z + position[2]
+        // Générer la hauteur avec coordonnées MONDE
+        // On utilise effectiveWorldCenter car le terrain est dans un groupe positionné au centre du biome
+        const worldX = x + effectiveWorldCenter[0]
+        const worldZ = z + effectiveWorldCenter[2]
         const noiseValue = (noise(worldX, worldZ) + 1) / 2
 
         // Appliquer falloff circulaire (optionnel pour biomes)
-        const distFromCenter = Math.sqrt(x * x + z * z) / (size / 2)
+        const distFromCenter = Math.sqrt(x * x + z * z) / effectiveRadius
         const falloff = Math.max(0, 1 - Math.pow(distFromCenter, 2))
         const height = noiseValue * falloff * heightScale * biomeConfig.heightMultiplier
 
         positions.setY(i, height)
+
+        // Stocker la hauteur normalisée dans le heightmap data
+        heightData[i] = noiseValue * falloff
 
         // Couleur par hauteur
         const normalizedHeight = height / (heightScale * biomeConfig.heightMultiplier)
@@ -101,8 +129,37 @@ export function ProceduralTerrain({
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     geo.computeVertexNormals()
 
-    return geo
-  }, [size, resolution, seed, biome, heightScale, position, colorScheme, biomeConfig])
+    // Préparer les données de heightmap avec coordonnées MONDE
+    const hmData: HeightmapData = {
+      data: heightData,
+      width: resolution + 1,
+      height: resolution + 1,
+      worldBounds: {
+        minX: effectiveWorldCenter[0] - size / 2,
+        maxX: effectiveWorldCenter[0] + size / 2,
+        minZ: effectiveWorldCenter[2] - size / 2,
+        maxZ: effectiveWorldCenter[2] + size / 2,
+      },
+      heightScale: heightScale * biomeConfig.heightMultiplier,
+      biomeId: biomeId ?? biome,
+      center: effectiveWorldCenter,
+      radius: effectiveRadius,
+    }
+
+    return { geometry: geo, heightmapData: hmData }
+  }, [size, resolution, seed, biome, biomeId, heightScale, position, effectiveWorldCenter, colorScheme, biomeConfig, effectiveRadius])
+
+  // Enregistrer la heightmap dans le WorldStore
+  useEffect(() => {
+    if (heightmapData && biomeId) {
+      registerHeightmap(biomeId, heightmapData)
+      console.log(`[ProceduralTerrain] Heightmap registered for biome: ${biomeId}`)
+
+      return () => {
+        unregisterHeightmap(biomeId)
+      }
+    }
+  }, [heightmapData, biomeId, registerHeightmap, unregisterHeightmap])
 
   // Matériau avec vertex colors
   const material = useMemo(() => {
@@ -203,15 +260,20 @@ export function CircularProceduralTerrain({
   resolution = 64,
   seed = 12345,
   biome = 'nature',
+  biomeId,
   heightScale = 5,
   position = [0, 0, 0],
+  worldCenter,
 }: {
   radius?: number
   resolution?: number
   seed?: number
   biome?: BiomeType
+  biomeId?: string
   heightScale?: number
   position?: [number, number, number]
+  /** Centre du biome en coordonnées monde (pour heightmap) */
+  worldCenter?: [number, number, number]
 }) {
   return (
     <ProceduralTerrain
@@ -219,8 +281,11 @@ export function CircularProceduralTerrain({
       resolution={resolution}
       seed={seed}
       biome={biome}
+      biomeId={biomeId ?? biome}
       heightScale={heightScale}
       position={position}
+      worldCenter={worldCenter}
+      biomeRadius={radius}
       colorScheme="height"
     />
   )

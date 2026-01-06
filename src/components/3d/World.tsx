@@ -5,6 +5,7 @@ import { BiomeZone, BiomePortal } from './BiomeZone'
 import { ContentBrickWall } from './ContentBrickWall'
 import { getContentByCategory, type ContentCategory, type ContentItem } from '@data/contentData'
 import { UrbanGround } from './grounds'
+import { VideoScreen } from './VideoScreen'
 
 /**
  * World2 - Niveau 2 avec système de biomes
@@ -148,6 +149,8 @@ function CentralHub({
 
       {/* Lumière centrale */}
       <pointLight position={[0, 5, 0]} intensity={0.8} color={HUB_COLORS.secondary} distance={20} />
+
+      {/* Note: Les écrans vidéo sont maintenant dans chaque biome */}
     </group>
   )
 }
@@ -351,12 +354,26 @@ interface BiomeSectionProps {
   isActive: boolean
 }
 
+// Correspondance biome -> clé vidéo
+const BIOME_VIDEO_KEYS: Record<ContentCategory, keyof typeof import('@config/videos').VIDEOS> = {
+  tech: 'intro',
+  nature: 'demo',
+  crypto: 'tech',
+}
+
 function BiomeSection({ category, config }: BiomeSectionProps) {
   const contents = useMemo(() => getContentByCategory(category), [category])
   const wallPlacements = useMemo(
     () => generateWallPlacementsForBiome(contents, config.center, config.radius),
     [contents, config.center, config.radius]
   )
+
+  // Position de l'écran vidéo au centre du biome, en hauteur
+  const videoScreenPosition: [number, number, number] = [
+    config.center[0],
+    3.5, // Hauteur pour être bien visible
+    config.center[2],
+  ]
 
   return (
     <group>
@@ -366,6 +383,14 @@ function BiomeSection({ category, config }: BiomeSectionProps) {
         center={config.center}
         colors={config.colors}
         radius={config.radius}
+      />
+
+      {/* Écran vidéo YouTube au centre du biome */}
+      <VideoScreen
+        videoKey={BIOME_VIDEO_KEYS[category]}
+        position={videoScreenPosition}
+        size={[5, 2.8]}
+        glowColor={config.colors.primary}
       />
 
       {/* Murs de briques pour chaque contenu */}

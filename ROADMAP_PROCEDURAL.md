@@ -688,7 +688,7 @@ src/
 - [x] **Phase 5** : Web Workers (chunkWorker, workerPool, WorkerChunk)
 - [x] **Phase 6** : LOD avancé (LODSystem, frustum culling, morphing)
 - [x] **Phase 7** : Poisson Disc + Végétation (VegetationSystem, BiomeVegetation)
-- [ ] **Phase 8** : Fonctionnalités avancées
+- [x] **Phase 8** : Fonctionnalités avancées (GPGPU Heightmap, Erosion, Water System)
 
 ---
 
@@ -726,7 +726,12 @@ src/
 ### Végétation Procédurale
 - `src/components/3d/vegetation/VegetationSystem.tsx` - Placement de végétation avec Poisson Disc
 
+### Phase 8 - Fonctionnalités Avancées
+- `src/components/3d/terrain/GPGPUHeightmap.tsx` - Génération de heightmap sur GPU avec shaders
+- `src/components/3d/terrain/ErosionSimulation.tsx` - Simulation d'érosion hydraulique et par gouttelettes
+- `src/components/3d/water/WaterSystem.tsx` - Système d'eau complet (lacs, rivières, douves, fontaines, cascades)
+
 ---
 
 > 📅 Dernière mise à jour : Janvier 2026
-> 🔧 Version : 1.1.0
+> 🔧 Version : 1.2.0

@@ -6,9 +6,10 @@
  * - Biomes avec transitions shader
  * - Végétation via Poisson Disc Sampling
  * - Système LOD avancé
+ * - Architecture Enterprise avec WorldStore, Factories, HeightmapService
  */
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
@@ -16,22 +17,25 @@ import { ChunkManager } from './chunks'
 import { BiomeTransitionGround } from './terrain'
 import { BiomeVegetation } from './vegetation'
 import { BiomeZone, BiomePortal } from './BiomeZone'
+import { WaterFeatures as WaterFeaturesFromFactory } from './water'
 import { useGameStore, type Level } from '@stores/gameStore'
+import { useWorldStore } from '@stores/worldStore'
+import { WORLD_CONFIG as UNIFIED_WORLD_CONFIG } from '@config/worldConfig'
 import type { BiomeType } from '@/config/proceduralConfig'
 import type { ContentCategory } from '@data/contentData'
 
-// Configuration du monde procédural
+// Configuration du monde procédural (local - utilisé comme fallback/override)
 const WORLD_CONFIG = {
-  seed: 42,
+  seed: UNIFIED_WORLD_CONFIG.seed,
   useWorkers: true,
-  debug: false,
+  debug: UNIFIED_WORLD_CONFIG.debug,
   // Biomes
   biomeRadius: 22,
-  transitionWidth: 5,
+  transitionWidth: 12, // Augmenté pour couvrir plus de zone entre biomes
   hubColor: '#374151',
 }
 
-// Configuration des biomes
+// Configuration des biomes (doit matcher worldConfig.ts)
 const BIOME_CONFIG: Record<
   ContentCategory,
   {
@@ -78,6 +82,17 @@ export function ProceduralWorld({
   const [currentBiome, setCurrentBiome] = useState<ContentCategory | null>(null)
   const setCurrentLevel = useGameStore((s) => s.setCurrentLevel)
 
+  // Initialiser le WorldStore
+  const initialize = useWorldStore((state) => state.initialize)
+  const isInitialized = useWorldStore((state) => state.isInitialized)
+
+  useEffect(() => {
+    if (!isInitialized) {
+      initialize({ seed })
+      console.log('[ProceduralWorld] WorldStore initialized')
+    }
+  }, [initialize, isInitialized, seed])
+
   return (
     <group name="procedural-world">
       {/* Sol de base avec shader de transitions */}
@@ -122,6 +137,9 @@ export function ProceduralWorld({
       {/* Tracker de position du joueur */}
       <PlayerPositionTracker positionRef={playerPositionRef} />
 
+      {/* Système d'eau - utilise WaterFactory pour positionnement terrain-aware */}
+      <WaterFeaturesFromFactory />
+
       {/* Limites du monde */}
       <WorldBoundaries size={80} />
 
@@ -133,19 +151,23 @@ export function ProceduralWorld({
 
 /**
  * Sol de base avec transitions shader entre biomes
+ * Position Y plus basse pour éviter le z-fighting avec les terrains
  */
 function BaseGround() {
   return (
     <group name="base-ground">
-      {/* Sol principal gris du hub */}
+      {/* Sol principal gris du hub - couvre tout le monde visible */}
       <RigidBody type="fixed" friction={1}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-          <planeGeometry args={[200, 200]} />
-          <meshStandardMaterial color={WORLD_CONFIG.hubColor} roughness={0.9} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+          <planeGeometry args={[300, 300]} />
+          <meshStandardMaterial
+            color={WORLD_CONFIG.hubColor}
+            roughness={0.9}
+          />
         </mesh>
       </RigidBody>
 
-      {/* Transitions shader pour chaque biome */}
+      {/* Transitions shader pour chaque biome - couvrent les zones autour des biomes */}
       {(Object.keys(BIOME_CONFIG) as ContentCategory[]).map((category) => {
         const config = BIOME_CONFIG[category]
         return (
@@ -409,18 +431,30 @@ interface BiomeSectionProps {
   isActive: boolean
 }
 
+// Configuration de hauteur par biome
+const BIOME_HEIGHT_CONFIG: Record<ContentCategory, number> = {
+  nature: 6, // Collines plus prononcées pour Nature
+  tech: 3, // Relief modéré pour Tech (style plateforme)
+  crypto: 5, // Relief doré pour Crypto
+}
+
 function BiomeSection({ category, center, colors, radius, seed }: BiomeSectionProps) {
+  const heightScale = BIOME_HEIGHT_CONFIG[category]
+
   return (
     <group name={`biome-${category}`}>
-      {/* Zone du biome avec décorations instanciées */}
+      {/* Zone du biome avec terrain 3D et décorations instanciées */}
       <BiomeZone
         category={category}
+        biomeId={category}
         center={center}
         colors={colors}
         radius={radius}
         useInstanced={true}
         seed={seed}
-        useTransitions={false} // Le sol de base gère déjà les transitions
+        useTransitions={false}
+        use3DTerrain={true}
+        heightScale={heightScale}
       />
 
       {/* Végétation procédurale supplémentaire */}
