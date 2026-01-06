@@ -4,11 +4,12 @@
 Portfolio 3D immersif avec système de cheat codes et navigation par exploration.
 
 ## Stack Technique
-- **Frontend:** React 19 + React Three Fiber v9 + Drei + Zustand
+- **Frontend:** React 19 + React Three Fiber v9 + Drei v10 + Zustand 5
 - **Backend:** Node.js 20 LTS + Hono + Zod
 - **Database:** MySQL 8.x (Hostinger intégré)
-- **Build:** Vite 5.x + TypeScript
-- **Physics:** Rapier (WASM)
+- **Build:** Vite 6.x + TypeScript 5.7
+- **Physics:** @react-three/rapier v2
+- **Character Controller:** ecctrl v1.0.97
 - **Hosting:** Hostinger Node.js (200Go, 1.5Go RAM, 2 CPU)
 
 ## Architecture
@@ -38,11 +39,19 @@ pierrelegrand.fr/
 - Interfaces préférées aux types pour les objets
 - Zod pour validation runtime
 
-### React Three Fiber
+### React Three Fiber + Ecctrl
 - Composants 3D dans `src/components/3d/`
 - Utiliser `useGLTF.preload()` pour assets
 - `frameloop="demand"` quand possible
 - Drei pour helpers (Instances, Detailed, AdaptiveDpr)
+
+### Ecctrl (Character Controller)
+- Ne PAS utiliser `EcctrlAnimation` - gérer animations manuellement
+- Utiliser `useGame` store d'ecctrl pour animations (`curAnimation`, `initializeAnimationSet`, `reset`)
+- `CharacterModel` en enfant direct de `<Ecctrl>`
+- `useAnimations` de drei pour contrôler les animations du GLB
+- Keyboard mapping via `<KeyboardControls>` de drei (forward, backward, leftward, rightward, jump, run, action1-4)
+- Props importantes: `animated`, `mode="CameraBasedMovement"`, `capsuleHalfHeight`, `capsuleRadius`
 
 ### Hono API
 - Routes dans `server/src/routes/`
@@ -79,6 +88,9 @@ pierrelegrand.fr/
 - Format: GLB avec compression Draco
 - Textures: WebP, max 1024x1024 (2048 pour héros)
 - Lazy loading par biome
+- Modèle personnage: `/Floating Character.glb` (ecctrl demo)
+- Textures toon: `/textures/3.jpg`, `/textures/5.jpg`
+- Terrains: `/roughPlane.glb`, `/slopes.glb`
 
 ## Sécurité
 - CORS restrictif (pierrelegrand.fr uniquement)
@@ -114,6 +126,10 @@ npm run type-check
 - `vite.config.ts` - Config build frontend
 - `server/src/index.ts` - Entry point API
 - `src/stores/gameStore.ts` - State global Zustand
+- `src/components/3d/Player.tsx` - Personnage + ecctrl + animations
+- `src/components/3d/Experience.tsx` - Scene principale (Physics, KeyboardControls)
+- `src/components/3d/World.tsx` - Environnement (plateformes, portails, objets)
+- `src/components/3d/ShootingSystem.tsx` - Tir de cubes (clic gauche ou F)
 
 ## Ne Pas Faire
 - Jamais de console.log en production (drop_console: true)
@@ -121,3 +137,11 @@ npm run type-check
 - Jamais stocker secrets dans le code (env variables)
 - Éviter draw calls > 200
 - Éviter textures > 2048px
+- Ne PAS utiliser `EcctrlAnimation` (bugs avec React 19)
+
+## Contrôles
+- WASD / Flèches: Déplacement
+- Espace: Saut
+- Shift: Sprint
+- Clic gauche / F: Tir de cubes
+- 1-4: Actions (Wave, Dance, Cheer, Attack)
