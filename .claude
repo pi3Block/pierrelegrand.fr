@@ -188,6 +188,8 @@ npm run type-check
 - Ne PAS mettre queryHeight dans les dépendances useMemo (cause re-renders)
 - Ne PAS utiliser CircleGeometry/RingGeometry natifs pour eau (trous au centre)
 - Éviter coordonnées locales pour heightmap (toujours worldCenter)
+- Ne PAS utiliser HeightfieldCollider ou trimesh pour terrains avec Ecctrl (instabilité capsule flottante) - préférer sol plat `boxGeometry` comme World2
+- Ne JAMAIS appeler `set()` de Zustand inconditionnellement dans `useFrame` (cause "Maximum update depth exceeded") - toujours utiliser useRef + comparaison avec seuil
 
 ## Contrôles
 - WASD / Flèches: Déplacement

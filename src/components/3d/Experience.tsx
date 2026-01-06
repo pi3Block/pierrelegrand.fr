@@ -13,8 +13,8 @@ import { ShootingSystem } from './ShootingSystem'
 
 // Lazy loading des mondes pour optimiser le chargement initial
 const Hub = lazy(() => import('./Hub'))
-const World = lazy(() => import('./World'))
-const World2 = lazy(() => import('./World2'))
+const WorldClassic = lazy(() => import('./WorldClassic'))
+const WorldPlayground = lazy(() => import('./WorldPlayground'))
 const ProceduralExperience = lazy(() => import('./ProceduralExperience'))
 const World4 = lazy(() => import('./World4'))
 
@@ -31,10 +31,10 @@ const keyboardMap = [
 // Configuration des positions de spawn par niveau
 const SPAWN_POSITIONS: Record<Level, [number, number, number]> = {
   0: [0, 2, 0],    // Hub - centre
-  1: [0, 5, 5],    // World - classique
-  2: [0, 5, 5],    // World2 - playground
+  1: [0, 5, 5],    // WorldClassic - classique
+  2: [0, 5, 5],    // WorldPlayground - playground
   3: [0, 5, 0],    // ProceduralWorld
-  4: [0, 3, 30],   // World4 - Angry Birds (derriere les structures)
+  4: [0, 3, 20],   // World4 - Angry Birds (zone plate centrale)
 }
 
 /**
@@ -70,8 +70,8 @@ export function Experience() {
       />
       <pointLight position={[-10, 10, -10]} intensity={0.3} color="#6366f1" />
 
-      {/* Environment - pas pour World4 Angry Birds (a son propre ciel) */}
-      {currentLevel !== 4 && <Environment preset="night" />}
+      {/* Environment - pas pour Hub et World4 Angry Birds (ont leur propre ciel) */}
+      {currentLevel !== 0 && currentLevel !== 4 && <Environment preset="night" />}
 
       {/* Ground Grid (visual only) - sauf pour Hub et World4 Angry Birds */}
       {currentLevel !== 0 && currentLevel !== 4 && (
@@ -118,9 +118,9 @@ function WorldRouter({ level }: { level: Level }) {
     case 0:
       return <Hub />
     case 1:
-      return <World />
+      return <WorldClassic />
     case 2:
-      return <World2 />
+      return <WorldPlayground />
     case 4:
       return <World4 />
     default:

@@ -4,10 +4,8 @@
  * Utilise le systeme de tir TPS existant
  */
 
-import { useState, useCallback } from 'react'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { Text } from '@react-three/drei'
-import { AngryBirdsTerrain, FlatGround } from './terrain/AngryBirdsTerrain'
 import { AngryBirdsSky, CloudSystem, CartoonSun } from './sky/AngryBirdsSky'
 import { InstancedAngryBirdsDecorations } from './instanced/InstancedAngryBirdsDecorations'
 import { ReturnToHubPortal } from './portals'
@@ -19,21 +17,14 @@ import {
   WallStructure,
 } from './destruction'
 
+// Couleur du sol style Angry Birds
+const GROUND_COLOR = '#7CB342'
+
 /**
  * Monde Angry Birds principal
  * Accessible depuis le niveau 3 (ProceduralWorld) via portail
  */
 export function World4AngryBirds() {
-  // Fonction de hauteur du terrain (passee aux decorations)
-  const [getTerrainHeight, setGetTerrainHeight] = useState<((x: number, z: number) => number) | null>(null)
-
-  const handleHeightmapReady = useCallback((heightFn: (x: number, z: number) => number) => {
-    setGetTerrainHeight(() => heightFn)
-  }, [])
-
-  // Hauteur par defaut si terrain pas encore pret
-  const safeGetHeight = getTerrainHeight ?? (() => 0)
-
   return (
     <group>
       {/* ========== CIEL ========== */}
@@ -41,18 +32,8 @@ export function World4AngryBirds() {
       <CloudSystem count={10} minHeight={25} maxHeight={40} spread={100} />
       <CartoonSun position={[60, 50, -80]} size={10} />
 
-      {/* ========== TERRAIN ========== */}
-      <AngryBirdsTerrain
-        size={100}
-        resolution={50}
-        heightScale={5}
-        seed={54321}
-        position={[0, 0, 0]}
-        onHeightmapReady={handleHeightmapReady}
-      />
-
-      {/* Zone de jeu plate au centre pour les structures */}
-      <FlatGround size={40} position={[0, 0.01, 0]} />
+      {/* ========== SOL ========== */}
+      <Ground color={GROUND_COLOR} />
 
       {/* ========== STRUCTURES DESTRUCTIBLES ========== */}
 
@@ -81,7 +62,7 @@ export function World4AngryBirds() {
       <InstancedAngryBirdsDecorations
         radius={45}
         seed={98765}
-        getTerrainHeight={safeGetHeight}
+        getTerrainHeight={() => 0}
         center={[0, 0, 0]}
       />
 
@@ -107,7 +88,7 @@ export function World4AngryBirds() {
       <WorldBoundaries size={55} />
 
       {/* ========== PANNEAU D'INSTRUCTIONS ========== */}
-      <InstructionSign position={[0, 3, 25]} />
+      <InstructionSign position={[0, 2, 22]} />
     </group>
   )
 }
@@ -195,5 +176,19 @@ function InstructionSign({ position }: { position: [number, number, number] }) {
         WASD pour se deplacer
       </Text>
     </group>
+  )
+}
+
+/**
+ * Sol simple avec physics (identique a World2)
+ */
+function Ground({ color }: { color: string }) {
+  return (
+    <RigidBody type="fixed" friction={1}>
+      <mesh receiveShadow position={[0, -0.5, 0]}>
+        <boxGeometry args={[100, 1, 100]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+    </RigidBody>
   )
 }

@@ -1,6 +1,6 @@
-import { RigidBody } from '@react-three/rapier'
-import { useTexture, Text, Html } from '@react-three/drei'
-import { useMemo, useState, useRef } from 'react'
+import { RigidBody, InstancedRigidBodies, type InstancedRigidBodyProps } from '@react-three/rapier'
+import { Text, Html } from '@react-three/drei'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import type { ContentItem } from '@data/contentData'
 
@@ -19,8 +19,8 @@ interface ContentBrickWallProps {
 
 /**
  * Mur de briques interactif représentant un contenu du portfolio.
- * Affiche le titre et la description sur une plaque au-dessus du mur.
- * Chaque brique est destructible et utilise la couleur du contenu.
+ * OPTIMISÉ: Utilise InstancedRigidBodies pour battre toutes les briques
+ * en un seul appel de rendu avec physique individuelle.
  */
 export function ContentBrickWall({
   content,
@@ -36,19 +36,18 @@ export function ContentBrickWall({
 }: ContentBrickWallProps) {
   const [isHovered, setIsHovered] = useState(false)
   const groupRef = useRef<THREE.Group>(null)
+  const meshRef = useRef<THREE.InstancedMesh>(null)
 
   // Dimensions totales du mur
   const wallWidth = cols * (brickWidth + gap) - gap
   const wallHeight = rows * (brickHeight + gap) - gap
 
-  // Générer les briques avec leurs positions
-  const bricks = useMemo(() => {
-    const result: Array<{
-      key: string
-      position: [number, number, number]
-      uvOffset: [number, number]
-      uvScale: [number, number]
-    }> = []
+  // Nombre total de briques
+  const brickCount = rows * cols
+
+  // Générer les instances pour InstancedRigidBodies
+  const instances = useMemo<InstancedRigidBodyProps[]>(() => {
+    const result: InstancedRigidBodyProps[] = []
 
     for (let row = 0; row < rows; row++) {
       // Décalage en quinconce pour les rangées paires
@@ -59,31 +58,47 @@ export function ContentBrickWall({
         const y = row * (brickHeight + gap) + brickHeight / 2
         const z = 0
 
-        // Calculer les UVs pour le mapping de texture
-        const uvOffsetX = (col * (brickWidth + gap) + rowOffset) / wallWidth
-        const uvOffsetY = (row * (brickHeight + gap)) / wallHeight
-        const uvScaleX = brickWidth / wallWidth
-        const uvScaleY = brickHeight / wallHeight
-
         result.push({
           key: `brick-${content.id}-${row}-${col}`,
-          position: [x, y, z],
-          uvOffset: [uvOffsetX, uvOffsetY],
-          uvScale: [uvScaleX, uvScaleY],
+          position: [x, y, z] as [number, number, number],
+          rotation: [0, 0, 0] as [number, number, number],
         })
       }
     }
 
     return result
-  }, [rows, cols, brickWidth, brickHeight, gap, wallWidth, wallHeight, content.id])
+  }, [rows, cols, brickWidth, brickHeight, gap, wallWidth, content.id])
 
-  // Couleur légèrement variée pour chaque brique pour plus de réalisme
-  const getVariedColor = (baseColor: string, index: number) => {
-    const color = new THREE.Color(baseColor)
-    const variation = (Math.sin(index * 0.7) * 0.05 + Math.cos(index * 1.3) * 0.05)
-    color.offsetHSL(0, 0, variation)
-    return color
-  }
+  // Appliquer les couleurs variées aux instances
+  useEffect(() => {
+    if (!meshRef.current) return
+
+    const baseColor = new THREE.Color(content.color)
+    const tempColor = new THREE.Color()
+
+    for (let i = 0; i < brickCount; i++) {
+      // Variation de couleur pour chaque brique
+      const variation = Math.sin(i * 0.7) * 0.05 + Math.cos(i * 1.3) * 0.05
+      tempColor.copy(baseColor).offsetHSL(0, 0, variation)
+      meshRef.current.setColorAt(i, tempColor)
+    }
+
+    meshRef.current.instanceColor!.needsUpdate = true
+  }, [brickCount, content.color])
+
+  // Géométrie partagée pour toutes les briques
+  const geometry = useMemo(() => {
+    return new THREE.BoxGeometry(brickWidth, brickHeight, brickDepth)
+  }, [brickWidth, brickHeight, brickDepth])
+
+  // Matériau partagé
+  const material = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      roughness: 0.85,
+      metalness: 0.1,
+      vertexColors: true,
+    })
+  }, [])
 
   return (
     <group ref={groupRef} position={position} rotation={rotation}>
@@ -116,19 +131,23 @@ export function ContentBrickWall({
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 
-      {/* Les briques */}
-      {bricks.map((brick, index) => (
-        <ContentBrick
-          key={brick.key}
-          position={brick.position}
-          size={[brickWidth, brickHeight, brickDepth]}
-          uvOffset={brick.uvOffset}
-          uvScale={brick.uvScale}
-          color={getVariedColor(content.color, index)}
-          textureUrl={content.textureUrl}
-          mass={brickMass}
+      {/* Les briques - OPTIMISÉ avec InstancedRigidBodies */}
+      <InstancedRigidBodies
+        instances={instances}
+        colliders="cuboid"
+        mass={brickMass}
+        friction={0.8}
+        restitution={0.1}
+        linearDamping={0.5}
+        angularDamping={0.5}
+      >
+        <instancedMesh
+          ref={meshRef}
+          args={[geometry, material, brickCount]}
+          castShadow
+          receiveShadow
         />
-      ))}
+      </InstancedRigidBodies>
 
       {/* Base/socle du mur */}
       <RigidBody type="fixed" position={[0, -0.1, 0]} friction={1}>
@@ -252,62 +271,3 @@ function TypeIndicator({ type, color, position }: TypeIndicatorProps) {
   )
 }
 
-interface ContentBrickProps {
-  position: [number, number, number]
-  size: [number, number, number]
-  uvOffset: [number, number]
-  uvScale: [number, number]
-  color: THREE.Color
-  textureUrl?: string
-  mass: number
-}
-
-function ContentBrick({ position, size, uvOffset, uvScale, color, textureUrl, mass }: ContentBrickProps) {
-  const geometry = useMemo(() => {
-    const geo = new THREE.BoxGeometry(size[0], size[1], size[2])
-
-    // Modifier les UVs pour le mapping de texture
-    const uvAttribute = geo.getAttribute('uv')
-    const uvArray = uvAttribute.array as Float32Array
-
-    for (let i = 0; i < uvArray.length; i += 2) {
-      const currentU = uvArray[i]
-      const currentV = uvArray[i + 1]
-      if (currentU !== undefined && currentV !== undefined) {
-        uvArray[i] = uvOffset[0] + currentU * uvScale[0]
-        uvArray[i + 1] = uvOffset[1] + currentV * uvScale[1]
-      }
-    }
-
-    uvAttribute.needsUpdate = true
-    return geo
-  }, [size, uvOffset, uvScale])
-
-  return (
-    <RigidBody
-      position={position}
-      mass={mass}
-      friction={0.8}
-      restitution={0.1}
-      linearDamping={0.5}
-      angularDamping={0.5}
-    >
-      <mesh geometry={geometry} castShadow receiveShadow>
-        {textureUrl ? (
-          <TexturedBrickMaterial textureUrl={textureUrl} />
-        ) : (
-          <meshStandardMaterial color={color} roughness={0.85} metalness={0.1} />
-        )}
-      </mesh>
-    </RigidBody>
-  )
-}
-
-function TexturedBrickMaterial({ textureUrl }: { textureUrl: string }) {
-  const texture = useTexture(textureUrl)
-
-  texture.wrapS = THREE.ClampToEdgeWrapping
-  texture.wrapT = THREE.ClampToEdgeWrapping
-
-  return <meshStandardMaterial map={texture} roughness={0.8} />
-}

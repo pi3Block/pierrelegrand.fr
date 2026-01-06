@@ -14,6 +14,16 @@ export interface CharacterPosition {
   z: number
 }
 
+/**
+ * État du système de charge pour le tir.
+ * chargeLevel: 0 = pas de charge, 1 = charge max
+ * isCharging: true si le joueur maintient le clic
+ */
+interface ChargeState {
+  chargeLevel: number
+  isCharging: boolean
+}
+
 interface GameState {
   // Navigation
   currentBiome: Biome
@@ -27,6 +37,9 @@ interface GameState {
   // Character (position pour le tir TPS)
   characterPosition: CharacterPosition
 
+  // Système de charge du tir
+  chargeState: ChargeState
+
   // Actions
   setCurrentBiome: (biome: Biome) => void
   setCurrentLevel: (level: Level) => void
@@ -34,6 +47,7 @@ interface GameState {
   unlockFeatures: (level: number, features: string[]) => void
   hasFeature: (feature: string) => boolean
   setCharacterPosition: (position: CharacterPosition) => void
+  setChargeState: (state: Partial<ChargeState>) => void
   reset: () => void
 }
 
@@ -47,6 +61,7 @@ export const useGameStore = create<GameState>()(
       privilegeLevel: 0,
       unlockedFeatures: [],
       characterPosition: { x: 0, y: 0, z: 0 },
+      chargeState: { chargeLevel: 0, isCharging: false },
 
       // Actions
       setCurrentBiome: (biome) => set({ currentBiome: biome }),
@@ -64,6 +79,11 @@ export const useGameStore = create<GameState>()(
       hasFeature: (feature) => get().unlockedFeatures.includes(feature),
 
       setCharacterPosition: (position) => set({ characterPosition: position }),
+
+      setChargeState: (newState) =>
+        set((state) => ({
+          chargeState: { ...state.chargeState, ...newState },
+        })),
 
       reset: () =>
         set({

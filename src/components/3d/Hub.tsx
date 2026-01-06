@@ -9,6 +9,7 @@ import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore, type Level } from '@stores/gameStore'
+import { AngryBirdsSky, CloudSystem, CartoonSun } from './sky/AngryBirdsSky'
 
 // Configuration des portails
 const PORTAL_CONFIG: {
@@ -72,6 +73,11 @@ const HUB_COLORS = {
 export function Hub() {
   return (
     <group name="hub-level-0">
+      {/* Ciel style Angry Birds */}
+      <AngryBirdsSky />
+      <CloudSystem count={8} minHeight={20} maxHeight={35} spread={80} />
+      <CartoonSun position={[50, 40, -60]} size={8} />
+
       {/* Sol principal du hub */}
       <HubGround />
 

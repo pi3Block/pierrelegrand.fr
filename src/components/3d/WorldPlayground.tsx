@@ -1,3 +1,13 @@
+/**
+ * WorldPlayground - Niveau de test/playground avec éléments physiques
+ *
+ * Zone de jeu avec:
+ * - Terrain accidenté, pentes, marches
+ * - Plateformes flottantes et objets physiques
+ * - Murs de briques destructibles
+ * - Décorations thématiques par biome
+ */
+
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { useGameStore, Biome } from '@stores/gameStore'
 import { RoughPlane } from './RoughPlane'
@@ -15,7 +25,7 @@ const BIOME_COLORS: Record<Biome, { primary: string; secondary: string; ground: 
   bank: { primary: '#f59e0b', secondary: '#fbbf24', ground: '#451a03' },
 }
 
-export function World2() {
+export function WorldPlayground() {
   const currentBiome = useGameStore((s) => s.currentBiome)
   const colors = BIOME_COLORS[currentBiome]
 
@@ -217,4 +227,6 @@ function FloatingOctahedron({ position, color }: { position: [number, number, nu
   )
 }
 
-export default World2
+export default WorldPlayground
+
+

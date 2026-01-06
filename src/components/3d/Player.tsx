@@ -39,7 +39,7 @@ export function Player({ position = [0, 2, 0] }: PlayerProps) {
       capsuleRadius={0.3}
       floatHeight={0.3}
       // Mouvement
-      maxVelLimit={5}
+      maxVelLimit={8}
       turnSpeed={15}
       sprintMult={2}
       jumpVel={5}
@@ -99,16 +99,27 @@ function CharacterModel() {
   // Store pour publier la position du personnage (système de tir TPS)
   const setCharacterPosition = useGameStore((state) => state.setCharacterPosition)
   const worldPosition = useMemo(() => new THREE.Vector3(), [])
+  const lastPosition = useRef({ x: 0, y: 0, z: 0 })
 
-  // Publier la position du personnage à chaque frame pour le système de tir
+  // Publier la position du personnage uniquement si elle a changé significativement
+  // Evite les re-renders infinis causés par setState dans useFrame
   useFrame(() => {
     if (!group.current) return
     group.current.getWorldPosition(worldPosition)
-    setCharacterPosition({
-      x: worldPosition.x,
-      y: worldPosition.y,
-      z: worldPosition.z,
-    })
+
+    // Seuil de 0.01 pour éviter les micro-updates
+    const dx = Math.abs(worldPosition.x - lastPosition.current.x)
+    const dy = Math.abs(worldPosition.y - lastPosition.current.y)
+    const dz = Math.abs(worldPosition.z - lastPosition.current.z)
+
+    if (dx > 0.01 || dy > 0.01 || dz > 0.01) {
+      lastPosition.current = {
+        x: worldPosition.x,
+        y: worldPosition.y,
+        z: worldPosition.z,
+      }
+      setCharacterPosition(lastPosition.current)
+    }
   })
 
   // Initialiser le set d'animations au montage

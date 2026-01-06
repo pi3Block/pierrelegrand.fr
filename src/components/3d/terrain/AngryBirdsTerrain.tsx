@@ -6,7 +6,7 @@
 
 import { useMemo, useEffect } from 'react'
 import * as THREE from 'three'
-import { RigidBody } from '@react-three/rapier'
+import { RigidBody, HeightfieldCollider } from '@react-three/rapier'
 import { createFractalNoise2D } from '@utils/procedural'
 
 interface AngryBirdsTerrainProps {
@@ -22,6 +22,8 @@ interface AngryBirdsTerrainProps {
   position?: [number, number, number]
   /** Callback pour recuperer les hauteurs (pour placer les structures) */
   onHeightmapReady?: (getHeight: (x: number, z: number) => number) => void
+  /** Rayon de la zone plate centrale (0 = pas de zone plate) */
+  flatCenterRadius?: number
 }
 
 // Palette de couleurs Angry Birds
@@ -44,6 +46,7 @@ export function AngryBirdsTerrain({
   heightScale = 4,
   position = [0, 0, 0],
   onHeightmapReady,
+  flatCenterRadius = 0,
 }: AngryBirdsTerrainProps) {
   // Configuration du bruit pour collines douces
   const noiseConfig = useMemo(() => ({
@@ -59,15 +62,30 @@ export function AngryBirdsTerrain({
     return (worldX: number, worldZ: number) => {
       const x = worldX - position[0]
       const z = worldZ - position[2]
+      const distFromCenter = Math.sqrt(x * x + z * z)
+
+      // Zone plate au centre si flatCenterRadius > 0
+      if (flatCenterRadius > 0 && distFromCenter < flatCenterRadius) {
+        return 0
+      }
+
+      // Transition douce entre zone plate et collines
+      const transitionWidth = flatCenterRadius * 0.5
+      let flatFactor = 1
+      if (flatCenterRadius > 0 && distFromCenter < flatCenterRadius + transitionWidth) {
+        flatFactor = (distFromCenter - flatCenterRadius) / transitionWidth
+        flatFactor = flatFactor * flatFactor // Smoothstep quadratique
+      }
+
       const noiseValue = (noise(worldX, worldZ) + 1) / 2
 
       // Attenuation aux bords
-      const distFromCenter = Math.sqrt(x * x + z * z) / (size / 2)
-      const falloff = Math.max(0, 1 - Math.pow(distFromCenter, 3))
+      const normalizedDist = distFromCenter / (size / 2)
+      const falloff = Math.max(0, 1 - Math.pow(normalizedDist, 3))
 
-      return noiseValue * falloff * heightScale
+      return noiseValue * falloff * heightScale * flatFactor
     }
-  }, [noiseConfig, position, size, heightScale])
+  }, [noiseConfig, position, size, heightScale, flatCenterRadius])
 
   // Callback pour exposer la fonction de hauteur
   useEffect(() => {
@@ -76,7 +94,54 @@ export function AngryBirdsTerrain({
     }
   }, [getHeight, onHeightmapReady])
 
-  // Generer la geometrie
+  // Generer les hauteurs pour le heightfield collider
+  // Format: tableau 1D row-major (resolution+1) x (resolution+1)
+  const heightfieldData = useMemo(() => {
+    const noise = createFractalNoise2D(noiseConfig)
+    const cols = resolution + 1
+    const rows = resolution + 1
+    const heights = new Float32Array(cols * rows)
+    const cellSize = size / resolution
+
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) {
+        // Position dans l'espace local (centre a 0,0)
+        const x = (i - resolution / 2) * cellSize
+        const z = (j - resolution / 2) * cellSize
+
+        // Coordonnees monde
+        const worldX = x + position[0]
+        const worldZ = z + position[2]
+
+        // Distance du centre
+        const distFromCenter = Math.sqrt(x * x + z * z)
+
+        // Zone plate au centre
+        let height = 0
+        if (flatCenterRadius === 0 || distFromCenter >= flatCenterRadius) {
+          const transitionWidth = flatCenterRadius * 0.5
+          let flatFactor = 1
+          if (flatCenterRadius > 0 && distFromCenter < flatCenterRadius + transitionWidth) {
+            flatFactor = (distFromCenter - flatCenterRadius) / transitionWidth
+            flatFactor = flatFactor * flatFactor
+          }
+
+          const noiseValue = (noise(worldX, worldZ) + 1) / 2
+          const normalizedDist = distFromCenter / (size / 2)
+          const falloff = Math.max(0, 1 - Math.pow(normalizedDist, 3))
+
+          height = noiseValue * falloff * heightScale * flatFactor
+        }
+
+        // Rapier heightfield: row-major order
+        heights[j * cols + i] = height
+      }
+    }
+
+    return { heights, rows, cols }
+  }, [size, resolution, noiseConfig, position, heightScale, flatCenterRadius])
+
+  // Generer la geometrie visuelle (separee du collider)
   const geometry = useMemo(() => {
     const geo = new THREE.PlaneGeometry(size, size, resolution, resolution)
     geo.rotateX(-Math.PI / 2)
@@ -95,18 +160,32 @@ export function AngryBirdsTerrain({
       const worldX = x + position[0]
       const worldZ = z + position[2]
 
-      // Hauteur avec bruit
-      const noiseValue = (noise(worldX, worldZ) + 1) / 2
+      // Distance du centre
+      const distFromCenter = Math.sqrt(x * x + z * z)
 
-      // Attenuation circulaire aux bords
-      const distFromCenter = Math.sqrt(x * x + z * z) / (size / 2)
-      const falloff = Math.max(0, 1 - Math.pow(distFromCenter, 3))
+      // Zone plate au centre
+      let height = 0
+      if (flatCenterRadius === 0 || distFromCenter >= flatCenterRadius) {
+        const transitionWidth = flatCenterRadius * 0.5
+        let flatFactor = 1
+        if (flatCenterRadius > 0 && distFromCenter < flatCenterRadius + transitionWidth) {
+          flatFactor = (distFromCenter - flatCenterRadius) / transitionWidth
+          flatFactor = flatFactor * flatFactor
+        }
 
-      const height = noiseValue * falloff * heightScale
+        const noiseValue = (noise(worldX, worldZ) + 1) / 2
+        const normalizedDist = distFromCenter / (size / 2)
+        const falloff = Math.max(0, 1 - Math.pow(normalizedDist, 3))
+
+        height = noiseValue * falloff * heightScale * flatFactor
+      }
+
       positions.setY(i, height)
 
-      // Couleur basee sur la hauteur
-      const normalizedHeight = height / heightScale
+      // Couleur basee sur la hauteur (zone plate = herbe moyenne)
+      const normalizedHeight = flatCenterRadius > 0 && distFromCenter < flatCenterRadius
+        ? 0.4
+        : height / heightScale
       const color = getTerrainColor(normalizedHeight)
       colors[i * 3] = color.r
       colors[i * 3 + 1] = color.g
@@ -118,7 +197,7 @@ export function AngryBirdsTerrain({
     geo.computeVertexNormals()
 
     return geo
-  }, [size, resolution, noiseConfig, position, heightScale])
+  }, [size, resolution, noiseConfig, position, heightScale, flatCenterRadius])
 
   // Materiau avec flatShading pour effet low poly
   const material = useMemo(() => {
@@ -139,11 +218,22 @@ export function AngryBirdsTerrain({
   }, [geometry, material])
 
   return (
-    <RigidBody type="fixed" colliders="trimesh" friction={1}>
+    <RigidBody type="fixed" colliders={false} friction={1} position={position}>
+      {/* HeightfieldCollider - beaucoup plus stable que trimesh pour les terrains */}
+      <HeightfieldCollider
+        args={[
+          heightfieldData.rows - 1,  // nrows (nombre de cellules, pas de vertices)
+          heightfieldData.cols - 1,  // ncols
+          Array.from(heightfieldData.heights),  // heights array (doit etre number[])
+          { x: size, y: 1, z: size } // scale
+        ]}
+        friction={1}
+        restitution={0}
+      />
+      {/* Mesh visuel */}
       <mesh
         geometry={geometry}
         material={material}
-        position={position}
         receiveShadow
         castShadow
       />
