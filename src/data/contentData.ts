@@ -16,23 +16,12 @@ export interface ContentItem {
   date?: string
   author?: string
   tags?: string[]
-  // URL de texture générée ou image associée
   textureUrl?: string
-  // Couleur de fallback pour le mur
   color: string
 }
 
-/**
- * Mapping des contenus vers les biomes:
- * - TECH (Indigo): Tutoriels, Flutter, SDK, Développement
- * - NATURE (Vert): Bien-être, Hypnose, Lecture, Humanisme
- * - CRYPTO (Orange): Blockchain, NFT, Crypto, Finance
- */
-
 export const CONTENT_DATA: ContentItem[] = [
-  // ============================================
-  // BIOME TECH (Indigo) - Développement & Tutoriels
-  // ============================================
+  // BIOME TECH
   {
     id: 'tuto-flutter-strapi',
     title: 'CMS Flutter & Strapi',
@@ -43,7 +32,8 @@ export const CONTENT_DATA: ContentItem[] = [
     date: '2022-03-04',
     author: 'Pierre Legrand',
     tags: ['flutter', 'strapi', 'cms', 'tutoriel'],
-    color: '#6366f1', // Indigo
+    textureUrl: '/images/pages/Flutter-SDK.png',
+    color: '#6366f1',
   },
   {
     id: 'glossaire-dev',
@@ -51,9 +41,10 @@ export const CONTENT_DATA: ContentItem[] = [
     slug: 'glossaire-developpeur',
     type: 'page',
     category: 'tech',
-    description: 'Vocabulaire des développeurs web - Flutter, Node.js, npm',
+    description: 'Vocabulaire des développeurs web',
     tags: ['glossaire', 'développement', 'web'],
-    color: '#818cf8', // Indigo clair
+    textureUrl: '/images/pages/FullStackWebApps.png',
+    color: '#818cf8',
   },
   {
     id: 'mes-references',
@@ -63,7 +54,8 @@ export const CONTENT_DATA: ContentItem[] = [
     category: 'tech',
     description: 'Parcours professionnel et compétences techniques',
     tags: ['portfolio', 'références', 'expérience'],
-    color: '#4f46e5', // Indigo foncé
+    textureUrl: '/images/pages/logo_infotel.png',
+    color: '#4f46e5',
   },
   {
     id: 'projet-en-cours',
@@ -71,9 +63,10 @@ export const CONTENT_DATA: ContentItem[] = [
     slug: 'projet-en-cours',
     type: 'page',
     category: 'tech',
-    description: 'Les projets actuels - Crypto, Développement, Finance',
+    description: 'Les projets actuels',
     tags: ['projets', 'actuel'],
-    color: '#a5b4fc', // Indigo très clair
+    textureUrl: '/images/pages/DesktopApps.png',
+    color: '#a5b4fc',
   },
   {
     id: 'category-flutter',
@@ -83,6 +76,7 @@ export const CONTENT_DATA: ContentItem[] = [
     category: 'tech',
     description: 'Kit de développement Google multi-plateforme',
     tags: ['flutter', 'mobile', 'développement'],
+    textureUrl: '/images/posts/Google-flutter-logo-1.svg',
     color: '#6366f1',
   },
   {
@@ -93,6 +87,7 @@ export const CONTENT_DATA: ContentItem[] = [
     category: 'tech',
     description: 'Kits de développement logiciel',
     tags: ['sdk', 'développement'],
+    textureUrl: '/images/pages/Mobile-Apps.png',
     color: '#818cf8',
   },
   {
@@ -103,23 +98,22 @@ export const CONTENT_DATA: ContentItem[] = [
     category: 'tech',
     description: 'Guides et formations pratiques',
     tags: ['tutoriel', 'formation'],
+    textureUrl: '/images/pages/StaticSiteSeo.png',
     color: '#4f46e5',
   },
-
-  // ============================================
-  // BIOME NATURE (Vert) - Bien-être & Humanisme
-  // ============================================
+  // BIOME NATURE
   {
     id: 'hypnose-management',
     title: 'Hypnose Humaniste',
     slug: 'hypnose-humaniste-management',
     type: 'post',
     category: 'nature',
-    description: "L'hypnose humaniste dans le management et le développement commercial",
+    description: "L'hypnose humaniste dans le management",
     date: '2024-07-03',
     author: 'Pierre Legrand',
     tags: ['hypnose', 'management', 'bien-être'],
-    color: '#22c55e', // Vert
+    textureUrl: '/images/posts/feature1.jpg',
+    color: '#22c55e',
   },
   {
     id: 'vagues-volontaires',
@@ -131,7 +125,8 @@ export const CONTENT_DATA: ContentItem[] = [
     date: '2024-07-03',
     author: 'Pierre Legrand',
     tags: ['spiritualité', 'conscience', 'lecture'],
-    color: '#4ade80', // Vert clair
+    textureUrl: '/images/posts/les-trois-vagues-de-volontaires.jpg',
+    color: '#4ade80',
   },
   {
     id: 'accueil',
@@ -141,7 +136,8 @@ export const CONTENT_DATA: ContentItem[] = [
     category: 'nature',
     description: 'Ingénierie numérique, management commercial & communication humaniste',
     tags: ['accueil', 'présentation'],
-    color: '#16a34a', // Vert foncé
+    textureUrl: '/images/L.png',
+    color: '#16a34a',
   },
   {
     id: 'contact',
@@ -151,7 +147,8 @@ export const CONTENT_DATA: ContentItem[] = [
     category: 'nature',
     description: 'Services proposés et informations de contact',
     tags: ['contact', 'services'],
-    color: '#86efac', // Vert très clair
+    textureUrl: '/images/pages/fav-logo-LP.png',
+    color: '#86efac',
   },
   {
     id: 'category-bien-etre',
@@ -161,6 +158,7 @@ export const CONTENT_DATA: ContentItem[] = [
     category: 'nature',
     description: 'Entreprise et bien-être au travail',
     tags: ['bien-être', 'entreprise'],
+    textureUrl: '/images/posts/feature3.jpg',
     color: '#22c55e',
   },
   {
@@ -171,23 +169,22 @@ export const CONTENT_DATA: ContentItem[] = [
     category: 'nature',
     description: 'Ressources de lecture recommandées',
     tags: ['lecture', 'livres'],
+    textureUrl: '/images/posts/feature4.jpg',
     color: '#4ade80',
   },
-
-  // ============================================
-  // BIOME CRYPTO (Orange) - Blockchain & Finance
-  // ============================================
+  // BIOME CRYPTO
   {
     id: 'nft-flutter',
     title: 'NFT avec Flutter',
     slug: 'construire-nft-avec-flutter',
     type: 'post',
     category: 'crypto',
-    description: 'Construire sa collection NFT avec Flutter, OpenSea et Polygon',
+    description: 'Construire sa collection NFT avec Flutter',
     date: '2022-03-23',
     author: 'Pierre Legrand',
     tags: ['nft', 'flutter', 'blockchain', 'crypto'],
-    color: '#f59e0b', // Orange
+    textureUrl: '/images/posts/Logo.png',
+    color: '#f59e0b',
   },
   {
     id: 'freelance-ia',
@@ -195,11 +192,12 @@ export const CONTENT_DATA: ContentItem[] = [
     slug: 'optimiser-activite-freelance-ia',
     type: 'post',
     category: 'crypto',
-    description: "Optimiser son activité de Freelance avec l'Intelligence artificielle",
+    description: "Optimiser son activité de Freelance avec l'IA",
     date: '2024-06-13',
     author: 'Pierre Legrand',
     tags: ['freelance', 'ia', 'automatisation'],
-    color: '#fbbf24', // Orange clair
+    textureUrl: '/images/posts/Capture-decran-2024-06-13-143345.png',
+    color: '#fbbf24',
   },
   {
     id: 'crypto-cheatsheet',
@@ -207,10 +205,11 @@ export const CONTENT_DATA: ContentItem[] = [
     slug: 'expert-crypto-feuille-de-triche',
     type: 'page',
     category: 'crypto',
-    description: 'Guide de référence crypto - TON, Mining, GPU',
+    description: 'Guide de référence crypto',
     date: '2022-02-09',
     tags: ['crypto', 'mining', 'blockchain'],
-    color: '#d97706', // Orange foncé
+    textureUrl: '/images/pages/Web3EthereumApp.png',
+    color: '#d97706',
   },
   {
     id: 'vocabulaire-crypto',
@@ -220,7 +219,8 @@ export const CONTENT_DATA: ContentItem[] = [
     category: 'crypto',
     description: 'Lexique des termes crypto et blockchain',
     tags: ['crypto', 'vocabulaire', 'blockchain'],
-    color: '#fcd34d', // Orange très clair
+    textureUrl: '/images/pages/smart-contracts.png',
+    color: '#fcd34d',
   },
   {
     id: 'category-freelance',
@@ -230,35 +230,23 @@ export const CONTENT_DATA: ContentItem[] = [
     category: 'crypto',
     description: 'Ressources pour freelances',
     tags: ['freelance', 'indépendant'],
+    textureUrl: '/images/posts/Capture-decran-2024-06-13-144218.png',
     color: '#f59e0b',
   },
 ]
 
-/**
- * Filtre le contenu par catégorie/biome
- */
 export function getContentByCategory(category: ContentCategory): ContentItem[] {
   return CONTENT_DATA.filter((item) => item.category === category)
 }
 
-/**
- * Filtre le contenu par type
- */
 export function getContentByType(type: ContentType): ContentItem[] {
   return CONTENT_DATA.filter((item) => item.type === type)
 }
 
-/**
- * Récupère un contenu par son ID
- */
 export function getContentById(id: string): ContentItem | undefined {
   return CONTENT_DATA.find((item) => item.id === id)
 }
 
-/**
- * Configuration des positions des murs par biome dans World2
- * Chaque biome a une zone dédiée sur la carte
- */
 export interface WallPlacement {
   contentId: string
   position: [number, number, number]
@@ -267,24 +255,17 @@ export interface WallPlacement {
   cols: number
 }
 
-/**
- * Configuration de la carte du niveau 2
- * La carte est divisée en 3 zones triangulaires depuis le centre
- */
 export const BIOME_ZONES = {
-  // Zone TECH - Nord-Est (Z négatif, X positif)
   tech: {
     center: [15, 0, -15] as [number, number, number],
     color: { primary: '#6366f1', secondary: '#818cf8', ground: '#1e1b4b' },
     portalPosition: [20, 1, -20] as [number, number, number],
   },
-  // Zone NATURE - Nord-Ouest (Z négatif, X négatif)
   nature: {
     center: [-15, 0, -15] as [number, number, number],
     color: { primary: '#22c55e', secondary: '#4ade80', ground: '#14532d' },
     portalPosition: [-20, 1, -20] as [number, number, number],
   },
-  // Zone CRYPTO - Sud (Z positif)
   crypto: {
     center: [0, 0, 20] as [number, number, number],
     color: { primary: '#f59e0b', secondary: '#fbbf24', ground: '#451a03' },
@@ -292,39 +273,21 @@ export const BIOME_ZONES = {
   },
 }
 
-/**
- * Génère les placements de murs pour un biome donné
- */
 export function generateWallPlacements(category: ContentCategory): WallPlacement[] {
   const contents = getContentByCategory(category)
   const zone = BIOME_ZONES[category]
   const placements: WallPlacement[] = []
-
-  // Disposition en arc de cercle autour du centre du biome
   const radius = 8
   const angleStep = Math.PI / (contents.length + 1)
   const startAngle = category === 'crypto' ? -Math.PI / 2 : Math.PI / 4
-
   contents.forEach((content, index) => {
     const angle = startAngle + angleStep * (index + 1)
     const x = zone.center[0] + Math.cos(angle) * radius
     const z = zone.center[2] + Math.sin(angle) * radius
-
-    // Rotation pour faire face au centre
     const rotationY = Math.atan2(zone.center[0] - x, zone.center[2] - z)
-
-    // Taille variable selon le type de contenu
     const rows = content.type === 'post' ? 5 : content.type === 'page' ? 4 : 3
     const cols = content.type === 'post' ? 8 : content.type === 'page' ? 6 : 5
-
-    placements.push({
-      contentId: content.id,
-      position: [x, 0, z],
-      rotation: [0, rotationY, 0],
-      rows,
-      cols,
-    })
+    placements.push({ contentId: content.id, position: [x, 0, z], rotation: [0, rotationY, 0], rows, cols })
   })
-
   return placements
 }

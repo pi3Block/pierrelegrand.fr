@@ -39,7 +39,7 @@ export function Player({ position = [0, 2, 0] }: PlayerProps) {
       capsuleRadius={0.3}
       floatHeight={0.3}
       // Mouvement
-      maxVelLimit={3}
+      maxVelLimit={5}
       turnSpeed={15}
       sprintMult={2}
       jumpVel={5}

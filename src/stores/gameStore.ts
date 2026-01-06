@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export type Biome = 'lab' | 'temple' | 'bank'
-export type Level = 1 | 2
+export type Level = 1 | 2 | 3
 
 /**
  * Position 3D du personnage pour le système de tir TPS.
@@ -42,7 +42,7 @@ export const useGameStore = create<GameState>()(
     (set, get) => ({
       // Initial state
       currentBiome: 'lab',
-      currentLevel: 1,
+      currentLevel: 3, // Monde procédural par défaut
       isTransitioning: false,
       privilegeLevel: 0,
       unlockedFeatures: [],

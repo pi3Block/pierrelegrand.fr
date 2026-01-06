@@ -1,27 +1,93 @@
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import type { ContentCategory } from '@data/contentData'
+import {
+  CircularNatureGround,
+  CircularArcadeGround,
+  CircularCryptoGround,
+} from './grounds'
+import {
+  InstancedNatureDecorations,
+  InstancedCryptoDecorations,
+  InstancedTechDecorations,
+} from './instanced'
+import { BiomeTransitionGround } from './terrain'
 
 interface BiomeZoneProps {
   category: ContentCategory
   center: [number, number, number]
   colors: { primary: string; secondary: string; ground: string }
   radius?: number
+  /** Utiliser les décorations instanciées (meilleure performance) */
+  useInstanced?: boolean
+  /** Seed pour la génération procédurale */
+  seed?: number
+  /** Activer les transitions de biome avec shader */
+  useTransitions?: boolean
+  /** Largeur de la zone de transition */
+  transitionWidth?: number
 }
 
 /**
- * Zone de biome avec sol coloré et décorations thématiques
+ * Zone de biome avec sol stylisé et décorations thématiques
+ * Chaque biome a son propre type de sol avec shader personnalisé
+ *
+ * Mode instancié (useInstanced=true):
+ * - Utilise InstancedMesh pour un seul draw call par type d'objet
+ * - Placement via Poisson Disc Sampling
+ * - Animations groupées optimisées
+ *
+ * Mode classique (useInstanced=false):
+ * - Objets individuels positionnés manuellement
+ * - Plus de contrôle mais moins performant
  */
-export function BiomeZone({ category, center, colors, radius = 18 }: BiomeZoneProps) {
+export function BiomeZone({
+  category,
+  center,
+  colors,
+  radius = 18,
+  useInstanced = true,
+  seed = 42,
+  useTransitions = false,
+  transitionWidth = 4,
+}: BiomeZoneProps) {
+  // Seed unique par biome basé sur la catégorie
+  const biomeSeed = useMemo(() => {
+    const categorySeeds: Record<ContentCategory, number> = {
+      tech: seed,
+      nature: seed + 1000,
+      crypto: seed + 2000,
+    }
+    return categorySeeds[category]
+  }, [category, seed])
+
   return (
     <group position={center}>
-      {/* Sol du biome - forme circulaire/hexagonale */}
-      <BiomeGround color={colors.ground} radius={radius} />
+      {/* Sol du biome - style unique selon la catégorie */}
+      {useTransitions ? (
+        <BiomeTransitionGround
+          biome={category}
+          center={[0, 0, 0]}
+          radius={radius}
+          transitionWidth={transitionWidth}
+        />
+      ) : (
+        <EnhancedBiomeGround category={category} radius={radius} />
+      )}
 
       {/* Décorations spécifiques au biome */}
-      <BiomeDecorations category={category} colors={colors} radius={radius} />
+      {useInstanced ? (
+        <InstancedBiomeDecorations
+          category={category}
+          colors={colors}
+          radius={radius}
+          seed={biomeSeed}
+        />
+      ) : (
+        <BiomeDecorations category={category} colors={colors} radius={radius} />
+      )}
 
       {/* Piliers de délimitation */}
       <BiomePillars color={colors.primary} radius={radius} />
@@ -37,20 +103,47 @@ export function BiomeZone({ category, center, colors, radius = 18 }: BiomeZonePr
   )
 }
 
-interface BiomeGroundProps {
-  color: string
-  radius: number
+/**
+ * Sol amélioré selon le type de biome
+ * - tech: Grille néon style Tron
+ * - nature: Herbe/forêt procédurale
+ * - crypto: Sol doré blockchain
+ */
+function EnhancedBiomeGround({ category, radius }: { category: ContentCategory; radius: number }) {
+  switch (category) {
+    case 'tech':
+      return <CircularArcadeGround radius={radius} variant="tron" speed={0.8} />
+    case 'nature':
+      return <CircularNatureGround radius={radius} variant="forest" />
+    case 'crypto':
+      return <CircularCryptoGround radius={radius} />
+    default:
+      return <CircularNatureGround radius={radius} variant="grass" />
+  }
 }
 
-function BiomeGround({ color, radius }: BiomeGroundProps) {
-  return (
-    <RigidBody type="fixed" friction={1}>
-      <mesh receiveShadow position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[radius, 32]} />
-        <meshStandardMaterial color={color} roughness={0.9} />
-      </mesh>
-    </RigidBody>
-  )
+/**
+ * Décorations instanciées selon le biome
+ * Utilise InstancedMesh pour des performances optimales
+ */
+interface InstancedBiomeDecorationsProps {
+  category: ContentCategory
+  colors: { primary: string; secondary: string }
+  radius: number
+  seed: number
+}
+
+function InstancedBiomeDecorations({ category, colors, radius, seed }: InstancedBiomeDecorationsProps) {
+  switch (category) {
+    case 'tech':
+      return <InstancedTechDecorations radius={radius} colors={colors} seed={seed} />
+    case 'nature':
+      return <InstancedNatureDecorations radius={radius} colors={colors} seed={seed} />
+    case 'crypto':
+      return <InstancedCryptoDecorations radius={radius} colors={colors} seed={seed} />
+    default:
+      return null
+  }
 }
 
 interface BiomeDecorationsProps {
@@ -525,10 +618,15 @@ export function BiomePortal({ position, colors, onEnter }: BiomePortalProps) {
     }
   })
 
+  // Différer l'action pour éviter l'erreur Rapier "recursive use of an object"
+  const handleEnter = () => {
+    setTimeout(() => onEnter(), 0)
+  }
+
   return (
     <group position={position}>
       {/* Zone de trigger */}
-      <RigidBody type="fixed" sensor onIntersectionEnter={onEnter}>
+      <RigidBody type="fixed" sensor onIntersectionEnter={handleEnter}>
         <CuboidCollider args={[1.2, 2, 1.2]} />
       </RigidBody>
 
@@ -560,9 +658,9 @@ export function BiomePortal({ position, colors, onEnter }: BiomePortalProps) {
         />
       </mesh>
 
-      {/* Effet intérieur */}
-      <mesh position={[0, 1.5, 0]}>
-        <circleGeometry args={[0.9, 32]} />
+      {/* Effet intérieur - cylindre très plat pour éviter z-fighting */}
+      <mesh position={[0, 1.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.9, 0.9, 0.02, 32]} />
         <meshStandardMaterial
           color={colors.secondary}
           transparent
@@ -573,9 +671,9 @@ export function BiomePortal({ position, colors, onEnter }: BiomePortalProps) {
         />
       </mesh>
 
-      {/* Label du biome */}
-      <mesh position={[0, 3, 0]} rotation={[0, 0, 0]}>
-        <planeGeometry args={[2, 0.5]} />
+      {/* Label du biome - box plate */}
+      <mesh position={[0, 3, 0]}>
+        <boxGeometry args={[2, 0.5, 0.02]} />
         <meshStandardMaterial color="#1f2937" />
       </mesh>
 

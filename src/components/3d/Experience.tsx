@@ -6,9 +6,8 @@ import { DebugPanel } from '@components/ui/DebugOverlay'
 import { Player } from './Player'
 import { World } from './World'
 import { World2 } from './World2'
+import { ProceduralExperience } from './ProceduralExperience'
 import { ShootingSystem } from './ShootingSystem'
-
-// Ajout de la touche action1 pour le tir via Ecctrl
 
 // Keyboard mapping pour Ecctrl
 const keyboardMap = [
@@ -23,6 +22,11 @@ const keyboardMap = [
 export function Experience() {
   const hasDebug = useGameStore((s) => s.hasFeature('debug_mode'))
   const currentLevel = useGameStore((s) => s.currentLevel)
+
+  // Niveau 3 = Monde procédural (a sa propre configuration)
+  if (currentLevel === 3) {
+    return <ProceduralExperience debug={hasDebug} />
+  }
 
   return (
     <KeyboardControls map={keyboardMap}>
@@ -59,11 +63,11 @@ export function Experience() {
         infiniteGrid
       />
 
-      {/* Physics World */}
-      <Physics gravity={[0, -20, 0]} debug={hasDebug}>
+      {/* Physics World - key force le remontage lors du changement de niveau */}
+      <Physics key={`physics-level-${currentLevel}`} gravity={[0, -20, 0]} debug={hasDebug}>
         <Suspense fallback={null}>
-          {/* Player with Ecctrl */}
-          <Player position={[0, 3, 0]} />
+          {/* Player with Ecctrl - position adaptée au niveau */}
+          <Player position={[0, 5, 5]} />
 
           {/* World (platforms, decorations, portals) */}
           {currentLevel === 1 ? <World /> : <World2 />}
