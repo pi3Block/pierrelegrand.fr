@@ -1,0 +1,123 @@
+# Pierre Legrand 3.0 - Configuration Claude
+
+## Projet
+Portfolio 3D immersif avec système de cheat codes et navigation par exploration.
+
+## Stack Technique
+- **Frontend:** React 19 + React Three Fiber v9 + Drei + Zustand
+- **Backend:** Node.js 20 LTS + Hono + Zod
+- **Database:** MySQL 8.x (Hostinger intégré)
+- **Build:** Vite 5.x + TypeScript
+- **Physics:** Rapier (WASM)
+- **Hosting:** Hostinger Node.js (200Go, 1.5Go RAM, 2 CPU)
+
+## Architecture
+```
+pierrelegrand.fr/
+├── src/                      # Frontend React + R3F
+│   ├── components/3d/        # Composants 3D (biomes, objets)
+│   ├── hooks/                # useCheatCode, usePrivilegeLevel
+│   ├── stores/               # Zustand stores
+│   ├── api/                  # Client API
+│   └── utils/
+├── server/                   # Backend Node.js + Hono
+│   ├── src/
+│   │   ├── routes/           # codes.ts, health.ts
+│   │   ├── middleware/       # cors, rateLimit, security
+│   │   └── db/               # mysql.ts
+│   └── package.json
+├── public/
+│   └── models/               # Assets 3D (.glb compressés Draco)
+└── .github/workflows/        # CI/CD
+```
+
+## Conventions Code
+
+### TypeScript
+- Strict mode activé
+- Interfaces préférées aux types pour les objets
+- Zod pour validation runtime
+
+### React Three Fiber
+- Composants 3D dans `src/components/3d/`
+- Utiliser `useGLTF.preload()` pour assets
+- `frameloop="demand"` quand possible
+- Drei pour helpers (Instances, Detailed, AdaptiveDpr)
+
+### Hono API
+- Routes dans `server/src/routes/`
+- Validation Zod sur tous les endpoints
+- Prepared statements MySQL (jamais de concaténation)
+- Rate limiting: 20 req/min par IP
+
+### Naming
+- Composants: PascalCase (Lab.tsx, CheatCodeTerminal.tsx)
+- Hooks: camelCase avec prefix use (useCheatCode.ts)
+- Routes API: kebab-case (/api/codes/validate)
+- Variables env: SCREAMING_SNAKE_CASE
+
+## 3 Biomes
+1. **Lab** (tech) - Zone industrielle/futuriste
+2. **Temple** (coaching) - Zone zen/organique
+3. **Bank** (crypto) - Zone dorée/cryptographique
+
+## Cheat Codes System
+- Touche BACKTICK ou K ouvre le terminal
+- Codes stockés en BDD avec expiration optionnelle
+- Niveaux: 1 (Client), 2 (VIP), 3 (Admin)
+- Features: vip_zone, discount, debug_mode
+
+## Performance Targets
+| Métrique | Desktop | Mobile |
+|----------|---------|--------|
+| FPS | 60 | 30+ |
+| Draw Calls | <200 | <100 |
+| Triangles | <500K | <200K |
+| Load Time | <3s | <5s |
+
+## Assets 3D
+- Format: GLB avec compression Draco
+- Textures: WebP, max 1024x1024 (2048 pour héros)
+- Lazy loading par biome
+
+## Sécurité
+- CORS restrictif (pierrelegrand.fr uniquement)
+- Headers Hono secureHeaders()
+- Input validation Zod
+- MySQL prepared statements
+- Rate limiting
+
+## CI/CD
+- GitHub Actions sur push main
+- Build frontend + backend
+- Deploy SFTP vers Hostinger
+- PM2 restart après deploy
+
+## Commands
+```bash
+# Dev frontend
+npm run dev
+
+# Dev backend
+cd server && npm run dev
+
+# Build
+npm run build
+cd server && npm run build
+
+# Type check
+npm run type-check
+```
+
+## Fichiers Importants
+- `start-project.md` - Documentation technique complète
+- `vite.config.ts` - Config build frontend
+- `server/src/index.ts` - Entry point API
+- `src/stores/gameStore.ts` - State global Zustand
+
+## Ne Pas Faire
+- Jamais de console.log en production (drop_console: true)
+- Jamais concaténer SQL (prepared statements only)
+- Jamais stocker secrets dans le code (env variables)
+- Éviter draw calls > 200
+- Éviter textures > 2048px
