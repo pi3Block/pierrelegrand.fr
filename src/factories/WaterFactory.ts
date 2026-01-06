@@ -10,7 +10,6 @@ import { getHeightmapService } from '@services/HeightmapService'
 import type {
   WaterFeatureConfig,
   WaterColorConfig,
-  WaterYMode,
   Position3D,
 } from '@config/worldConfig'
 import { WATER_COLOR_PRESETS, WORLD_CONFIG } from '@config/worldConfig'
@@ -171,7 +170,7 @@ export class WaterFactory {
     position: Position3D,
     options?: Partial<Omit<WaterFeatureConfig, 'id' | 'type' | 'position'>>
   ): WaterFeatureConfig {
-    const colorPreset = options?.colors ?? WATER_COLOR_PRESETS.neutral
+    const colorPreset = options?.colors ?? { ...WATER_COLOR_PRESETS.neutral }
 
     return {
       id,
@@ -293,7 +292,7 @@ export function resetWaterFactory(): void {
 // REACT HOOKS
 // ============================================================================
 
-import { useMemo, useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { useWorldStore, useWorldWaterFeatures } from '@stores/worldStore'
 
 /**

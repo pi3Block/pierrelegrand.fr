@@ -55,10 +55,6 @@ export function VideoScreen({
     return () => setVideo3DPlaying(false) // Cleanup au démontage
   }, [isPlaying, setVideo3DPlaying])
 
-  // Dimensions en pixels pour l'iframe (ratio 16:9)
-  const iframeWidth = 640
-  const iframeHeight = 360
-
   // Animation continue + hover
   useFrame((state) => {
     if (!meshRef.current || !glowRef.current) return
@@ -212,8 +208,8 @@ export function VideoScreen({
             </Text>
 
             {/* Particules décoratives aux coins */}
-            {[[-1, 1], [1, 1], [-1, -1], [1, -1]].map(([x, y], i) => (
-              <mesh key={i} position={[x * size[0] / 2 * 0.9, y * size[1] / 2 * 0.9, 0.01]}>
+            {([[-1, 1], [1, 1], [-1, -1], [1, -1]] as const).map(([px, py], i) => (
+              <mesh key={i} position={[px * size[0] / 2 * 0.9, py * size[1] / 2 * 0.9, 0.01]}>
                 <sphereGeometry args={[0.06, 8, 8]} />
                 <meshBasicMaterial color={glowColor} />
               </mesh>

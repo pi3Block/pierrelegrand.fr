@@ -218,7 +218,7 @@ export function useGPGPUHeightmap(config: GPGPUHeightmapConfig): THREE.DataTextu
     // Créer une DataTexture à partir des pixels
     const data = new Float32Array(resolution * resolution)
     for (let i = 0; i < resolution * resolution; i++) {
-      data[i] = pixels[i * 4] // Prendre seulement le canal R
+      data[i] = pixels[i * 4] ?? 0 // Prendre seulement le canal R
     }
 
     const texture = new THREE.DataTexture(
@@ -287,16 +287,17 @@ export class GPGPUHeightmapGenerator {
 
   generate(config: Partial<GPGPUHeightmapConfig> = {}): Float32Array {
     const resolution = this.renderTarget.width
+    const uniforms = this.material.uniforms
 
     // Mettre à jour les uniforms
-    if (config.seed !== undefined) this.material.uniforms.seed.value = config.seed
-    if (config.scale !== undefined) this.material.uniforms.scale.value = config.scale
-    if (config.octaves !== undefined) this.material.uniforms.octaves.value = config.octaves
-    if (config.persistence !== undefined) this.material.uniforms.persistence.value = config.persistence
-    if (config.lacunarity !== undefined) this.material.uniforms.lacunarity.value = config.lacunarity
-    if (config.offset !== undefined) this.material.uniforms.offset.value.set(config.offset[0], config.offset[1])
-    if (config.erosionStrength !== undefined) this.material.uniforms.erosionStrength.value = config.erosionStrength
-    if (config.ridgeWeight !== undefined) this.material.uniforms.ridgeWeight.value = config.ridgeWeight
+    if (config.seed !== undefined && uniforms.seed) uniforms.seed.value = config.seed
+    if (config.scale !== undefined && uniforms.scale) uniforms.scale.value = config.scale
+    if (config.octaves !== undefined && uniforms.octaves) uniforms.octaves.value = config.octaves
+    if (config.persistence !== undefined && uniforms.persistence) uniforms.persistence.value = config.persistence
+    if (config.lacunarity !== undefined && uniforms.lacunarity) uniforms.lacunarity.value = config.lacunarity
+    if (config.offset !== undefined && uniforms.offset) uniforms.offset.value.set(config.offset[0], config.offset[1])
+    if (config.erosionStrength !== undefined && uniforms.erosionStrength) uniforms.erosionStrength.value = config.erosionStrength
+    if (config.ridgeWeight !== undefined && uniforms.ridgeWeight) uniforms.ridgeWeight.value = config.ridgeWeight
 
     // Rendre
     this.renderer.setRenderTarget(this.renderTarget)
@@ -310,7 +311,7 @@ export class GPGPUHeightmapGenerator {
     // Extraire le canal R
     const data = new Float32Array(resolution * resolution)
     for (let i = 0; i < resolution * resolution; i++) {
-      data[i] = pixels[i * 4]
+      data[i] = pixels[i * 4] ?? 0
     }
 
     return data
@@ -355,7 +356,9 @@ export function GPGPUHeightmapDisplay({
   useEffect(() => {
     if (!heightmapTexture || !heightmapTexture.image?.data) return
 
-    const positions = geometry.attributes.position
+    const positions = geometry.attributes.position as THREE.BufferAttribute
+    if (!positions) return
+
     const data = heightmapTexture.image.data as Float32Array
 
     for (let i = 0; i < positions.count; i++) {

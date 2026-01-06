@@ -1,11 +1,12 @@
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
-import { useGameStore, Biome, Level } from '@stores/gameStore'
+import { useGameStore, Biome } from '@stores/gameStore'
 import { RoughPlane } from './RoughPlane'
 import { Slopes } from './Slopes'
 import { Steps } from './Steps'
 import { RigidObjects } from './RigidObjects'
 import { FloatingPlatform } from './FloatingPlatform'
 import { BrickWall } from './BrickWall'
+import { ReturnToHubPortal } from './portals'
 
 // Couleurs par biome
 const BIOME_COLORS: Record<Biome, { primary: string; secondary: string; ground: string }> = {
@@ -62,11 +63,8 @@ export function World2() {
       {/* Objets décoratifs */}
       <Decorations biome={currentBiome} />
 
-      {/* Portails vers autres biomes */}
-      <BiomePortals currentBiome={currentBiome} />
-
-      {/* Portail vers niveau 2 */}
-      <LevelPortal position={[0, 1, -18]} targetLevel={1} />
+      {/* Portail de retour vers le Hub */}
+      <ReturnToHubPortal position={[0, 0, -18]} label="RETOUR HUB" />
     </group>
   )
 }
@@ -219,139 +217,4 @@ function FloatingOctahedron({ position, color }: { position: [number, number, nu
   )
 }
 
-// Portails vers autres biomes
-function BiomePortals({ currentBiome }: { currentBiome: Biome }) {
-  const setCurrentBiome = useGameStore((s) => s.setCurrentBiome)
-  const biomes: Biome[] = ['lab', 'temple', 'bank']
-  const otherBiomes = biomes.filter((b) => b !== currentBiome)
-
-  const portalPositions: [number, number, number][] = [
-    [15, 1, 15],
-    [-15, 1, 15],
-  ]
-
-  return (
-    <>
-      {otherBiomes.map((biome, index) => (
-        <Portal
-          key={biome}
-          position={portalPositions[index]!}
-          biome={biome}
-          onClick={() => setCurrentBiome(biome)}
-        />
-      ))}
-    </>
-  )
-}
-
-interface PortalProps {
-  position: [number, number, number]
-  biome: Biome
-  onClick: () => void
-}
-
-function Portal({ position, biome, onClick }: PortalProps) {
-  const colors = BIOME_COLORS[biome]
-
-  // Différer l'action pour éviter l'erreur Rapier "recursive use of an object"
-  const handleEnter = () => {
-    setTimeout(() => onClick(), 0)
-  }
-
-  return (
-    <group position={position}>
-      {/* Zone de trigger (invisible) */}
-      <RigidBody type="fixed" sensor onIntersectionEnter={handleEnter}>
-        <CuboidCollider args={[1.5, 2, 1.5]} />
-      </RigidBody>
-
-      {/* Visuel du portail */}
-      <mesh>
-        <torusGeometry args={[1.5, 0.1, 16, 32]} />
-        <meshStandardMaterial color={colors.primary} emissive={colors.primary} emissiveIntensity={0.5} />
-      </mesh>
-
-      {/* Effet intérieur - cylindre très plat pour éviter z-fighting */}
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[1.4, 1.4, 0.02, 32]} />
-        <meshStandardMaterial
-          color={colors.secondary}
-          transparent
-          opacity={0.5}
-          emissive={colors.secondary}
-          emissiveIntensity={0.3}
-          side={2}
-        />
-      </mesh>
-    </group>
-  )
-}
-
-// Portail vers autre niveau
-interface LevelPortalProps {
-  position: [number, number, number]
-  targetLevel: Level
-}
-
-function LevelPortal({ position, targetLevel }: LevelPortalProps) {
-  const setCurrentLevel = useGameStore((s) => s.setCurrentLevel)
-  const color = targetLevel === 2 ? '#ef4444' : '#3b82f6'
-  const colorSecondary = targetLevel === 2 ? '#fca5a5' : '#93c5fd'
-
-  // Différer l'action pour éviter l'erreur Rapier "recursive use of an object"
-  const handleEnter = () => {
-    setTimeout(() => setCurrentLevel(targetLevel), 0)
-  }
-
-  return (
-    <group position={position}>
-      {/* Plateforme de sol pour éviter les chutes */}
-      <RigidBody type="fixed" position={[0, -0.25, 0]} friction={1}>
-        <mesh receiveShadow>
-          <cylinderGeometry args={[3, 3, 0.5, 32]} />
-          <meshStandardMaterial color={color} metalness={0.3} roughness={0.7} />
-        </mesh>
-      </RigidBody>
-
-      {/* Zone de trigger (invisible) - centrée sur le portail */}
-      <RigidBody type="fixed" position={[0, 1.5, 0]} sensor onIntersectionEnter={handleEnter}>
-        <CuboidCollider args={[1, 1.5, 0.5]} />
-      </RigidBody>
-
-      {/* Cadre du portail - torus vertical (cercle) */}
-      <mesh position={[0, 1.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.8, 0.12, 16, 48]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.6} metalness={0.5} roughness={0.3} />
-      </mesh>
-
-      {/* Effet intérieur du portail - cylindre très plat pour éviter z-fighting */}
-      <mesh position={[0, 1.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[1.65, 1.65, 0.02, 48]} />
-        <meshStandardMaterial
-          color={colorSecondary}
-          transparent
-          opacity={0.5}
-          emissive={color}
-          emissiveIntensity={0.4}
-          side={2}
-        />
-      </mesh>
-
-      {/* Piliers latéraux */}
-      <mesh position={[-2, 1.5, 0]} castShadow>
-        <boxGeometry args={[0.3, 3.5, 0.3]} />
-        <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
-      </mesh>
-      <mesh position={[2, 1.5, 0]} castShadow>
-        <boxGeometry args={[0.3, 3.5, 0.3]} />
-        <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
-      </mesh>
-
-      {/* Barre supérieure */}
-      <mesh position={[0, 3.3, 0]} castShadow>
-        <boxGeometry args={[4.3, 0.3, 0.3]} />
-        <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
-      </mesh>
-    </group>
-  )
-}
+export default World2

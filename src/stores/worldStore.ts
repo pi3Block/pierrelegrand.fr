@@ -10,9 +10,10 @@
 
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
+import * as THREE from 'three'
 import type { BiomeConfig, WorldConfig, WaterFeatureConfig } from '@config/worldConfig'
 import { WORLD_CONFIG } from '@config/worldConfig'
-import { getHeightmapService, resetHeightmapService, type HeightmapData } from '@services/HeightmapService'
+import { getHeightmapService, resetHeightmapService, type HeightmapData, type HeightQueryResult } from '@services/HeightmapService'
 
 // ============================================================================
 // TYPES
@@ -47,7 +48,7 @@ export interface WorldState {
 
   // Actions - Requêtes
   queryHeight: (x: number, z: number, biomeId?: string) => number
-  queryHeightWithNormal: (x: number, z: number, biomeId?: string) => { height: number; normal: THREE.Vector3 }
+  queryHeightWithNormal: (x: number, z: number, biomeId?: string) => HeightQueryResult
   queryHeightsBatch: (positions: THREE.Vector2[], biomeId?: string) => Float32Array
   findLowestPoint: (centerX: number, centerZ: number, radius: number, biomeId?: string) => number
   findHighestPoint: (centerX: number, centerZ: number, radius: number, biomeId?: string) => number

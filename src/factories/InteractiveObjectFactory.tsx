@@ -3,6 +3,7 @@
  * Architecture extensible pour ajouter facilement de nouveaux types d'objets.
  */
 
+import type { ReactElement } from 'react'
 import { VideoScreen } from '@components/3d/VideoScreen'
 import { VIDEOS } from '@config/videos'
 
@@ -96,7 +97,7 @@ export type InteractiveObjectConfig =
  *   <InteractiveObject key={i} config={config} />
  * ))}
  */
-export function createInteractiveObject(config: InteractiveObjectConfig): JSX.Element | null {
+export function createInteractiveObject(config: InteractiveObjectConfig): ReactElement | null {
   switch (config.type) {
     case 'video':
       return (
@@ -104,7 +105,6 @@ export function createInteractiveObject(config: InteractiveObjectConfig): JSX.El
           key={`video-${config.videoKey}-${config.position.join('-')}`}
           videoKey={config.videoKey}
           position={config.position}
-          rotation={config.rotation}
           size={config.size}
           glowColor={config.glowColor}
           showTitle={config.showTitle}
@@ -139,7 +139,7 @@ interface InteractiveObjectProps {
   config: InteractiveObjectConfig
 }
 
-export function InteractiveObject({ config }: InteractiveObjectProps): JSX.Element | null {
+export function InteractiveObject({ config }: InteractiveObjectProps): ReactElement | null {
   return createInteractiveObject(config)
 }
 
@@ -149,7 +149,7 @@ export function InteractiveObject({ config }: InteractiveObjectProps): JSX.Eleme
  * @param configs - Tableau de configurations
  * @returns Fragment React avec tous les objets
  */
-export function createInteractiveObjects(configs: InteractiveObjectConfig[]): JSX.Element {
+export function createInteractiveObjects(configs: InteractiveObjectConfig[]): ReactElement {
   return (
     <>
       {configs.map((config, index) => (

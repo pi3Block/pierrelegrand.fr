@@ -131,26 +131,26 @@ const WaterMaterial = shaderMaterial(
 
 extend({ WaterMaterial })
 
-// Déclaration TypeScript
+// Type pour les props du water material
+type WaterMaterialProps = {
+  time?: number
+  waveHeight?: number
+  waveSpeed?: number
+  shallowColor?: THREE.Color
+  deepColor?: THREE.Color
+  foamColor?: THREE.Color
+  opacity?: number
+  fresnelPower?: number
+  transparent?: boolean
+  side?: THREE.Side
+  depthWrite?: boolean
+  attach?: string
+}
+
+// Déclaration pour @react-three/fiber
 declare module '@react-three/fiber' {
   interface ThreeElements {
-    waterMaterial: React.DetailedHTMLProps<
-      React.HTMLAttributes<HTMLElement> & {
-        time?: number
-        waveHeight?: number
-        waveSpeed?: number
-        shallowColor?: THREE.Color
-        deepColor?: THREE.Color
-        foamColor?: THREE.Color
-        opacity?: number
-        fresnelPower?: number
-        transparent?: boolean
-        side?: THREE.Side
-        depthWrite?: boolean
-        attach?: string
-      },
-      HTMLElement
-    >
+    waterMaterial: ThreeElements['shaderMaterial'] & WaterMaterialProps
   }
 }
 
@@ -264,7 +264,8 @@ export function Lake({
       {/* Surface de l'eau avec offset Y pour éviter z-fighting */}
       <mesh geometry={geometry} position={[0, 0.02, 0]}>
         <waterMaterial
-          ref={materialRef as React.Ref<THREE.ShaderMaterial>}
+          ref={materialRef}
+          attach="material"
           transparent
           side={THREE.FrontSide}
           depthWrite={false}
@@ -302,7 +303,7 @@ interface RiverProps {
 export function River({
   points,
   width = 3,
-  depth = 1,
+  depth: _depth = 1,
   config = {},
   hasCollider = true,
 }: RiverProps) {
@@ -315,24 +316,8 @@ export function River({
     return new THREE.CatmullRomCurve3(vectors, false, 'catmullrom', 0.5)
   }, [points])
 
-  // Géométrie de la rivière
-  const geometry = useMemo(() => {
-    const shape = new THREE.Shape()
-    shape.moveTo(-width / 2, 0)
-    shape.lineTo(width / 2, 0)
-    shape.lineTo(width / 2, depth)
-    shape.lineTo(-width / 2, depth)
-    shape.closePath()
-
-    const extrudeSettings = {
-      steps: points.length * 10,
-      bevelEnabled: false,
-      extrudePath: curve,
-    }
-
-    const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings)
-    return geo
-  }, [curve, width, depth, points.length])
+  // Note: Géométrie d'extrusion pour les berges peut être ajoutée ultérieurement
+  // La surface utilise une géométrie plate générée à partir de la courbe
 
   // Surface de l'eau (mesh plat le long de la courbe)
   const surfaceGeometry = useMemo(() => {
@@ -372,7 +357,7 @@ export function River({
   }, [curve, width, points.length])
 
   useFrame((state) => {
-    if (materialRef.current) {
+    if (materialRef.current?.uniforms?.time) {
       materialRef.current.uniforms.time.value = state.clock.elapsedTime
     }
   })
@@ -383,6 +368,7 @@ export function River({
       <mesh geometry={surfaceGeometry} position={[0, 0.02, 0]}>
         <waterMaterial
           ref={materialRef}
+          attach="material"
           transparent
           side={THREE.FrontSide}
           depthWrite={false}
@@ -421,7 +407,7 @@ export function Canal({
   start,
   end,
   width = 4,
-  depth = 1.5,
+  depth: _depth = 1.5,
   config = {},
 }: CanalProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null)
@@ -443,7 +429,7 @@ export function Canal({
   }, [start, end])
 
   useFrame((state) => {
-    if (materialRef.current) {
+    if (materialRef.current?.uniforms?.time) {
       materialRef.current.uniforms.time.value = state.clock.elapsedTime
     }
   })
@@ -455,6 +441,7 @@ export function Canal({
         <planeGeometry args={[width, length, 32, 32]} />
         <waterMaterial
           ref={materialRef}
+          attach="material"
           transparent
           side={THREE.FrontSide}
           depthWrite={false}
@@ -571,7 +558,8 @@ export function Moat({
       {/* Surface de l'eau avec offset Y pour éviter z-fighting */}
       <mesh geometry={geometry} position={[0, 0.03, 0]}>
         <waterMaterial
-          ref={materialRef as React.Ref<THREE.ShaderMaterial>}
+          ref={materialRef}
+          attach="material"
           transparent
           side={THREE.FrontSide}
           depthWrite={false}
@@ -608,7 +596,7 @@ export function Waterfall({
   const cfg = { ...DEFAULT_WATER_CONFIG, ...config }
 
   useFrame((state) => {
-    if (materialRef.current) {
+    if (materialRef.current?.uniforms?.time) {
       materialRef.current.uniforms.time.value = state.clock.elapsedTime * 3 // Plus rapide
     }
   })
@@ -620,6 +608,7 @@ export function Waterfall({
         <planeGeometry args={[width, height, 16, 32]} />
         <waterMaterial
           ref={materialRef}
+          attach="material"
           transparent
           side={THREE.DoubleSide}
           depthWrite={false}
@@ -677,7 +666,7 @@ export function Fountain({
   const cfg = { ...DEFAULT_WATER_CONFIG, ...config }
 
   useFrame((state) => {
-    if (materialRef.current) {
+    if (materialRef.current?.uniforms?.time) {
       materialRef.current.uniforms.time.value = state.clock.elapsedTime
     }
     if (jetRef.current) {

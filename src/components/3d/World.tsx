@@ -1,11 +1,11 @@
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
-import { useGameStore } from '@stores/gameStore'
 import { useMemo, useState } from 'react'
 import { BiomeZone, BiomePortal } from './BiomeZone'
 import { ContentBrickWall } from './ContentBrickWall'
 import { getContentByCategory, type ContentCategory, type ContentItem } from '@data/contentData'
 import { UrbanGround } from './grounds'
 import { VideoScreen } from './VideoScreen'
+import { ReturnToHubPortal } from './portals'
 
 /**
  * World2 - Niveau 2 avec système de biomes
@@ -54,7 +54,6 @@ const HUB_COLORS = {
 }
 
 export function World() {
-  const setCurrentLevel = useGameStore((s) => s.setCurrentLevel)
   const [currentBiome, setCurrentBiome] = useState<ContentCategory | null>(null)
 
   return (
@@ -62,11 +61,11 @@ export function World() {
       {/* Sol principal étendu */}
       <MainGround />
 
-      {/* Hub central avec portails */}
-      <CentralHub
-        onReturnLevel1={() => setCurrentLevel(2)}
-        onProceduralWorld={() => setCurrentLevel(3)}
-      />
+      {/* Hub central simplifié */}
+      <CentralHub />
+
+      {/* Portail de retour vers le Hub */}
+      <ReturnToHubPortal position={[0, 0.5, 0]} label="RETOUR HUB" />
 
       {/* Les 3 biomes */}
       {(Object.keys(BIOME_CONFIG) as ContentCategory[]).map((category) => (
@@ -109,15 +108,9 @@ function MainGround() {
 }
 
 /**
- * Hub central avec portails
+ * Hub central simplifié (le portail de retour est ajouté séparément)
  */
-function CentralHub({
-  onReturnLevel1,
-  onProceduralWorld,
-}: {
-  onReturnLevel1: () => void
-  onProceduralWorld: () => void
-}) {
+function CentralHub() {
   return (
     <group position={[0, 0, 0]}>
       {/* Plateforme centrale surélevée */}
@@ -141,16 +134,8 @@ function CentralHub({
       {/* Indicateurs directionnels vers chaque biome */}
       <DirectionalIndicators />
 
-      {/* Portail retour niveau 1 */}
-      <ReturnPortal position={[0, 0.5, 0]} onClick={onReturnLevel1} />
-
-      {/* Portail vers monde procédural (niveau 3) */}
-      <ProceduralWorldPortal position={[-6, 0.5, 6]} onClick={onProceduralWorld} />
-
       {/* Lumière centrale */}
       <pointLight position={[0, 5, 0]} intensity={0.8} color={HUB_COLORS.secondary} distance={20} />
-
-      {/* Note: Les écrans vidéo sont maintenant dans chaque biome */}
     </group>
   )
 }
@@ -194,150 +179,6 @@ function DirectionalIndicators() {
         )
       })}
     </>
-  )
-}
-
-/**
- * Portail de retour au niveau 1
- */
-function ReturnPortal({ position, onClick }: { position: [number, number, number]; onClick: () => void }) {
-  const color = '#3b82f6'
-  const colorSecondary = '#93c5fd'
-
-  // Différer l'action pour éviter l'erreur Rapier "recursive use of an object"
-  const handleEnter = () => {
-    setTimeout(() => onClick(), 0)
-  }
-
-  return (
-    <group position={position}>
-      {/* Base - surélevée pour éviter z-fighting avec le hub */}
-      <RigidBody type="fixed" position={[0, 0.15, 0]} friction={1}>
-        <mesh receiveShadow>
-          <cylinderGeometry args={[2.5, 2.5, 0.3, 32]} />
-          <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
-        </mesh>
-      </RigidBody>
-
-      {/* Zone de trigger */}
-      <RigidBody type="fixed" position={[0, 1.5, 0]} sensor onIntersectionEnter={handleEnter}>
-        <CuboidCollider args={[1, 1.5, 0.5]} />
-      </RigidBody>
-
-      {/* Cadre vertical */}
-      <mesh position={[0, 1.8, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.5, 0.1, 16, 48]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.6} metalness={0.5} roughness={0.3} />
-      </mesh>
-
-      {/* Effet intérieur - cylindre très plat pour éviter z-fighting */}
-      <mesh position={[0, 1.8, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[1.35, 1.35, 0.02, 48]} />
-        <meshStandardMaterial
-          color={colorSecondary}
-          transparent
-          opacity={0.5}
-          emissive={color}
-          emissiveIntensity={0.4}
-          side={2}
-        />
-      </mesh>
-
-      {/* Piliers */}
-      {[-1.8, 1.8].map((x, i) => (
-        <mesh key={i} position={[x, 1.8, 0]} castShadow>
-          <boxGeometry args={[0.25, 4, 0.25]} />
-          <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
-        </mesh>
-      ))}
-
-      {/* Barre supérieure */}
-      <mesh position={[0, 3.9, 0]} castShadow>
-        <boxGeometry args={[4, 0.25, 0.25]} />
-        <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
-      </mesh>
-
-      {/* Texte "NIVEAU 1" - box plate */}
-      <mesh position={[0, 4.3, 0]}>
-        <boxGeometry args={[2.5, 0.5, 0.02]} />
-        <meshStandardMaterial color="#1f2937" />
-      </mesh>
-    </group>
-  )
-}
-
-/**
- * Portail vers le monde procédural (niveau 3)
- */
-function ProceduralWorldPortal({ position, onClick }: { position: [number, number, number]; onClick: () => void }) {
-  const color = '#10b981' // Vert émeraude
-  const colorSecondary = '#34d399'
-
-  const handleEnter = () => {
-    setTimeout(() => onClick(), 0)
-  }
-
-  return (
-    <group position={position}>
-      {/* Base hexagonale */}
-      <RigidBody type="fixed" position={[0, 0.15, 0]} friction={1}>
-        <mesh receiveShadow>
-          <cylinderGeometry args={[2, 2, 0.3, 6]} />
-          <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
-        </mesh>
-      </RigidBody>
-
-      {/* Zone de trigger */}
-      <RigidBody type="fixed" position={[0, 1.5, 0]} sensor onIntersectionEnter={handleEnter}>
-        <CuboidCollider args={[1, 1.5, 0.5]} />
-      </RigidBody>
-
-      {/* Cadre vertical hexagonal */}
-      <mesh position={[0, 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.5, 0.1, 6, 6]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.6} metalness={0.5} roughness={0.3} />
-      </mesh>
-
-      {/* Effet intérieur - spirale/vortex simulé */}
-      <mesh position={[0, 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[1.3, 1.3, 0.02, 6]} />
-        <meshStandardMaterial
-          color={colorSecondary}
-          transparent
-          opacity={0.6}
-          emissive={color}
-          emissiveIntensity={0.5}
-          side={2}
-        />
-      </mesh>
-
-      {/* Piliers organiques */}
-      {[0, Math.PI / 3, (2 * Math.PI) / 3, Math.PI, (4 * Math.PI) / 3, (5 * Math.PI) / 3].map((angle, i) => (
-        <mesh
-          key={i}
-          position={[Math.cos(angle) * 1.8, 2, Math.sin(angle) * 1.8]}
-          castShadow
-        >
-          <cylinderGeometry args={[0.08, 0.12, 4, 6]} />
-          <meshStandardMaterial color={color} metalness={0.3} roughness={0.7} />
-        </mesh>
-      ))}
-
-      {/* Anneau supérieur */}
-      <mesh position={[0, 4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.8, 0.08, 6, 6]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
-      </mesh>
-
-      {/* Lumière verte */}
-      <pointLight position={[0, 2, 0]} intensity={0.5} color={colorSecondary} distance={8} />
-
-      {/* Texte "PROCEDURAL" - box plate */}
-      <mesh position={[0, 4.5, 0]}>
-        <boxGeometry args={[3, 0.5, 0.02]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} />
-      </mesh>
-    </group>
   )
 }
 
@@ -665,3 +506,5 @@ function WorldBoundaries() {
     </>
   )
 }
+
+export default World

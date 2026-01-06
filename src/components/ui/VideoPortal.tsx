@@ -4,21 +4,20 @@
  */
 
 import { useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import ReactPlayer from 'react-player'
+import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import { useUIStore } from '@stores/uiStore'
 
 /**
  * Variants Framer Motion pour l'animation portail.
  * L'animation part de la position d'origine et s'étend vers le centre.
  */
-const backdropVariants = {
+const backdropVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
   exit: { opacity: 0 },
 }
 
-const portalVariants = {
+const portalVariants: Variants = {
   hidden: (origin: { x: number; y: number } | null) => ({
     x: origin?.x ?? '50%',
     y: origin?.y ?? '50%',
@@ -35,7 +34,7 @@ const portalVariants = {
     translateX: '-50%',
     translateY: '-50%',
     transition: {
-      type: 'spring',
+      type: 'spring' as const,
       damping: 25,
       stiffness: 200,
       mass: 0.8,
@@ -122,21 +121,16 @@ export function VideoPortal() {
               ✕
             </button>
 
-            {/* Lecteur YouTube */}
+            {/* Lecteur YouTube - iframe direct pour éviter problèmes de types */}
             <div className="video-portal-player">
-              <ReactPlayer
-                url={`https://www.youtube.com/watch?v=${videoId}`}
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
                 width="100%"
                 height="100%"
-                playing={isOpen}
-                controls
-                config={{
-                  playerVars: {
-                    autoplay: 1,
-                    modestbranding: 1,
-                    rel: 0,
-                  },
-                }}
+                title="Vidéo YouTube"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
               />
             </div>
           </motion.div>

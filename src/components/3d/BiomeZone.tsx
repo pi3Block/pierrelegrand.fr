@@ -690,8 +690,8 @@ export function BiomePortal({ position, colors, onEnter }: BiomePortalProps) {
         </mesh>
       </RigidBody>
 
-      {/* Anneau principal */}
-      <mesh ref={ringRef} position={[0, 1.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
+      {/* Anneau principal - vertical face au joueur */}
+      <mesh ref={ringRef} position={[0, 1.5, 0]}>
         <torusGeometry args={[1.2, 0.08, 16, 32]} />
         <meshStandardMaterial
           color={colors.primary}
@@ -700,8 +700,8 @@ export function BiomePortal({ position, colors, onEnter }: BiomePortalProps) {
         />
       </mesh>
 
-      {/* Deuxième anneau (inverse) */}
-      <mesh position={[0, 1.5, 0]} rotation={[Math.PI / 2, 0, Math.PI / 4]}>
+      {/* Deuxième anneau (incliné pour effet) */}
+      <mesh position={[0, 1.5, 0]} rotation={[0, 0, Math.PI / 4]}>
         <torusGeometry args={[1.0, 0.05, 16, 32]} />
         <meshStandardMaterial
           color={colors.secondary}
@@ -710,9 +710,9 @@ export function BiomePortal({ position, colors, onEnter }: BiomePortalProps) {
         />
       </mesh>
 
-      {/* Effet intérieur - cylindre très plat pour éviter z-fighting */}
-      <mesh position={[0, 1.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.9, 0.9, 0.02, 32]} />
+      {/* Effet intérieur - cercle vertical */}
+      <mesh position={[0, 1.5, 0]}>
+        <circleGeometry args={[0.9, 32]} />
         <meshStandardMaterial
           color={colors.secondary}
           transparent

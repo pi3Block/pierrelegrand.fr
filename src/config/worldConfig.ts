@@ -185,7 +185,7 @@ export const BIOME_PRESETS: Record<BiomeType, Omit<BiomeConfig, 'id' | 'center'>
   },
 }
 
-export const WATER_COLOR_PRESETS: Record<string, WaterColorConfig> = {
+export const WATER_COLOR_PRESETS = {
   hub: {
     shallowColor: '#7c3aed',
     deepColor: '#4c1d95',
@@ -226,7 +226,7 @@ export const WATER_COLOR_PRESETS: Record<string, WaterColorConfig> = {
     waveHeight: 0.12,
     waveSpeed: 0.9,
   },
-}
+} as const satisfies Record<string, WaterColorConfig>
 
 // ============================================================================
 // CONFIGURATION PRINCIPALE DU MONDE
@@ -286,7 +286,7 @@ export const WORLD_CONFIG: WorldConfig = {
       offset: 0.1,
       innerRadius: 13,
       outerRadius: 17,
-      colors: WATER_COLOR_PRESETS.hub,
+      colors: { ...WATER_COLOR_PRESETS.hub },
       enabled: true,
     },
     {
@@ -297,7 +297,7 @@ export const WORLD_CONFIG: WorldConfig = {
       offset: 0.6,
       radius: 2.5,
       height: 4,
-      colors: WATER_COLOR_PRESETS.hub,
+      colors: { ...WATER_COLOR_PRESETS.hub },
       enabled: true,
     },
 
@@ -309,7 +309,7 @@ export const WORLD_CONFIG: WorldConfig = {
       yMode: 'terrainLowest',
       offset: 0.15,
       radius: 8,
-      colors: WATER_COLOR_PRESETS.nature,
+      colors: { ...WATER_COLOR_PRESETS.nature },
       enabled: true,
     },
     {
@@ -319,7 +319,7 @@ export const WORLD_CONFIG: WorldConfig = {
       yMode: 'terrainLowest',
       offset: 0.12,
       radius: 5,
-      colors: WATER_COLOR_PRESETS.nature,
+      colors: { ...WATER_COLOR_PRESETS.nature },
       enabled: true,
     },
 
@@ -331,7 +331,7 @@ export const WORLD_CONFIG: WorldConfig = {
       yMode: 'terrainLowest',
       offset: 0.12,
       radius: 6,
-      colors: WATER_COLOR_PRESETS.tech,
+      colors: { ...WATER_COLOR_PRESETS.tech },
       enabled: true,
     },
 
@@ -343,7 +343,7 @@ export const WORLD_CONFIG: WorldConfig = {
       yMode: 'terrainLowest',
       offset: 0.15,
       radius: 7,
-      colors: WATER_COLOR_PRESETS.crypto,
+      colors: { ...WATER_COLOR_PRESETS.crypto },
       enabled: true,
     },
     {
@@ -353,7 +353,7 @@ export const WORLD_CONFIG: WorldConfig = {
       yMode: 'terrainLowest',
       offset: 0.12,
       radius: 5,
-      colors: WATER_COLOR_PRESETS.crypto,
+      colors: { ...WATER_COLOR_PRESETS.crypto },
       enabled: true,
     },
 
@@ -365,7 +365,7 @@ export const WORLD_CONFIG: WorldConfig = {
       yMode: 'terrainLowest',
       offset: 0.1,
       radius: 4,
-      colors: WATER_COLOR_PRESETS.neutral,
+      colors: { ...WATER_COLOR_PRESETS.neutral },
       enabled: true,
     },
     {
@@ -438,7 +438,6 @@ export function createBiomeConfig(
   const preset = BIOME_PRESETS[type]
   return {
     id,
-    type,
     center,
     ...preset,
     ...overrides,

@@ -7,7 +7,7 @@
 
 import * as THREE from 'three'
 import { createFractalNoise2D } from '@utils/procedural'
-import type { BiomeConfig, BiomeTerrainConfig, Position3D } from '@config/worldConfig'
+import type { BiomeConfig, Position3D } from '@config/worldConfig'
 
 // ============================================================================
 // TYPES

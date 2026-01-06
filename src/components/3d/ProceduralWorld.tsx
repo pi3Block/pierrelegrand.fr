@@ -18,7 +18,7 @@ import { BiomeTransitionGround } from './terrain'
 import { BiomeVegetation } from './vegetation'
 import { BiomeZone, BiomePortal } from './BiomeZone'
 import { WaterFeatures as WaterFeaturesFromFactory } from './water'
-import { useGameStore, type Level } from '@stores/gameStore'
+import { ReturnToHubPortal } from './portals'
 import { useWorldStore } from '@stores/worldStore'
 import { WORLD_CONFIG as UNIFIED_WORLD_CONFIG } from '@config/worldConfig'
 import type { BiomeType } from '@/config/proceduralConfig'
@@ -80,7 +80,6 @@ export function ProceduralWorld({
 }: ProceduralWorldProps) {
   const playerPositionRef = useRef(new THREE.Vector3(0, 5, 0))
   const [currentBiome, setCurrentBiome] = useState<ContentCategory | null>(null)
-  const setCurrentLevel = useGameStore((s) => s.setCurrentLevel)
 
   // Initialiser le WorldStore
   const initialize = useWorldStore((state) => state.initialize)
@@ -98,8 +97,11 @@ export function ProceduralWorld({
       {/* Sol de base avec shader de transitions */}
       <BaseGround />
 
-      {/* Hub central avec portail vers autres niveaux */}
-      <CentralHub onChangeLevel={setCurrentLevel} />
+      {/* Hub central simplifié */}
+      <CentralHub />
+
+      {/* Portail de retour vers le Hub principal */}
+      <ReturnToHubPortal position={[0, 0.5, 0]} label="RETOUR HUB" />
 
       {/* Les 3 biomes avec leurs décorations et transitions */}
       {(Object.keys(BIOME_CONFIG) as ContentCategory[]).map((category) => {
@@ -117,7 +119,7 @@ export function ProceduralWorld({
         )
       })}
 
-      {/* Portails de navigation */}
+      {/* Portails de navigation entre biomes */}
       <BiomeNavigationPortals
         currentBiome={currentBiome}
         onChangeBiome={setCurrentBiome}
@@ -186,9 +188,9 @@ function BaseGround() {
 }
 
 /**
- * Hub central avec plateforme surélevée
+ * Hub central avec plateforme surélevée (le portail de retour est ajouté séparément)
  */
-function CentralHub({ onChangeLevel }: { onChangeLevel: (level: Level) => void }) {
+function CentralHub() {
   return (
     <group position={[0, 0, 0]} name="central-hub">
       {/* Plateforme centrale */}
@@ -218,15 +220,6 @@ function CentralHub({ onChangeLevel }: { onChangeLevel: (level: Level) => void }
 
       {/* Colonne centrale lumineuse */}
       <CentralPillar />
-
-      {/* Portail vers niveau 1 (World classique) */}
-      <LevelPortal
-        position={[-7, 0.5, 7]}
-        level={1}
-        label="CLASSIC"
-        color="#3b82f6"
-        onEnter={() => onChangeLevel(1)}
-      />
 
       {/* Lumière d'ambiance */}
       <pointLight
@@ -281,90 +274,6 @@ function CentralPillar() {
           emissiveIntensity={0.8}
         />
       </mesh>
-    </group>
-  )
-}
-
-/**
- * Portail vers un autre niveau
- */
-function LevelPortal({
-  position,
-  color,
-  onEnter,
-}: {
-  position: [number, number, number]
-  level: Level
-  label: string
-  color: string
-  onEnter: () => void
-}) {
-  const handleEnter = () => {
-    setTimeout(() => onEnter(), 0)
-  }
-
-  return (
-    <group position={position}>
-      {/* Base circulaire */}
-      <RigidBody type="fixed" position={[0, 0.1, 0]} friction={1}>
-        <mesh receiveShadow>
-          <cylinderGeometry args={[1.8, 2, 0.2, 32]} />
-          <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
-        </mesh>
-      </RigidBody>
-
-      {/* Zone de trigger */}
-      <RigidBody type="fixed" position={[0, 1.5, 0]} sensor onIntersectionEnter={handleEnter}>
-        <CuboidCollider args={[1.2, 1.5, 1.2]} />
-      </RigidBody>
-
-      {/* Cadre du portail */}
-      <mesh position={[0, 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.4, 0.1, 16, 32]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={0.5}
-          metalness={0.5}
-          roughness={0.3}
-        />
-      </mesh>
-
-      {/* Effet intérieur */}
-      <mesh position={[0, 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[1.3, 32]} />
-        <meshStandardMaterial
-          color={color}
-          transparent
-          opacity={0.4}
-          emissive={color}
-          emissiveIntensity={0.3}
-          side={2}
-        />
-      </mesh>
-
-      {/* Piliers */}
-      {[-1.5, 1.5].map((x, i) => (
-        <mesh key={i} position={[x, 2, 0]} castShadow>
-          <cylinderGeometry args={[0.1, 0.12, 4, 8]} />
-          <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
-        </mesh>
-      ))}
-
-      {/* Barre supérieure */}
-      <mesh position={[0, 4, 0]} castShadow>
-        <boxGeometry args={[3.2, 0.2, 0.2]} />
-        <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
-      </mesh>
-
-      {/* Label */}
-      <mesh position={[0, 4.4, 0]}>
-        <boxGeometry args={[2.5, 0.4, 0.02]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
-      </mesh>
-
-      {/* Lumière */}
-      <pointLight position={[0, 2, 0]} intensity={0.4} color={color} distance={6} />
     </group>
   )
 }

@@ -6,9 +6,10 @@
 
 import { useMemo, useEffect, useRef } from 'react'
 import * as THREE from 'three'
-import { useThree, useFrame } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 
-// Shader pour la simulation d'érosion sur GPU
+// Shader pour la simulation d'érosion sur GPU (gardé pour usage futur GPGPU)
+// @ts-ignore - Shaders réservés pour implémentation GPU future
 const erosionVertexShader = /* glsl */ `
   varying vec2 vUv;
   void main() {
@@ -17,6 +18,7 @@ const erosionVertexShader = /* glsl */ `
   }
 `
 
+// @ts-ignore - Shaders réservés pour implémentation GPU future
 const erosionFragmentShader = /* glsl */ `
   precision highp float;
 
@@ -147,7 +149,7 @@ export function simulateErosionCPU(
   for (let iter = 0; iter < iterations; iter++) {
     // Ajouter de la pluie
     for (let i = 0; i < water.length; i++) {
-      water[i] += rainAmount
+      water[i] = (water[i] ?? 0) + rainAmount
     }
 
     // Simuler l'écoulement et l'érosion
@@ -184,34 +186,34 @@ export function simulateErosionCPU(
           const flowAmount = Math.min(w, heightDiff * 0.5)
 
           // Transfert d'eau
-          water[idx] -= flowAmount
-          water[lowestNeighbor] += flowAmount
+          water[idx] = (water[idx] ?? 0) - flowAmount
+          water[lowestNeighbor] = (water[lowestNeighbor] ?? 0) + flowAmount
 
           // Érosion
           const erosionAmount = erosionRate * flowAmount * heightDiff
-          result[idx] -= erosionAmount
-          sediment[idx] += erosionAmount
+          result[idx] = (result[idx] ?? 0) - erosionAmount
+          sediment[idx] = (sediment[idx] ?? 0) + erosionAmount
 
           // Transfert de sédiment
           const sedimentTransfer = (sediment[idx] ?? 0) * flowAmount / Math.max(0.001, w)
-          sediment[idx] -= sedimentTransfer
-          sediment[lowestNeighbor] += sedimentTransfer
+          sediment[idx] = (sediment[idx] ?? 0) - sedimentTransfer
+          sediment[lowestNeighbor] = (sediment[lowestNeighbor] ?? 0) + sedimentTransfer
         }
 
         // Déposition dans les zones calmes
         const depositionAmount = depositionRate * (sediment[idx] ?? 0)
-        result[idx] += depositionAmount
-        sediment[idx] -= depositionAmount
+        result[idx] = (result[idx] ?? 0) + depositionAmount
+        sediment[idx] = (sediment[idx] ?? 0) - depositionAmount
       }
     }
 
     // Évaporation
     for (let i = 0; i < water.length; i++) {
-      water[i] *= (1 - evaporationRate)
+      water[i] = (water[i] ?? 0) * (1 - evaporationRate)
 
       // Déposer les sédiments restants
-      if (water[i] < 0.001) {
-        result[i] += sediment[i] ?? 0
+      if ((water[i] ?? 0) < 0.001) {
+        result[i] = (result[i] ?? 0) + (sediment[i] ?? 0)
         sediment[i] = 0
       }
     }
@@ -352,7 +354,7 @@ export function simulateDropletErosion(
         // Déposer l'excès de sédiment
         const depositAmount = (sediment - maxSediment) * depositionRate
         const idx = zi * resolution + xi
-        result[idx] += depositAmount
+        result[idx] = (result[idx] ?? 0) + depositAmount
         sediment -= depositAmount
       } else if (heightDiff > 0) {
         // Éroder
@@ -365,7 +367,7 @@ export function simulateDropletErosion(
             const ezi = Math.max(0, Math.min(resolution - 1, zi + ez))
             const idx = ezi * resolution + exi
             const weight = ex === 0 && ez === 0 ? 0.5 : 0.5 / 8
-            result[idx] -= erodeAmount * weight
+            result[idx] = (result[idx] ?? 0) - erodeAmount * weight
           }
         }
 
@@ -453,7 +455,9 @@ export function ErosionVisualizer({
 
     if (!meshRef.current) return
 
-    const positions = geometry.attributes.position
+    const positions = geometry.attributes.position as THREE.BufferAttribute
+    if (!positions) return
+
     for (let i = 0; i < positions.count; i++) {
       const height = heightmap[i] ?? 0
       positions.setY(i, height * heightScale)
@@ -476,7 +480,9 @@ export function ErosionVisualizer({
     iterationRef.current++
 
     // Mettre à jour la géométrie
-    const positions = geometry.attributes.position
+    const positions = geometry.attributes.position as THREE.BufferAttribute
+    if (!positions) return
+
     for (let i = 0; i < positions.count; i++) {
       const height = currentHeightmapRef.current[i] ?? 0
       positions.setY(i, height * heightScale)
