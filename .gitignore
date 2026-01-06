@@ -6,6 +6,10 @@ server/node_modules
 dist
 server/dist
 
+# Dossiers à exclure pour Hostinger (multiples package.json perturbent la détection)
+server/
+ecctrl-main/
+
 # Environment files
 .env
 .env.local
@@ -38,3 +42,5 @@ vite.config.ts.timestamp-*
 .env.production
 .env.development
 server/.env.example
+
+ecctrl-main
