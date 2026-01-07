@@ -17,6 +17,7 @@ const WorldClassic = lazy(() => import('./WorldClassic'))
 const WorldPlayground = lazy(() => import('./WorldPlayground'))
 const ProceduralExperience = lazy(() => import('./ProceduralExperience'))
 const World4 = lazy(() => import('./World4'))
+// Note: PierreExperience (Level 5) est géré directement par App.tsx car il a son propre Canvas
 
 // Keyboard mapping pour Ecctrl
 const keyboardMap = [
@@ -28,17 +29,19 @@ const keyboardMap = [
   { name: 'run', keys: ['ShiftLeft', 'ShiftRight'] },
 ]
 
-// Configuration des positions de spawn par niveau
+// Configuration des positions de spawn par niveau (pour mondes avec personnage)
 const SPAWN_POSITIONS: Record<Level, [number, number, number]> = {
   0: [0, 2, 0],    // Hub - centre
   1: [0, 5, 5],    // WorldClassic - classique
   2: [0, 5, 5],    // WorldPlayground - playground
   3: [0, 5, 0],    // ProceduralWorld
   4: [0, 3, 20],   // World4 - Angry Birds (zone plate centrale)
+  5: [0, 0, 0],    // PierreWorld - pas de personnage (OrbitControls)
 }
 
 /**
  * Composant principal Experience
+ * Note: Level 5 (PierreExperience) est géré par App.tsx car il a son propre Canvas
  */
 export function Experience() {
   const hasDebug = useGameStore((s) => s.hasFeature('debug_mode'))

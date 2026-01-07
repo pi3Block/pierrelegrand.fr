@@ -10,12 +10,23 @@ import { AngryBirdsSky, CloudSystem, CartoonSun } from './sky/AngryBirdsSky'
 import { InstancedAngryBirdsDecorations } from './instanced/InstancedAngryBirdsDecorations'
 import { ReturnToHubPortal } from './portals'
 import {
+  // Structures originales
   TowerStructure,
   HouseStructure,
   BridgeStructure,
   PyramidStructure,
   WallStructure,
   DestructibleBatch,
+  // Nouveaux templates complexes
+  TallTower,
+  Castle,
+  Fortress,
+  Scaffold,
+  LShape,
+  UShape,
+  // Factory procedurale
+  GeneratedStructure,
+  useStyledStructure,
 } from './destruction'
 
 // Couleur du sol style Angry Birds
@@ -26,6 +37,10 @@ const GROUND_COLOR = '#7CB342'
  * Accessible depuis le niveau 3 (ProceduralWorld) via portail
  */
 export function World4AngryBirds() {
+  // Structures generees proceduralement
+  const proceduralTower = useStyledStructure('tower', 12345)
+  const proceduralFortress = useStyledStructure('fortress', 54321)
+
   return (
     <group>
       {/* ========== CIEL ========== */}
@@ -36,28 +51,44 @@ export function World4AngryBirds() {
       {/* ========== SOL ========== */}
       <Ground color={GROUND_COLOR} />
 
-      {/* ========== STRUCTURES DESTRUCTIBLES - OPTIMISÉ avec InstancedRigidBodies ========== */}
+      {/* ========== STRUCTURES DESTRUCTIBLES ========== */}
       <DestructibleBatch>
-        {/* Zone 1: Tours */}
-        <TowerStructure position={[8, 0, -5]} rotation={0.2} />
-        <TowerStructure position={[12, 0, 2]} rotation={-0.3} scale={1.2} />
-        <TowerStructure position={[-10, 0, -8]} rotation={0.5} scale={0.9} />
+        {/* ===== NOUVEAUX TEMPLATES COMPLEXES ===== */}
 
-        {/* Zone 2: Maisons */}
-        <HouseStructure position={[-8, 0, 5]} rotation={0.1} />
-        <HouseStructure position={[5, 0, 10]} rotation={-0.4} scale={1.1} />
+        {/* Zone centrale: Structures principales */}
+        <TallTower position={[0, 0, -8]} floors={4} variant="standard" />
+        <Castle position={[-12, 0, -5]} rotation={0.3} scale={0.9} />
+        <Fortress position={[12, 0, -5]} rotation={-0.2} />
 
-        {/* Zone 3: Ponts */}
-        <BridgeStructure position={[0, 0, -12]} rotation={0} />
-        <BridgeStructure position={[-15, 0, 0]} rotation={Math.PI / 2} scale={0.8} />
+        {/* Zone gauche: Structures en bois */}
+        <Scaffold position={[-18, 0, 5]} levels={3} rotation={0.1} />
+        <LShape position={[-8, 0, 12]} floors={2} rotation={Math.PI / 4} />
 
-        {/* Zone 4: Pyramides */}
-        <PyramidStructure position={[15, 0, -10]} />
-        <PyramidStructure position={[-12, 0, 12]} scale={1.3} />
+        {/* Zone droite: Structures mixtes */}
+        <UShape position={[8, 0, 12]} floors={2} rotation={-0.3} />
+        <TallTower position={[18, 0, 8]} floors={3} variant="narrow" />
 
-        {/* Zone 5: Murs */}
-        <WallStructure position={[0, 0, 8]} />
-        <WallStructure position={[18, 0, 5]} rotation={Math.PI / 4} />
+        {/* ===== STRUCTURES ORIGINALES (conservees) ===== */}
+
+        {/* Structures simples dispersees */}
+        <TowerStructure position={[20, 0, -15]} rotation={0.2} scale={0.8} />
+        <HouseStructure position={[-20, 0, -12]} rotation={0.1} />
+        <BridgeStructure position={[0, 0, -20]} rotation={0} />
+        <PyramidStructure position={[25, 0, 0]} scale={1.1} />
+        <WallStructure position={[-25, 0, 5]} rotation={Math.PI / 6} />
+
+        {/* ===== STRUCTURES PROCEDURALES ===== */}
+        <GeneratedStructure
+          definition={proceduralTower.definition}
+          position={[-5, 0, 20]}
+          rotation={0.5}
+        />
+        <GeneratedStructure
+          definition={proceduralFortress.definition}
+          position={[5, 0, 20]}
+          rotation={-0.3}
+          scale={0.85}
+        />
       </DestructibleBatch>
 
       {/* ========== DECORATIONS ========== */}

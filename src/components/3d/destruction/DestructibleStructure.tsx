@@ -11,7 +11,7 @@ import * as THREE from 'three'
 /** Types de materiaux disponibles */
 export type MaterialType = 'wood' | 'glass' | 'stone'
 
-/** Configuration physique par materiau */
+/** Configuration physique par materiau - OPTIMISE POUR STABILITE */
 const MATERIAL_CONFIG: Record<MaterialType, {
   mass: number
   friction: number
@@ -27,11 +27,11 @@ const MATERIAL_CONFIG: Record<MaterialType, {
   opacity?: number
 }> = {
   wood: {
-    mass: 0.15,
-    friction: 0.7,
-    restitution: 0.2,
-    linearDamping: 0.4,
-    angularDamping: 0.4,
+    mass: 0.3, // Plus lourd pour stabilite
+    friction: 0.9, // Plus de friction
+    restitution: 0.1, // Moins de rebond
+    linearDamping: 0.8, // Plus de damping
+    angularDamping: 0.8,
     color: '#8B5A2B',
     emissive: '#5D4037',
     emissiveIntensity: 0.05,
@@ -39,11 +39,11 @@ const MATERIAL_CONFIG: Record<MaterialType, {
     metalness: 0.05,
   },
   glass: {
-    mass: 0.1,
-    friction: 0.3,
-    restitution: 0.1,
-    linearDamping: 0.3,
-    angularDamping: 0.3,
+    mass: 0.2,
+    friction: 0.6,
+    restitution: 0.05,
+    linearDamping: 0.7,
+    angularDamping: 0.7,
     color: '#87CEEB',
     emissive: '#87CEEB',
     emissiveIntensity: 0.2,
@@ -53,11 +53,11 @@ const MATERIAL_CONFIG: Record<MaterialType, {
     opacity: 0.6,
   },
   stone: {
-    mass: 0.8,
-    friction: 0.9,
-    restitution: 0.05,
-    linearDamping: 0.6,
-    angularDamping: 0.6,
+    mass: 1.5, // Beaucoup plus lourd
+    friction: 0.95, // Maximum friction
+    restitution: 0.02,
+    linearDamping: 0.9,
+    angularDamping: 0.9,
     color: '#808080',
     roughness: 0.95,
     metalness: 0.1,
@@ -75,6 +75,7 @@ interface DestructibleBlockProps {
   material: MaterialType
   rotation?: [number, number, number]
   colorVariation?: number
+  isFoundation?: boolean // Si true, le bloc est fixe et ne bouge pas
 }
 
 /**
@@ -87,6 +88,7 @@ export function DestructibleBlock({
   material,
   rotation = [0, 0, 0],
   colorVariation = 0,
+  isFoundation = false,
 }: DestructibleBlockProps) {
   const config = MATERIAL_CONFIG[material]
 
@@ -99,6 +101,7 @@ export function DestructibleBlock({
 
   return (
     <RigidBody
+      type={isFoundation ? 'fixed' : 'dynamic'}
       position={position}
       rotation={rotation}
       mass={config.mass}
@@ -107,6 +110,8 @@ export function DestructibleBlock({
       linearDamping={config.linearDamping}
       angularDamping={config.angularDamping}
       colliders="cuboid"
+      canSleep={true}
+      ccd={true}
     >
       <mesh castShadow receiveShadow>
         <boxGeometry args={size} />
@@ -183,11 +188,13 @@ export function StoneBlock({
   rotation = [0, 0, 0],
   size = [0.6, 0.6, 0.4],
   colorVariation = 0,
+  isFoundation = false,
 }: {
   position: [number, number, number]
   rotation?: [number, number, number]
   size?: [number, number, number]
   colorVariation?: number
+  isFoundation?: boolean
 }) {
   return (
     <DestructibleBlock
@@ -196,6 +203,7 @@ export function StoneBlock({
       size={size}
       material="stone"
       colorVariation={colorVariation}
+      isFoundation={isFoundation}
     />
   )
 }

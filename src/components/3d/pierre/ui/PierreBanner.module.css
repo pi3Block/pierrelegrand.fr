@@ -1,0 +1,71 @@
+/**
+ * Styles pour PierreBanner - Bandeau de navigation.
+ *
+ * Style identique au portfolio Joan.
+ */
+
+.banner {
+  display: flex;
+  background-color: #0a3362;
+  padding: 10px 0;
+  text-align: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 60px;
+  width: 100vw;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+.bannerLink {
+  color: #eda72d;
+  font-size: 1.5vw;
+  text-align: center;
+  user-select: none;
+  justify-content: center;
+  cursor: pointer;
+  margin: 0 1vw;
+  transition: font-size 0.2s ease-in-out;
+  background: none;
+  border: none;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.bannerLink:hover {
+  font-size: 1.75vw;
+}
+
+.bannerLink.active {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .bannerLink {
+    font-size: 2.5vw;
+  }
+
+  .bannerLink:hover {
+    font-size: 2.8vw;
+  }
+}
+
+@media (max-width: 480px) {
+  .banner {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 8px;
+  }
+
+  .bannerLink {
+    font-size: 3vw;
+    margin: 4px;
+  }
+}

@@ -120,18 +120,40 @@ function HubGround() {
   )
 }
 
+// Couleurs du portail Pierre (centre)
+const PIERRE_PORTAL_COLORS = {
+  primary: '#f59e0b',
+  secondary: '#fcd34d',
+  glow: '#fef3c7',
+}
+
 /**
- * Plateforme centrale surélevée
+ * Plateforme centrale surélevée avec portail vers Pierre
  */
 function CentralPlatform() {
   const pillarRef = useRef<THREE.Mesh>(null)
+  const orbeRef = useRef<THREE.Mesh>(null)
+  const setCurrentLevel = useGameStore((s) => s.setCurrentLevel)
 
   useFrame((state) => {
+    const time = state.clock.elapsedTime
+
     if (pillarRef.current) {
       const material = pillarRef.current.material as THREE.MeshStandardMaterial
-      material.emissiveIntensity = 0.4 + Math.sin(state.clock.elapsedTime * 2) * 0.2
+      material.emissiveIntensity = 0.4 + Math.sin(time * 2) * 0.2
+    }
+
+    // Animation de l'orbe (flottement + rotation)
+    if (orbeRef.current) {
+      orbeRef.current.position.y = 8 + Math.sin(time * 1.5) * 0.3
+      orbeRef.current.rotation.y = time * 0.5
     }
   })
+
+  // Téléportation vers Pierre (Level 5)
+  const handleEnterPierre = () => {
+    setTimeout(() => setCurrentLevel(5), 0)
+  }
 
   return (
     <group position={[0, 0, 0]}>
@@ -161,27 +183,50 @@ function CentralPlatform() {
       <mesh ref={pillarRef} position={[0, 4, 0]} castShadow>
         <cylinderGeometry args={[0.6, 1, 7, 8]} />
         <meshStandardMaterial
-          color={HUB_COLORS.accent}
-          emissive={HUB_COLORS.accent}
+          color={PIERRE_PORTAL_COLORS.primary}
+          emissive={PIERRE_PORTAL_COLORS.primary}
           emissiveIntensity={0.5}
           transparent
           opacity={0.9}
         />
       </mesh>
 
-      {/* Orbe au sommet */}
-      <mesh position={[0, 8, 0]}>
-        <sphereGeometry args={[1, 16, 16]} />
+      {/* Zone de trigger autour du pilier (invisible) */}
+      <RigidBody type="fixed" position={[0, 2, 0]} sensor onIntersectionEnter={handleEnterPierre}>
+        <CuboidCollider args={[1.5, 4, 1.5]} />
+      </RigidBody>
+
+      {/* Orbe au sommet - portail vers Pierre */}
+      <mesh ref={orbeRef} position={[0, 8, 0]}>
+        <sphereGeometry args={[1.2, 32, 32]} />
         <meshStandardMaterial
-          color={HUB_COLORS.glow}
-          emissive={HUB_COLORS.glow}
+          color={PIERRE_PORTAL_COLORS.secondary}
+          emissive={PIERRE_PORTAL_COLORS.primary}
+          emissiveIntensity={1}
+        />
+      </mesh>
+
+      {/* Anneaux autour de l'orbe */}
+      <mesh position={[0, 8, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.8, 0.08, 16, 48]} />
+        <meshStandardMaterial
+          color={PIERRE_PORTAL_COLORS.primary}
+          emissive={PIERRE_PORTAL_COLORS.primary}
           emissiveIntensity={0.8}
+        />
+      </mesh>
+      <mesh position={[0, 8, 0]} rotation={[0, 0, Math.PI / 4]}>
+        <torusGeometry args={[2, 0.06, 16, 48]} />
+        <meshStandardMaterial
+          color={PIERRE_PORTAL_COLORS.secondary}
+          emissive={PIERRE_PORTAL_COLORS.secondary}
+          emissiveIntensity={0.6}
         />
       </mesh>
 
       {/* Texte de bienvenue */}
       <Text
-        position={[0, 10, 0]}
+        position={[0, 10.5, 0]}
         fontSize={0.8}
         color="#ffffff"
         anchorX="center"
@@ -193,7 +238,7 @@ function CentralPlatform() {
       </Text>
 
       <Text
-        position={[0, 9.2, 0]}
+        position={[0, 9.7, 0]}
         fontSize={0.35}
         color={HUB_COLORS.glow}
         anchorX="center"
@@ -201,6 +246,41 @@ function CentralPlatform() {
       >
         Choisissez votre destination
       </Text>
+
+      {/* Label du portail Pierre */}
+      <Text
+        position={[0, 6.5, 0]}
+        fontSize={0.4}
+        color={PIERRE_PORTAL_COLORS.secondary}
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.02}
+        outlineColor="#000000"
+      >
+        BUREAU PIERRE
+      </Text>
+      <Text
+        position={[0, 6, 0]}
+        fontSize={0.22}
+        color={PIERRE_PORTAL_COLORS.glow}
+        anchorX="center"
+        anchorY="middle"
+      >
+        Portfolio 3D Interactif
+      </Text>
+      <Text
+        position={[0, 0.35, 3]}
+        fontSize={0.25}
+        color={PIERRE_PORTAL_COLORS.secondary}
+        anchorX="center"
+        anchorY="bottom"
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        ◄ APPROCHEZ ►
+      </Text>
+
+      {/* Lumière du portail Pierre */}
+      <pointLight position={[0, 8, 0]} intensity={1.5} color={PIERRE_PORTAL_COLORS.primary} distance={15} />
     </group>
   )
 }

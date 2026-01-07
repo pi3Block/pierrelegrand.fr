@@ -17,10 +17,12 @@
     "@react-three/a11y": "^3.0.0",
     "@react-three/drei": "^10.0.0",
     "@react-three/fiber": "^9.0.0",
+    "@react-three/postprocessing": "^3.0.4",
     "@react-three/rapier": "^2.0.0",
     "comlink": "^4.4.2",
     "ecctrl": "^1.0.97",
     "framer-motion": "^12.24.7",
+    "gsap": "^3.14.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-player": "^3.4.0",
@@ -44,6 +46,7 @@
     "terser": "^5.37.0",
     "typescript": "~5.7.0",
     "typescript-eslint": "^8.18.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "vite-plugin-glsl": "^1.5.5"
   }
 }

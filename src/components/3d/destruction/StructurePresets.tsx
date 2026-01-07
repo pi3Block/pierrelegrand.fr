@@ -37,11 +37,17 @@ export function TowerStructure({ position, rotation = 0, scale = 1 }: StructureP
 
   return (
     <group position={position} rotation={[0, rotation, 0]} scale={scale}>
-      {/* Base - 4 piliers pierre */}
-      <StonePillar position={[-0.8, 0.75, -0.3]} height={1.5} colorVariation={rng() - 0.5} />
-      <StonePillar position={[0.8, 0.75, -0.3]} height={1.5} colorVariation={rng() - 0.5} />
-      <StonePillar position={[-0.8, 0.75, 0.3]} height={1.5} colorVariation={rng() - 0.5} />
-      <StonePillar position={[0.8, 0.75, 0.3]} height={1.5} colorVariation={rng() - 0.5} />
+      {/* Base - 4 blocs de fondation FIXES */}
+      <StoneBlock position={[-0.8, 0.3, -0.3]} size={[0.5, 0.6, 0.5]} colorVariation={rng() - 0.5} isFoundation={true} />
+      <StoneBlock position={[0.8, 0.3, -0.3]} size={[0.5, 0.6, 0.5]} colorVariation={rng() - 0.5} isFoundation={true} />
+      <StoneBlock position={[-0.8, 0.3, 0.3]} size={[0.5, 0.6, 0.5]} colorVariation={rng() - 0.5} isFoundation={true} />
+      <StoneBlock position={[0.8, 0.3, 0.3]} size={[0.5, 0.6, 0.5]} colorVariation={rng() - 0.5} isFoundation={true} />
+
+      {/* Piliers sur la fondation */}
+      <StonePillar position={[-0.8, 1.1, -0.3]} height={1.0} colorVariation={rng() - 0.5} />
+      <StonePillar position={[0.8, 1.1, -0.3]} height={1.0} colorVariation={rng() - 0.5} />
+      <StonePillar position={[-0.8, 1.1, 0.3]} height={1.0} colorVariation={rng() - 0.5} />
+      <StonePillar position={[0.8, 1.1, 0.3]} height={1.0} colorVariation={rng() - 0.5} />
 
       {/* Plancher 1 */}
       <WoodPlank position={[0, 1.6, -0.3]} length={2} colorVariation={rng() - 0.5} />
@@ -73,9 +79,9 @@ export function HouseStructure({ position, rotation = 0, scale = 1 }: StructureP
 
   return (
     <group position={position} rotation={[0, rotation, 0]} scale={scale}>
-      {/* Fondation pierre */}
-      <StoneBlock position={[-1, 0.3, 0]} size={[0.5, 0.6, 0.8]} colorVariation={rng() - 0.5} />
-      <StoneBlock position={[1, 0.3, 0]} size={[0.5, 0.6, 0.8]} colorVariation={rng() - 0.5} />
+      {/* Fondation pierre FIXE */}
+      <StoneBlock position={[-1, 0.3, 0]} size={[0.5, 0.6, 0.8]} colorVariation={rng() - 0.5} isFoundation={true} />
+      <StoneBlock position={[1, 0.3, 0]} size={[0.5, 0.6, 0.8]} colorVariation={rng() - 0.5} isFoundation={true} />
 
       {/* Murs - poutres verticales */}
       <WoodBeam position={[-1, 1.4, -0.3]} height={1.6} colorVariation={rng() - 0.5} />
@@ -110,13 +116,15 @@ export function BridgeStructure({ position, rotation = 0, scale = 1 }: Structure
 
   return (
     <group position={position} rotation={[0, rotation, 0]} scale={scale}>
-      {/* Pilier gauche */}
-      <StonePillar position={[-2, 0.75, 0]} height={1.5} colorVariation={rng() - 0.5} />
-      <StoneBlock position={[-2, 1.65, 0]} size={[0.6, 0.3, 0.5]} colorVariation={rng() - 0.5} />
+      {/* Pilier gauche - fondation FIXE */}
+      <StoneBlock position={[-2, 0.3, 0]} size={[0.5, 0.6, 0.5]} colorVariation={rng() - 0.5} isFoundation={true} />
+      <StonePillar position={[-2, 1.1, 0]} height={1.0} colorVariation={rng() - 0.5} />
+      <StoneBlock position={[-2, 1.75, 0]} size={[0.6, 0.3, 0.5]} colorVariation={rng() - 0.5} />
 
-      {/* Pilier droit */}
-      <StonePillar position={[2, 0.75, 0]} height={1.5} colorVariation={rng() - 0.5} />
-      <StoneBlock position={[2, 1.65, 0]} size={[0.6, 0.3, 0.5]} colorVariation={rng() - 0.5} />
+      {/* Pilier droit - fondation FIXE */}
+      <StoneBlock position={[2, 0.3, 0]} size={[0.5, 0.6, 0.5]} colorVariation={rng() - 0.5} isFoundation={true} />
+      <StonePillar position={[2, 1.1, 0]} height={1.0} colorVariation={rng() - 0.5} />
+      <StoneBlock position={[2, 1.75, 0]} size={[0.6, 0.3, 0.5]} colorVariation={rng() - 0.5} />
 
       {/* Planches du pont */}
       <WoodPlank position={[-1, 1.9, 0]} length={1.8} colorVariation={rng() - 0.5} />
@@ -139,10 +147,10 @@ export function PyramidStructure({ position, rotation = 0, scale = 1 }: Structur
 
   return (
     <group position={position} rotation={[0, rotation, 0]} scale={scale}>
-      {/* Base - 3 blocs pierre */}
-      <StoneBlock position={[-0.7, 0.3, 0]} size={[0.6, 0.6, 0.5]} colorVariation={rng() - 0.5} />
-      <StoneBlock position={[0, 0.3, 0]} size={[0.6, 0.6, 0.5]} colorVariation={rng() - 0.5} />
-      <StoneBlock position={[0.7, 0.3, 0]} size={[0.6, 0.6, 0.5]} colorVariation={rng() - 0.5} />
+      {/* Base - 3 blocs pierre FIXES */}
+      <StoneBlock position={[-0.7, 0.3, 0]} size={[0.6, 0.6, 0.5]} colorVariation={rng() - 0.5} isFoundation={true} />
+      <StoneBlock position={[0, 0.3, 0]} size={[0.6, 0.6, 0.5]} colorVariation={rng() - 0.5} isFoundation={true} />
+      <StoneBlock position={[0.7, 0.3, 0]} size={[0.6, 0.6, 0.5]} colorVariation={rng() - 0.5} isFoundation={true} />
 
       {/* Niveau 2 - 2 blocs bois */}
       <DestructibleBlock position={[-0.35, 0.9, 0]} size={[0.6, 0.5, 0.4]} material="wood" colorVariation={rng() - 0.5} />
@@ -165,10 +173,10 @@ export function WallStructure({ position, rotation = 0, scale = 1 }: StructurePr
 
   return (
     <group position={position} rotation={[0, rotation, 0]} scale={scale}>
-      {/* Rangee 1 */}
-      <DestructibleBlock position={[-0.9, 0.25, 0]} size={[0.8, 0.5, 0.35]} material="stone" colorVariation={rng() - 0.5} />
-      <DestructibleBlock position={[0, 0.25, 0]} size={[0.8, 0.5, 0.35]} material="stone" colorVariation={rng() - 0.5} />
-      <DestructibleBlock position={[0.9, 0.25, 0]} size={[0.8, 0.5, 0.35]} material="stone" colorVariation={rng() - 0.5} />
+      {/* Rangee 1 - FIXE */}
+      <DestructibleBlock position={[-0.9, 0.25, 0]} size={[0.8, 0.5, 0.35]} material="stone" colorVariation={rng() - 0.5} isFoundation={true} />
+      <DestructibleBlock position={[0, 0.25, 0]} size={[0.8, 0.5, 0.35]} material="stone" colorVariation={rng() - 0.5} isFoundation={true} />
+      <DestructibleBlock position={[0.9, 0.25, 0]} size={[0.8, 0.5, 0.35]} material="stone" colorVariation={rng() - 0.5} isFoundation={true} />
 
       {/* Rangee 2 (decalee) */}
       <DestructibleBlock position={[-0.45, 0.75, 0]} size={[0.8, 0.5, 0.35]} material="wood" colorVariation={rng() - 0.5} />

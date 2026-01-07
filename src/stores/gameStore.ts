@@ -2,7 +2,17 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export type Biome = 'lab' | 'temple' | 'bank'
-export type Level = 0 | 1 | 2 | 3 | 4
+
+/**
+ * Niveaux disponibles:
+ * - 0: Hub (monde avec personnage)
+ * - 1: WorldClassic
+ * - 2: WorldPlayground
+ * - 3: ProceduralWorld
+ * - 4: World4 (Angry Birds)
+ * - 5: PierreWorld (bureau 3D avec OrbitControls) - SCÈNE PRINCIPALE
+ */
+export type Level = 0 | 1 | 2 | 3 | 4 | 5
 
 /**
  * Position 3D du personnage pour le système de tir TPS.
@@ -56,7 +66,7 @@ export const useGameStore = create<GameState>()(
     (set, get) => ({
       // Initial state
       currentBiome: 'lab',
-      currentLevel: 0, // Hub de départ par défaut
+      currentLevel: 5, // PierreWorld (bureau 3D) par défaut
       isTransitioning: false,
       privilegeLevel: 0,
       unlockedFeatures: [],

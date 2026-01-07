@@ -6,7 +6,13 @@
  * Système de charge:
  * - Maintenir le clic pour charger le tir
  * - Plus la charge est haute, plus le projectile est rapide et gros
+ * - Charge limitée à 90% pour éviter les tirs excessifs
  * - Relâcher pour tirer
+ * 
+ * Optimisations collision:
+ * - CCD (Continuous Collision Detection) activé pour éviter le tunneling
+ * - Vitesse max réduite à 50 pour garantir les collisions
+ * - Damping appliqué pour ralentir progressivement les projectiles
  */
 
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
@@ -27,11 +33,12 @@ interface Projectile {
 // Configuration du système de charge
 const CHARGE_TIME_MS = 1500 // Temps pour atteindre charge max (1.5s)
 const MIN_SPEED = 20 // Vitesse minimum (sans charge)
-const MAX_SPEED = 80 // Vitesse maximum (charge complète)
+const MAX_SPEED = 50 // Vitesse maximum (charge complète) - réduite pour éviter le tunneling
 const MIN_SIZE = 0.25 // Taille minimum du cube
 const MAX_SIZE = 0.6 // Taille maximum du cube (chargé)
 const MIN_MASS = 0.3 // Masse minimum
-const MAX_MASS = 2.0 // Masse maximum (plus d'impact)
+const MAX_MASS = 1.5 // Masse maximum (réduite pour éviter les collisions trop puissantes)
+const MAX_CHARGE_LEVEL = 0.9 // Plafond de charge à 90% pour éviter les tirs excessifs
 
 const PROJECTILE_LIFETIME = 5000 // 5 secondes
 const MAX_PROJECTILES = 20 // Limite pour les performances
@@ -205,7 +212,7 @@ export function ShootingSystem() {
     // Mise à jour de la charge si en cours
     if (isChargingRef.current) {
       const elapsed = now - chargeStartTimeRef.current
-      const newCharge = Math.min(1, elapsed / CHARGE_TIME_MS)
+      const newCharge = Math.min(MAX_CHARGE_LEVEL, elapsed / CHARGE_TIME_MS)
 
       // Utiliser un seuil pour éviter les updates excessives
       if (Math.abs(newCharge - currentChargeRef.current) > 0.01) {
@@ -297,6 +304,9 @@ function ProjectileCube({ initialPosition, initialVelocity, chargeLevel, onRemov
       friction={0.5}
       mass={mass}
       name="projectile"
+      ccd={true}
+      linearDamping={0.1}
+      angularDamping={0.1}
     >
       <mesh castShadow name="projectile-mesh">
         <boxGeometry args={[size, size, size]} />
