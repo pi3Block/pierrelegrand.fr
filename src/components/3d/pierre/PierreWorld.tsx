@@ -56,7 +56,7 @@ export function PierreWorld({ onHover, onSelect }: PierreWorldProps) {
           <CoffeeSteam />
         </Suspense>
 
-        {/* Tapis avec effet poil */}
+        {/* Tapis avec effet poil (optimisé: 12 couches au lieu de 32) */}
         <Suspense fallback={null}>
           <Carpet />
         </Suspense>

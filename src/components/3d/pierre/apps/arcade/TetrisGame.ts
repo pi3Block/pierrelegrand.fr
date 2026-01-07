@@ -22,7 +22,7 @@ export class TetrisGame {
   private currentScoreElement: HTMLElement | null
   private maxScoreElement: HTMLElement | null
   private currentScore: number = 0
-  private loopInterval: number = 5
+  private loopInterval: number = 100 // Tetris n'a pas besoin de plus
   private loopId: ReturnType<typeof setInterval> | null = null
   private grid: number = 32
   private tetrominoSequence: TetrominoName[] = []

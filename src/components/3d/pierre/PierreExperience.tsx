@@ -6,7 +6,7 @@
  * - Post-processing: OutlinePass pour le survol, SMAA
  * - Transitions caméra GSAP vers les zones interactives
  * - Bandeau de navigation supérieur
- * - CSS3DRenderer pour les iframes (comme Joan)
+ * - Arcade intégrée via Html de drei
  */
 
 import { Suspense, useRef, useState, useCallback, useEffect } from 'react'
@@ -19,7 +19,6 @@ import { usePierreStore, type PierreStage } from './stores/pierreStore'
 import { PierreWorld } from './PierreWorld'
 import { PierreBanner } from './ui/PierreBanner'
 import { useGameStore } from '@stores/gameStore'
-import { useCSS3DScreens } from './hooks/useCSS3DScreens'
 
 /**
  * Composant qui force le cleanup du WebGL renderer au démontage.
@@ -122,21 +121,11 @@ let globalFlyToStage: ((stage: PierreStage) => void) | null = null
 
 /**
  * Composant principal de la scène Pierre.
- * Inclut le Canvas 3D, le bandeau de navigation HTML, et les CSS3DRenderer pour les iframes.
+ * Inclut le Canvas 3D et le bandeau de navigation HTML.
  */
 export default function PierreExperience() {
   const setCurrentLevel = useGameStore((s) => s.setCurrentLevel)
   const [, setFlyToStageReady] = useState(false)
-  const css3dContainerRef = useRef<HTMLDivElement>(null)
-  const cameraRef = useRef<THREE.Camera | null>(null)
-  const currentStage = usePierreStore((s) => s.currentStage)
-
-  // CSS3D Screens pour les iframes (comme Joan)
-  useCSS3DScreens({
-    containerRef: css3dContainerRef,
-    cameraRef: cameraRef,
-    currentStage,
-  })
 
   // Navigation depuis le bandeau
   const handleNavigate = useCallback((stage: PierreStage) => {
@@ -166,22 +155,7 @@ export default function PierreExperience() {
       {/* Bandeau de navigation (HTML, en dehors du Canvas) */}
       <PierreBanner onNavigate={handleNavigate} onBackToHub={handleBackToHub} />
 
-      {/* Container pour les CSS3DRenderers (en dessous) */}
-      <div
-        ref={css3dContainerRef}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-          zIndex: 0,
-          background: '#072446',
-        }}
-      />
-
-      {/* Canvas 3D (au-dessus avec transparence pour voir les CSS3D à travers les zones transparentes) */}
+      {/* Canvas 3D */}
       <Canvas
         camera={{
           fov: CAMERA_CONFIG.fov,
@@ -192,12 +166,9 @@ export default function PierreExperience() {
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
-          alpha: true,
-          premultipliedAlpha: false,
         }}
-        style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }}
-        onCreated={({ camera, gl }) => {
-          cameraRef.current = camera
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+        onCreated={({ gl }) => {
           gl.setClearColor(0x072446, 1)
         }}
       >
@@ -323,15 +294,10 @@ function PierreScene() {
     flyToStage('default')
   }, [flyToStage])
 
-  // Mettre à jour les contrôles et synchroniser le rendu CSS3D à chaque frame
+  // Mettre à jour les contrôles à chaque frame
   useFrame(() => {
     if (controlsRef.current) {
       controlsRef.current.update()
-    }
-    // Synchroniser le rendu CSS3D avec le frame loop WebGL
-    const css3dRender = (window as any).__css3dRender
-    if (css3dRender) {
-      css3dRender()
     }
   })
 
@@ -363,10 +329,9 @@ function PierreScene() {
         <Outline
           selection={hoveredObjects}
           visibleEdgeColor={0xffffff}
-          hiddenEdgeColor={0x888888}
-          edgeStrength={4}
-          pulseSpeed={0.5}
-          blur
+          hiddenEdgeColor={0xffffff}
+          edgeStrength={6}
+          width={1000}
         />
         <SMAA />
       </EffectComposer>

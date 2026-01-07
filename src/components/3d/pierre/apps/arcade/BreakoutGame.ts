@@ -40,7 +40,7 @@ export class BreakoutGame {
   private currentScoreElement: HTMLElement | null
   private maxScoreElement: HTMLElement | null
   private currentScore: number = 0
-  private loopInterval: number = 1
+  private loopInterval: number = 16 // ~60 FPS
   private loopId: ReturnType<typeof setInterval> | null = null
   private brickGap: number = 2
   private brickWidth: number = 48
