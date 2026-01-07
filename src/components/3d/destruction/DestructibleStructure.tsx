@@ -64,6 +64,11 @@ const MATERIAL_CONFIG: Record<MaterialType, {
   },
 }
 
+// Placeholder pour compatibilité - ne fait rien car le batching ne fonctionne pas bien avec React
+export function DestructibleBatch({ children }: { children: React.ReactNode }) {
+  return <>{children}</>
+}
+
 interface DestructibleBlockProps {
   position: [number, number, number]
   size?: [number, number, number]

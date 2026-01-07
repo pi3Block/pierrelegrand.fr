@@ -44,3 +44,5 @@ vite.config.ts.timestamp-*
 server/.env.example
 
 ecctrl-main
+
+docs/*

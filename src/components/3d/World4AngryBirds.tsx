@@ -15,6 +15,7 @@ import {
   BridgeStructure,
   PyramidStructure,
   WallStructure,
+  DestructibleBatch,
 } from './destruction'
 
 // Couleur du sol style Angry Birds
@@ -35,28 +36,29 @@ export function World4AngryBirds() {
       {/* ========== SOL ========== */}
       <Ground color={GROUND_COLOR} />
 
-      {/* ========== STRUCTURES DESTRUCTIBLES ========== */}
+      {/* ========== STRUCTURES DESTRUCTIBLES - OPTIMISÉ avec InstancedRigidBodies ========== */}
+      <DestructibleBatch>
+        {/* Zone 1: Tours */}
+        <TowerStructure position={[8, 0, -5]} rotation={0.2} />
+        <TowerStructure position={[12, 0, 2]} rotation={-0.3} scale={1.2} />
+        <TowerStructure position={[-10, 0, -8]} rotation={0.5} scale={0.9} />
 
-      {/* Zone 1: Tours */}
-      <TowerStructure position={[8, 0, -5]} rotation={0.2} />
-      <TowerStructure position={[12, 0, 2]} rotation={-0.3} scale={1.2} />
-      <TowerStructure position={[-10, 0, -8]} rotation={0.5} scale={0.9} />
+        {/* Zone 2: Maisons */}
+        <HouseStructure position={[-8, 0, 5]} rotation={0.1} />
+        <HouseStructure position={[5, 0, 10]} rotation={-0.4} scale={1.1} />
 
-      {/* Zone 2: Maisons */}
-      <HouseStructure position={[-8, 0, 5]} rotation={0.1} />
-      <HouseStructure position={[5, 0, 10]} rotation={-0.4} scale={1.1} />
+        {/* Zone 3: Ponts */}
+        <BridgeStructure position={[0, 0, -12]} rotation={0} />
+        <BridgeStructure position={[-15, 0, 0]} rotation={Math.PI / 2} scale={0.8} />
 
-      {/* Zone 3: Ponts */}
-      <BridgeStructure position={[0, 0, -12]} rotation={0} />
-      <BridgeStructure position={[-15, 0, 0]} rotation={Math.PI / 2} scale={0.8} />
+        {/* Zone 4: Pyramides */}
+        <PyramidStructure position={[15, 0, -10]} />
+        <PyramidStructure position={[-12, 0, 12]} scale={1.3} />
 
-      {/* Zone 4: Pyramides */}
-      <PyramidStructure position={[15, 0, -10]} />
-      <PyramidStructure position={[-12, 0, 12]} scale={1.3} />
-
-      {/* Zone 5: Murs */}
-      <WallStructure position={[0, 0, 8]} />
-      <WallStructure position={[18, 0, 5]} rotation={Math.PI / 4} />
+        {/* Zone 5: Murs */}
+        <WallStructure position={[0, 0, 8]} />
+        <WallStructure position={[18, 0, 5]} rotation={Math.PI / 4} />
+      </DestructibleBatch>
 
       {/* ========== DECORATIONS ========== */}
       <InstancedAngryBirdsDecorations

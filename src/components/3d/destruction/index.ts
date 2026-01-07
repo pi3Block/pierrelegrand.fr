@@ -4,6 +4,7 @@
 
 export {
   DestructibleBlock,
+  DestructibleBatch,
   WoodPlank,
   WoodBeam,
   GlassBlock,
