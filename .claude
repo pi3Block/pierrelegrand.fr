@@ -233,3 +233,21 @@ for (ring = 1; ring <= rings; ring++) {
 - Terrain: Y = 0.1
 - Eau: Y = terrain + 0.02/0.03
 - Décorations: Y = terrain + terrainOffset (0.1)
+
+### Outline Effect (@react-three/postprocessing)
+```tsx
+<EffectComposer autoClear={false}>
+  <Outline
+    selection={hoveredMeshes}  // Array de THREE.Mesh (pas de groups)
+    visibleEdgeColor={0xffffff}
+    hiddenEdgeColor={0xffffff}
+    edgeStrength={10}
+    blendFunction={BlendFunction.SCREEN}
+    xRay={true}
+  />
+</EffectComposer>
+```
+- `autoClear={false}` requis sur EffectComposer
+- `blendFunction={BlendFunction.SCREEN}` pour contour blanc visible
+- `selection` doit contenir des Mesh, pas des Group (utiliser `traverse` + `isMesh`)
+- Import: `import { BlendFunction } from 'postprocessing'`

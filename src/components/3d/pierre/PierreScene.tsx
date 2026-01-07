@@ -12,6 +12,7 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, Html } from '@react-three/drei'
 import { EffectComposer, Outline, SMAA } from '@react-three/postprocessing'
+import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
 import gsap from 'gsap'
 import { usePierreStore, type PierreStage } from './stores/pierreStore'
@@ -244,13 +245,14 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
       />
 
       {/* Post-processing */}
-      <EffectComposer>
+      <EffectComposer autoClear={false}>
         <Outline
           selection={hoveredObjects}
           visibleEdgeColor={0xffffff}
           hiddenEdgeColor={0xffffff}
-          edgeStrength={6}
-          width={1000}
+          edgeStrength={10}
+          blendFunction={BlendFunction.SCREEN}
+          xRay={true}
         />
         <SMAA />
       </EffectComposer>

@@ -7,8 +7,10 @@
  */
 
 import { Environment, Grid, KeyboardControls } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
+import * as THREE from 'three'
 import { useGameStore, type Level } from '@stores/gameStore'
 import { DebugPanel } from '@components/ui/DebugOverlay'
 import { Player } from './Player'
@@ -43,6 +45,30 @@ const SPAWN_POSITIONS: Record<Level, [number, number, number]> = {
   5: [0, 0, 0],    // PierreWorld - pas de personnage (OrbitControls)
 }
 
+// FOV par défaut pour les niveaux avec personnage (0-4)
+const DEFAULT_FOV = 60
+
+/**
+ * Composant qui réinitialise la caméra au FOV par défaut.
+ * Nécessaire car PierreScene (Level 5) modifie le FOV à 20.
+ *
+ * Le key sur Physics force le remontage, donc ce composant est remonté
+ * à chaque changement de niveau et remet le FOV à 60.
+ */
+function CameraReset({ level }: { level: Level }) {
+  const { camera } = useThree()
+
+  useEffect(() => {
+    // Reset le FOV à chaque changement de niveau (level 0-4)
+    if (camera instanceof THREE.PerspectiveCamera && camera.fov !== DEFAULT_FOV) {
+      camera.fov = DEFAULT_FOV
+      camera.updateProjectionMatrix()
+    }
+  }, [camera, level])
+
+  return null
+}
+
 /**
  * Composant principal Experience
  * Architecture Canvas unique: tous les niveaux (0-5) partagent le même Canvas.
@@ -75,6 +101,9 @@ export function Experience() {
   // Levels 0-4: Mondes avec physique et Player FPS
   return (
     <KeyboardControls map={keyboardMap}>
+      {/* Reset la caméra au FOV par défaut (60) après avoir quitté Pierre (FOV 20) */}
+      <CameraReset level={currentLevel} />
+
       {/* Lighting */}
       <ambientLight intensity={0.4} />
       <directionalLight
