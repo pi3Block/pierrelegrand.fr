@@ -20,7 +20,7 @@ import { Carpet } from './elements/Carpet'
 import { RubiksCube } from './elements/RubiksCube'
 import { Whiteboard } from './elements/Whiteboard'
 import { ArcadeScreen } from './elements/ArcadeScreen'
-import { MonitorScreen } from './elements/MonitorScreen'
+import { MonitorScreenUikit } from './elements/MonitorScreenUikit'
 import { Confetti } from './elements/Confetti'
 import { TopChair } from './elements/TopChair'
 import { type PierreStage, usePierreStore } from './stores/pierreStore'
@@ -81,18 +81,18 @@ export function PierreWorld({ onHover, onSelect }: PierreWorldProps) {
           <ArcadeScreen onHover={onHover} onSelect={onSelect} />
         </Suspense>
 
-        {/* Moniteur gauche - About Me */}
+        {/* Moniteur gauche - JoanOS (uikit) */}
         <Suspense fallback={null}>
-          <MonitorScreen
+          <MonitorScreenUikit
             type="left"
             onHover={onHover}
             onSelect={onSelect}
           />
         </Suspense>
 
-        {/* Moniteur droit - Projets */}
+        {/* Moniteur droit - Art Gallery (uikit) */}
         <Suspense fallback={null}>
-          <MonitorScreen
+          <MonitorScreenUikit
             type="right"
             onHover={onHover}
             onSelect={onSelect}

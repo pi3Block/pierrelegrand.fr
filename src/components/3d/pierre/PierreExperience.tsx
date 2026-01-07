@@ -12,7 +12,7 @@
 import { Suspense, useRef, useState, useCallback, useEffect } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, Html, Preload } from '@react-three/drei'
-import { EffectComposer, Outline, SMAA, Selection, Select } from '@react-three/postprocessing'
+import { EffectComposer, Outline, SMAA } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
 import gsap from 'gsap'
@@ -135,6 +135,13 @@ export default function PierreExperience() {
     }
   }, [])
 
+  // Retour à la vue par défaut
+  const handleBackToDefault = useCallback(() => {
+    if (globalFlyToStage) {
+      globalFlyToStage('default')
+    }
+  }, [])
+
   // Retour au Hub (Level 0)
   const handleBackToHub = useCallback(() => {
     setCurrentLevel(0)
@@ -154,7 +161,11 @@ export default function PierreExperience() {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       {/* Bandeau de navigation (HTML, en dehors du Canvas) */}
-      <PierreBanner onNavigate={handleNavigate} onBackToHub={handleBackToHub} />
+      <PierreBanner
+        onNavigate={handleNavigate}
+        onBackToHub={handleBackToHub}
+        onBackToDefault={handleBackToDefault}
+      />
 
       {/* Canvas 3D */}
       <Canvas
@@ -167,6 +178,7 @@ export default function PierreExperience() {
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
+          localClippingEnabled: true, // Requis pour uikit (scroll/clipping)
         }}
         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
         onCreated={({ gl }) => {
@@ -222,7 +234,6 @@ function PierreScene() {
   )
 
   // Store Pierre pour l'état de la scène
-  const currentStage = usePierreStore((s) => s.currentStage)
   const setCurrentStage = usePierreStore((s) => s.setCurrentStage)
   const isCameraMoving = usePierreStore((s) => s.isCameraMoving)
   const setIsCameraMoving = usePierreStore((s) => s.setIsCameraMoving)
@@ -288,13 +299,6 @@ function PierreScene() {
     }
   }, [flyToStage])
 
-  /**
-   * Retour à la vue par défaut.
-   */
-  const backToDefault = useCallback(() => {
-    flyToStage('default')
-  }, [flyToStage])
-
   // Mettre à jour les contrôles à chaque frame
   useFrame(() => {
     if (controlsRef.current) {
@@ -340,40 +344,6 @@ function PierreScene() {
 
       {/* Monde Pierre */}
       <PierreWorld onHover={handleHover} onSelect={flyToStage} />
-
-      {/* Bouton retour (en bas à gauche, style Joan) */}
-      {currentStage !== 'default' && (
-        <Html fullscreen>
-          <button
-            onClick={backToDefault}
-            style={{
-              position: 'fixed',
-              bottom: '30px',
-              left: '30px',
-              padding: '12px 24px',
-              background: 'rgba(0, 0, 0, 0.7)',
-              color: 'white',
-              border: '2px solid rgba(255, 255, 255, 0.3)',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              zIndex: 100,
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.6)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(0, 0, 0, 0.7)'
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
-            }}
-          >
-            ← Back
-          </button>
-        </Html>
-      )}
     </>
   )
 }

@@ -4,7 +4,7 @@
 Portfolio 3D immersif avec système de cheat codes et navigation par exploration.
 
 ## Stack Technique
-- **Frontend:** React 19 + React Three Fiber v9 + Drei v10 + Zustand 5
+- **Frontend:** React 19 + React Three Fiber v9 + Drei v10 + Zustand 5 + @pmndrs/uikit
 - **Backend:** Node.js 20 LTS + Hono + Zod
 - **Database:** MySQL 8.x (Hostinger intégré)
 - **Build:** Vite 6.x + TypeScript 5.7
@@ -251,3 +251,179 @@ for (ring = 1; ring <= rings; ring++) {
 - `blendFunction={BlendFunction.SCREEN}` pour contour blanc visible
 - `selection` doit contenir des Mesh, pas des Group (utiliser `traverse` + `isMesh`)
 - Import: `import { BlendFunction } from 'postprocessing'`
+
+## @pmndrs/uikit - UI 3D Native
+
+### Installation
+```bash
+npm install @pmndrs/uikit @pmndrs/uikit-default
+```
+
+### Concepts Clés
+- **UI native 3D** : pas de DOM HTML, rendu directement en Three.js
+- **Flexbox via Yoga** : layout similaire à CSS mais en 3D
+- **Performance** : optimisé GPU, pas d'overhead DOM
+- **Texte MSDF** : rendu net à toute échelle
+
+### Composants Principaux
+```tsx
+import { Root, Container, Text, Image, Input } from '@pmndrs/uikit'
+import { Defaults } from '@pmndrs/uikit-default'
+```
+
+- `Root` : conteneur racine, définit la taille en unités Three.js
+- `Container` : div 3D avec flexbox
+- `Text` : texte avec fonts MSDF
+- `Image` : images dans l'espace 3D
+- `Input` : champs de saisie interactifs
+
+### Configuration Root
+```tsx
+<Root
+  sizeX={1.4}           // Largeur en unités Three.js
+  sizeY={0.78}          // Hauteur en unités Three.js
+  pixelSize={0.001}     // 1px = 0.001 unités 3D (ajuster selon besoin)
+  flexDirection="column"
+  backgroundColor="#1a1a2e"
+>
+  <Container />
+</Root>
+```
+
+### Sizing (3 niveaux)
+1. **Root** : `sizeX`, `sizeY` en unités Three.js
+2. **Children** : `width`, `height` en pixels
+3. **pixelSize** : ratio px → unités 3D (défaut: 0.01, soit 100px = 1 unité)
+
+### Layout Flexbox
+```tsx
+<Container
+  flexDirection="row"      // row, column, row-reverse, column-reverse
+  justifyContent="center"  // flex-start, flex-end, center, space-between, space-around
+  alignItems="center"      // flex-start, flex-end, center, stretch
+  gap={10}                 // Espacement entre enfants (en px)
+  padding={16}             // Padding interne (en px)
+  flexGrow={1}             // Poids pour remplir l'espace
+  flexShrink={0}           // Ne pas rétrécir
+/>
+```
+
+### Apparence
+```tsx
+<Container
+  backgroundColor="#2d2d2d"
+  backgroundOpacity={0.9}
+  borderColor="#0078d4"
+  borderWidth={2}
+  borderRadius={8}
+  opacity={0.95}
+/>
+```
+
+### Texte
+```tsx
+<Text
+  fontSize={16}
+  fontWeight="bold"       // normal, bold, ou nombre (400, 700...)
+  color="white"
+  textAlign="center"      // left, center, right
+  lineHeight={1.5}
+>
+  Contenu texte
+</Text>
+```
+
+### États Interactifs (hover, active)
+```tsx
+<Container
+  backgroundColor="#2d2d2d"
+  hover={{ backgroundColor: "#3d3d3d" }}
+  active={{ backgroundColor: "#4d4d4d", opacity: 0.8 }}
+  cursor="pointer"
+/>
+```
+
+### Événements
+```tsx
+<Container
+  onClick={(e) => handleClick()}
+  onPointerEnter={(e) => setHovered(true)}
+  onPointerLeave={(e) => setHovered(false)}
+/>
+```
+
+### Positionnement Absolu
+```tsx
+<Container
+  positionType="absolute"
+  positionTop={10}
+  positionLeft={10}
+  positionRight={10}
+  positionBottom={10}
+  zIndexOffset={10}       // Pour superposition
+/>
+```
+
+### Scroll
+```tsx
+<Container
+  overflow="scroll"       // visible, hidden, scroll
+  scrollbarWidth={8}
+  scrollbarColor="#555"
+>
+  {/* Contenu scrollable */}
+</Container>
+```
+
+### Configuration Canvas (requis)
+```tsx
+<Canvas gl={{ localClippingEnabled: true }}>
+  {/* localClippingEnabled requis pour le clipping/scroll */}
+</Canvas>
+```
+
+### Exemple Complet - Fenêtre Style Windows
+```tsx
+<Root sizeX={1.4} sizeY={0.78} pixelSize={0.001}>
+  <Defaults>
+    <Container flexDirection="column" backgroundColor="#1e1e1e" borderRadius={8}>
+      {/* Title Bar */}
+      <Container
+        height={32}
+        flexDirection="row"
+        backgroundColor="#2d2d2d"
+        alignItems="center"
+        paddingX={8}
+      >
+        <Text fontSize={12} color="white" flexGrow={1}>Window Title</Text>
+        <Container
+          width={46}
+          height={32}
+          hover={{ backgroundColor: "#e81123" }}
+          onClick={onClose}
+        >
+          <Text fontSize={10} color="white">✕</Text>
+        </Container>
+      </Container>
+
+      {/* Content */}
+      <Container flexGrow={1} padding={16} overflow="scroll">
+        <Text color="#ccc">Content here...</Text>
+      </Container>
+    </Container>
+  </Defaults>
+</Root>
+```
+
+### Bonnes Pratiques uikit
+- Toujours wrapper avec `<Defaults>` du kit pour les styles de base
+- Utiliser `pixelSize` pour ajuster l'échelle globale
+- Préférer `ref.current.setProperties()` aux re-renders React pour animations
+- `localClippingEnabled: true` obligatoire sur Canvas pour scroll/clipping
+- Ne PAS utiliser uikit pour les canvas 2D (jeux arcade) → garder Html de drei
+
+### Limitations uikit
+- Pas de support `<canvas>` HTML (jeux 2D impossibles)
+- Pas de support `<iframe>`
+- Fonts custom nécessitent conversion MSDF
+- Pas de CSS natif (seulement propriétés supportées)

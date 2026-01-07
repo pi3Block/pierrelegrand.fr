@@ -14,11 +14,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@pmndrs/uikit": "^1.0.60",
+    "@pmndrs/uikit-default": "^1.0.60",
     "@react-three/a11y": "^3.0.0",
     "@react-three/drei": "^10.0.0",
     "@react-three/fiber": "^9.0.0",
     "@react-three/postprocessing": "^3.0.4",
     "@react-three/rapier": "^2.0.0",
+    "@react-three/uikit": "^1.0.60",
     "comlink": "^4.4.2",
     "ecctrl": "^1.0.97",
     "framer-motion": "^12.24.7",

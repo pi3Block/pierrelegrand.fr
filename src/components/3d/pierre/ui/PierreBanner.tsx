@@ -19,20 +19,32 @@ const NAV_ITEMS: { id: PierreStage; label: string }[] = [
 interface PierreBannerProps {
   onNavigate: (stage: PierreStage) => void
   onBackToHub: () => void
+  onBackToDefault?: () => void
 }
 
 /**
  * Composant bandeau de navigation.
  */
-export function PierreBanner({ onNavigate, onBackToHub }: PierreBannerProps) {
+export function PierreBanner({ onNavigate, onBackToHub, onBackToDefault }: PierreBannerProps) {
   const currentStage = usePierreStore((s) => s.currentStage)
+  const isFocused = currentStage !== 'default'
 
   const handleNavClick = (id: PierreStage) => {
     onNavigate(id)
   }
 
   return (
-    <header className={styles.banner}>
+    <header className={`${styles.banner} ${isFocused ? styles.collapsed : ''}`}>
+      {/* Bouton retour (visible uniquement en mode focus) */}
+      {isFocused && onBackToDefault && (
+        <button
+          className={styles.backButton}
+          onClick={onBackToDefault}
+        >
+          ← BACK
+        </button>
+      )}
+
       {NAV_ITEMS.map((item) => (
         <button
           key={item.id}

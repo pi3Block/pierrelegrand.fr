@@ -4,7 +4,7 @@
  * L'arcade est intégrée directement via Html de drei (pas d'iframe).
  */
 
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect } from 'react'
 import { useGLTF, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
@@ -15,7 +15,6 @@ import { useGameStore } from '@stores/gameStore'
 // Configuration (depuis constants.js de Joan)
 const ARCADE_SCREEN_SIZE = { width: 1006.986, height: 1210.118 }
 const ARCADE_POSITION: [number, number, number] = [3.24776, 2.7421, 2.3009]
-const ARCADE_SCALE = 0.00102
 
 // Rotations appliquées dans l'ordre Y puis X (comme Joan)
 const ROTATION_Y = -Math.PI / 2

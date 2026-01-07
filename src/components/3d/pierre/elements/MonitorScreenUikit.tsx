@@ -1,60 +1,57 @@
 /**
- * MonitorScreen - Moniteur avec écran interactif.
+ * MonitorScreenUikit - Moniteur avec écran interactif via @pmndrs/uikit.
  *
- * Composant réutilisable pour les deux moniteurs:
- * - Gauche: JoanOS (simulation Windows)
- * - Droite: Art Gallery (galerie 3D) - À implémenter
+ * Version utilisant uikit pour un rendu 3D natif au lieu de Html de drei.
+ * Meilleure intégration visuelle et pas de problèmes d'alignement DOM/3D.
  */
 
 import { useRef, useEffect } from 'react'
-import { useGLTF, Html } from '@react-three/drei'
+import { useGLTF } from '@react-three/drei'
+import { Root } from '@react-three/uikit'
 import * as THREE from 'three'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
 import { useBakedMaterials } from '../contexts/BakedMaterialContext'
-import { JoanOS } from '../apps/os'
-import { ArtGallery } from '../apps/gallery'
+import { JoanOSUikit } from '../apps/os'
+import { ArtGalleryUikit } from '../apps/gallery'
 import { useGameStore } from '@stores/gameStore'
 
 // Configuration des moniteurs (depuis constants.js de Joan)
-// Taille écran: 1370.178 x 764.798
-// Échelle CSS: 0.00102 -> distanceFactor = 400 * 0.00102 = 0.408
-const MONITOR_SCREEN_WIDTH = 1370.178
-const MONITOR_SCREEN_HEIGHT = 764.798
-const DISTANCE_FACTOR = 0.408
+// Taille écran en unités Three.js: calculée depuis les pixels
+// Original: 1370.178 x 764.798 px avec scale 0.00102
+// Donc: 1370.178 * 0.00102 ≈ 1.4 unités, 764.798 * 0.00102 ≈ 0.78 unités
+const MONITOR_SIZE_X = 1.4  // Largeur en unités Three.js
+const MONITOR_SIZE_Y = 0.78 // Hauteur en unités Three.js
+const PIXEL_SIZE = 0.00102  // 1px = 0.00102 unités 3D (comme Joan)
 
 const MONITOR_CONFIG = {
   left: {
     model: '/pierre/assets/models/leftMonitor.glb',
-    // Position CSS de l'écran (depuis constants.js)
+    // Position de l'écran (depuis constants.js)
     screenPosition: [1.06738, 2.50725, -4.23009] as [number, number, number],
-    screenSize: { width: MONITOR_SCREEN_WIDTH, height: MONITOR_SCREEN_HEIGHT },
     // Pas de rotation pour le moniteur gauche
     screenRotation: [0, 0, 0] as [number, number, number],
     stage: 'leftMonitor' as PierreStage,
-    distanceFactor: DISTANCE_FACTOR,
   },
   right: {
     model: '/pierre/assets/models/rightMonitor.glb',
-    // Position CSS de l'écran (depuis constants.js)
+    // Position de l'écran (depuis constants.js)
     screenPosition: [2.47898, 2.50716, -4.14566] as [number, number, number],
-    screenSize: { width: MONITOR_SCREEN_WIDTH, height: MONITOR_SCREEN_HEIGHT },
     // Rotation Y: -7.406° (depuis constants.js)
     screenRotation: [0, (-7.406 * Math.PI) / 180, 0] as [number, number, number],
     stage: 'rightMonitor' as PierreStage,
-    distanceFactor: DISTANCE_FACTOR,
   },
 }
 
-interface MonitorScreenProps {
+interface MonitorScreenUikitProps {
   type: 'left' | 'right'
   onHover: (objects: THREE.Object3D[]) => void
   onSelect: (stage: PierreStage) => void
 }
 
 /**
- * Composant MonitorScreen - modèle 3D avec écran interactif.
+ * Composant MonitorScreenUikit - modèle 3D avec écran uikit natif.
  */
-export function MonitorScreen({ type, onHover, onSelect }: MonitorScreenProps) {
+export function MonitorScreenUikit({ type, onHover, onSelect }: MonitorScreenUikitProps) {
   const groupRef = useRef<THREE.Group>(null)
   const config = MONITOR_CONFIG[type]
   const currentStage = usePierreStore((s) => s.currentStage)
@@ -84,15 +81,6 @@ export function MonitorScreen({ type, onHover, onSelect }: MonitorScreenProps) {
   // Nommer la scène pour le raycasting
   scene.name = `${type}Monitor`
 
-  // Rendu du contenu de l'écran selon le type
-  const renderScreenContent = () => {
-    if (type === 'left') {
-      return <JoanOS onNavigateToHub={handleNavigateToHub} />
-    }
-    // Moniteur droit: Art Gallery
-    return <ArtGallery onNavigateToHub={handleNavigateToHub} />
-  }
-
   return (
     <group
       ref={groupRef}
@@ -104,21 +92,24 @@ export function MonitorScreen({ type, onHover, onSelect }: MonitorScreenProps) {
       {/* Modèle du moniteur */}
       <primitive object={scene} />
 
-      {/* Écran interactif via Html */}
-      <Html
-        transform
+      {/* Écran interactif via uikit Root */}
+      <group
         position={config.screenPosition}
         rotation={config.screenRotation}
-        distanceFactor={config.distanceFactor}
-        style={{
-          width: `${config.screenSize.width}px`,
-          height: `${config.screenSize.height}px`,
-          overflow: 'hidden',
-          pointerEvents: isActive ? 'auto' : 'none',
-        }}
       >
-        {renderScreenContent()}
-      </Html>
+        <Root
+          sizeX={MONITOR_SIZE_X}
+          sizeY={MONITOR_SIZE_Y}
+          pixelSize={PIXEL_SIZE}
+          flexDirection="column"
+        >
+          {type === 'left' ? (
+            <JoanOSUikit onNavigateToHub={handleNavigateToHub} />
+          ) : (
+            <ArtGalleryUikit onNavigateToHub={handleNavigateToHub} />
+          )}
+        </Root>
+      </group>
     </group>
   )
 }
@@ -127,5 +118,4 @@ export function MonitorScreen({ type, onHover, onSelect }: MonitorScreenProps) {
 useGLTF.preload(MONITOR_CONFIG.left.model)
 useGLTF.preload(MONITOR_CONFIG.right.model)
 
-export default MonitorScreen
-
+export default MonitorScreenUikit
