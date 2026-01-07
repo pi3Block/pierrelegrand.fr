@@ -13,46 +13,42 @@ import { Suspense, useRef, useState, useCallback, useEffect } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, Html, Preload } from '@react-three/drei'
 import { EffectComposer, Outline, SMAA } from '@react-three/postprocessing'
-import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js'
 import * as THREE from 'three'
 import gsap from 'gsap'
 import { usePierreStore, type PierreStage } from './stores/pierreStore'
 import { PierreWorld } from './PierreWorld'
 import { PierreBanner } from './ui/PierreBanner'
 import { useGameStore } from '@stores/gameStore'
+import { useCSS3DScreens } from './hooks/useCSS3DScreens'
 
-// Configuration des écrans iframe
-const SCREEN_CONFIGS = {
-  arcadeMachine: {
-    iframeSrc: 'https://joan-arcade-machine.vercel.app',
-    width: 1006.986,
-    height: 1210.118,
-    position: new THREE.Vector3(3.24776, 2.7421, 2.3009),
-    scale: new THREE.Vector3(0.00102, 0.00102, 0.00102),
-    rotationY: -Math.PI / 2,
-    rotationX: -Math.PI / 7,
-    padding: '16px',
-  },
-  leftMonitor: {
-    iframeSrc: 'https://joan-os.vercel.app',
-    width: 1370.178,
-    height: 764.798,
-    position: new THREE.Vector3(1.06738, 2.50725, -4.23009),
-    scale: new THREE.Vector3(0.00102, 0.00102, 1),
-    rotationY: 0,
-    rotationX: 0,
-    padding: '8px',
-  },
-  rightMonitor: {
-    iframeSrc: 'https://joan-art-gallery.vercel.app',
-    width: 1370.178,
-    height: 764.798,
-    position: new THREE.Vector3(2.47898, 2.50716, -4.14566),
-    scale: new THREE.Vector3(0.00102, 0.00102, 1),
-    rotationY: (-7.406 * Math.PI) / 180,
-    rotationX: 0,
-    padding: '8px',
-  },
+/**
+ * Composant qui force le cleanup du WebGL renderer au démontage.
+ * Cela évite les "Context Lost" lors des transitions entre Canvas.
+ */
+function WebGLCleanup() {
+  const { gl, scene } = useThree()
+
+  useEffect(() => {
+    return () => {
+      // Dispose de toutes les textures, géométries et matériaux de la scène
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry?.dispose()
+          if (Array.isArray(object.material)) {
+            object.material.forEach((mat) => mat.dispose())
+          } else {
+            object.material?.dispose()
+          }
+        }
+      })
+
+      // Force le dispose du renderer
+      gl.dispose()
+      gl.forceContextLoss()
+    }
+  }, [gl, scene])
+
+  return null
 }
 
 // Configuration de la caméra et des positions
@@ -124,25 +120,23 @@ const STAGE_POSITIONS: Record<
 // Store global pour exposer flyToStage en dehors du Canvas
 let globalFlyToStage: ((stage: PierreStage) => void) | null = null
 
-// Types pour les CSS3D renderers
-interface CSS3DScreenRenderer {
-  renderer: CSS3DRenderer
-  scene: THREE.Scene
-  iframe: HTMLIFrameElement
-}
-
 /**
  * Composant principal de la scène Pierre.
  * Inclut le Canvas 3D, le bandeau de navigation HTML, et les CSS3DRenderer pour les iframes.
  */
 export default function PierreExperience() {
   const setCurrentLevel = useGameStore((s) => s.setCurrentLevel)
-  const [flyToStageReady, setFlyToStageReady] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [, setFlyToStageReady] = useState(false)
   const css3dContainerRef = useRef<HTMLDivElement>(null)
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
-  const css3dRenderersRef = useRef<Map<string, CSS3DScreenRenderer>>(new Map())
+  const cameraRef = useRef<THREE.Camera | null>(null)
   const currentStage = usePierreStore((s) => s.currentStage)
+
+  // CSS3D Screens pour les iframes (comme Joan)
+  useCSS3DScreens({
+    containerRef: css3dContainerRef,
+    cameraRef: cameraRef,
+    currentStage,
+  })
 
   // Navigation depuis le bandeau
   const handleNavigate = useCallback((stage: PierreStage) => {
@@ -167,107 +161,12 @@ export default function PierreExperience() {
     return () => clearInterval(checkReady)
   }, [])
 
-  // Créer les CSS3DRenderers pour chaque écran
-  useEffect(() => {
-    if (!css3dContainerRef.current) return
-
-    const renderers = css3dRenderersRef.current
-
-    // Créer un renderer pour chaque écran
-    Object.entries(SCREEN_CONFIGS).forEach(([key, config]) => {
-      // Container et iframe
-      const container = document.createElement('div')
-      container.style.width = `${config.width}px`
-      container.style.height = `${config.height}px`
-
-      const iframe = document.createElement('iframe')
-      iframe.src = config.iframeSrc
-      iframe.style.width = `${config.width}px`
-      iframe.style.height = `${config.height}px`
-      iframe.style.padding = config.padding
-      iframe.style.boxSizing = 'border-box'
-      iframe.style.background = 'black'
-      iframe.style.border = 'none'
-      iframe.id = `css3d-iframe-${key}`
-      container.appendChild(iframe)
-
-      // CSS3DObject
-      const css3dObject = new CSS3DObject(container)
-      css3dObject.position.copy(config.position)
-      css3dObject.scale.copy(config.scale)
-      css3dObject.rotateY(config.rotationY)
-      css3dObject.rotateX(config.rotationX)
-
-      // Scène CSS3D
-      const cssScene = new THREE.Scene()
-      cssScene.add(css3dObject)
-
-      // CSS3DRenderer
-      const cssRenderer = new CSS3DRenderer()
-      cssRenderer.setSize(window.innerWidth, window.innerHeight)
-      cssRenderer.domElement.style.position = 'absolute'
-      cssRenderer.domElement.style.top = '0'
-      cssRenderer.domElement.style.left = '0'
-      cssRenderer.domElement.style.pointerEvents = 'none'
-      cssRenderer.domElement.id = `css3d-renderer-${key}`
-
-      css3dContainerRef.current!.appendChild(cssRenderer.domElement)
-
-      renderers.set(key, { renderer: cssRenderer, scene: cssScene, iframe })
-    })
-
-    // Cleanup
-    return () => {
-      renderers.forEach(({ renderer }) => {
-        renderer.domElement.remove()
-      })
-      renderers.clear()
-    }
-  }, [])
-
-  // Mettre à jour la taille des renderers
-  useEffect(() => {
-    const handleResize = () => {
-      css3dRenderersRef.current.forEach(({ renderer }) => {
-        renderer.setSize(window.innerWidth, window.innerHeight)
-      })
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  // Animation frame pour rendre les CSS3D
-  useEffect(() => {
-    let animationId: number
-
-    const animate = () => {
-      if (cameraRef.current) {
-        css3dRenderersRef.current.forEach(({ renderer, scene }) => {
-          renderer.render(scene, cameraRef.current!)
-        })
-      }
-      animationId = requestAnimationFrame(animate)
-    }
-
-    animate()
-    return () => cancelAnimationFrame(animationId)
-  }, [])
-
-  // Activer/désactiver les pointer events selon le stage actif
-  useEffect(() => {
-    css3dRenderersRef.current.forEach(({ renderer }, key) => {
-      const isActive = currentStage === key
-      renderer.domElement.style.pointerEvents = isActive ? 'auto' : 'none'
-    })
-  }, [currentStage])
-
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       {/* Bandeau de navigation (HTML, en dehors du Canvas) */}
       <PierreBanner onNavigate={handleNavigate} onBackToHub={handleBackToHub} />
 
-      {/* Container pour les CSS3DRenderers (derrière le Canvas WebGL) */}
+      {/* Container pour les CSS3DRenderers (en dessous) */}
       <div
         ref={css3dContainerRef}
         style={{
@@ -278,10 +177,11 @@ export default function PierreExperience() {
           height: '100%',
           pointerEvents: 'none',
           zIndex: 0,
+          background: '#072446',
         }}
       />
 
-      {/* Canvas 3D */}
+      {/* Canvas 3D (au-dessus avec transparence pour voir les CSS3D à travers les zones transparentes) */}
       <Canvas
         camera={{
           fov: CAMERA_CONFIG.fov,
@@ -292,15 +192,17 @@ export default function PierreExperience() {
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
-          alpha: true, // Important pour voir les CSS3D en dessous
+          alpha: true,
+          premultipliedAlpha: false,
         }}
-        style={{ position: 'relative', zIndex: 1, background: 'transparent' }}
-        onCreated={({ camera, scene }) => {
-          cameraRef.current = camera as THREE.PerspectiveCamera
-          // Ne pas définir de background pour permettre la transparence
-          scene.background = null
+        style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }}
+        onCreated={({ camera, gl }) => {
+          cameraRef.current = camera
+          gl.setClearColor(0x072446, 1)
         }}
       >
+        {/* Cleanup WebGL au démontage pour éviter Context Lost */}
+        <WebGLCleanup />
         <Suspense fallback={<LoadingFallback />}>
           <PierreScene />
           <Preload all />
@@ -421,10 +323,15 @@ function PierreScene() {
     flyToStage('default')
   }, [flyToStage])
 
-  // Mettre à jour les contrôles à chaque frame
+  // Mettre à jour les contrôles et synchroniser le rendu CSS3D à chaque frame
   useFrame(() => {
     if (controlsRef.current) {
       controlsRef.current.update()
+    }
+    // Synchroniser le rendu CSS3D avec le frame loop WebGL
+    const css3dRender = (window as any).__css3dRender
+    if (css3dRender) {
+      css3dRender()
     }
   })
 

@@ -43,6 +43,11 @@ export default defineConfig({
     sourcemap: false,
 
     rollupOptions: {
+      // Multi-page: main app + arcade standalone pour l'iframe CSS3D
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        arcade: resolve(__dirname, 'arcade.html'),
+      },
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom'],

@@ -42,6 +42,18 @@ export function PierreBanner({ onNavigate, onBackToHub }: PierreBannerProps) {
           {item.label}
         </button>
       ))}
+
+      {/* Séparateur visuel */}
+      <span className={styles.separator}>|</span>
+
+      {/* Lien vers le Hub 3D */}
+      <button
+        className={styles.hubLink}
+        onClick={onBackToHub}
+        title="Explorer les mondes 3D"
+      >
+        3D WORLDS
+      </button>
     </header>
   )
 }

@@ -46,6 +46,41 @@
   text-underline-offset: 4px;
 }
 
+/* Séparateur entre les liens et le bouton Hub */
+.separator {
+  color: #eda72d;
+  opacity: 0.4;
+  font-size: 1.5vw;
+  margin: 0 0.5vw;
+  user-select: none;
+}
+
+/* Bouton vers le Hub 3D */
+.hubLink {
+  color: #6366f1;
+  font-size: 1.5vw;
+  text-align: center;
+  user-select: none;
+  cursor: pointer;
+  margin: 0 1vw;
+  transition: all 0.2s ease-in-out;
+  background: rgba(99, 102, 241, 0.1);
+  border: 2px solid #6366f1;
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.hubLink:hover {
+  font-size: 1.6vw;
+  background: rgba(99, 102, 241, 0.2);
+  border-color: #818cf8;
+  color: #818cf8;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .bannerLink {
@@ -54,6 +89,19 @@
 
   .bannerLink:hover {
     font-size: 2.8vw;
+  }
+
+  .separator {
+    font-size: 2.5vw;
+  }
+
+  .hubLink {
+    font-size: 2.5vw;
+    padding: 4px 12px;
+  }
+
+  .hubLink:hover {
+    font-size: 2.7vw;
   }
 }
 
@@ -67,5 +115,17 @@
   .bannerLink {
     font-size: 3vw;
     margin: 4px;
+  }
+
+  .separator {
+    display: none;
+  }
+
+  .hubLink {
+    font-size: 3vw;
+    margin: 4px;
+    padding: 4px 10px;
+    width: 100%;
+    margin-top: 8px;
   }
 }

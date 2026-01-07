@@ -1,6 +1,9 @@
 /**
  * Experience - Composant principal qui gère le routing entre les différents mondes.
  * Utilise lazy loading pour optimiser les performances.
+ *
+ * Architecture Canvas unique: Tous les niveaux (0-5) partagent le même Canvas WebGL.
+ * Cela évite les problèmes de "Context Lost" lors des transitions.
  */
 
 import { Environment, Grid, KeyboardControls } from '@react-three/drei'
@@ -17,7 +20,8 @@ const WorldClassic = lazy(() => import('./WorldClassic'))
 const WorldPlayground = lazy(() => import('./WorldPlayground'))
 const ProceduralExperience = lazy(() => import('./ProceduralExperience'))
 const World4 = lazy(() => import('./World4'))
-// Note: PierreExperience (Level 5) est géré directement par App.tsx car il a son propre Canvas
+// PierreScene est maintenant intégré dans le Canvas unique (Level 5)
+const PierreScene = lazy(() => import('./pierre/PierreScene'))
 
 // Keyboard mapping pour Ecctrl
 const keyboardMap = [
@@ -31,7 +35,7 @@ const keyboardMap = [
 
 // Configuration des positions de spawn par niveau (pour mondes avec personnage)
 const SPAWN_POSITIONS: Record<Level, [number, number, number]> = {
-  0: [0, 2, 0],    // Hub - centre
+  0: [0, 2, 8],    // Hub - devant le portail central (pas dedans!)
   1: [0, 5, 5],    // WorldClassic - classique
   2: [0, 5, 5],    // WorldPlayground - playground
   3: [0, 5, 0],    // ProceduralWorld
@@ -41,11 +45,14 @@ const SPAWN_POSITIONS: Record<Level, [number, number, number]> = {
 
 /**
  * Composant principal Experience
- * Note: Level 5 (PierreExperience) est géré par App.tsx car il a son propre Canvas
+ * Architecture Canvas unique: tous les niveaux (0-5) partagent le même Canvas.
  */
 export function Experience() {
   const hasDebug = useGameStore((s) => s.hasFeature('debug_mode'))
   const currentLevel = useGameStore((s) => s.currentLevel)
+
+  // Level 5 = PierreScene (OrbitControls, pas de physique, pas de Player)
+  const isPierreLevel = currentLevel === 5
 
   // Le monde procédural a sa propre configuration complète
   if (currentLevel === 3) {
@@ -56,6 +63,16 @@ export function Experience() {
     )
   }
 
+  // Level 5: PierreScene avec OrbitControls (pas de physique ni Player)
+  if (isPierreLevel) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <PierreScene />
+      </Suspense>
+    )
+  }
+
+  // Levels 0-4: Mondes avec physique et Player FPS
   return (
     <KeyboardControls map={keyboardMap}>
       {/* Lighting */}

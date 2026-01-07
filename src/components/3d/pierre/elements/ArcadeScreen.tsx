@@ -1,29 +1,28 @@
 /**
- * ArcadeScreen - Machine arcade avec iframe et effet CRT.
+ * ArcadeScreen - Machine arcade.
  *
- * Fonctionnalités:
- * - iframe intégré pour le jeu arcade (toujours visible quand actif)
- * - Communication avec l'iframe via postMessage
+ * L'iframe est géré par CSS3DRenderer dans PierreExperience.
+ * Ce composant gère uniquement le modèle 3D et le mesh transparent pour le raycasting.
  */
 
 import { useRef, useEffect, useCallback, useState } from 'react'
-import { useGLTF, Html } from '@react-three/drei'
+import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
 import { useBakedMaterials } from '../contexts/BakedMaterialContext'
 
-// Configuration
+// Configuration - dimensions pour le mesh de raycasting
 const ARCADE_SCREEN_SIZE = { width: 1006.986, height: 1210.118 }
 const ARCADE_POSITION = new THREE.Vector3(3.24776, 2.7421, 2.3009)
 const ARCADE_SCALE = new THREE.Vector3(0.00102, 0.00102, 0.00102)
 const ARCADE_ROTATION_X = -Math.PI / 7
 const ARCADE_ROTATION_Y = -Math.PI / 2
 
-// Créer un Euler avec l'ordre YXZ pour correspondre à Joan's rotateY puis rotateX
-const ARCADE_EULER = new THREE.Euler(ARCADE_ROTATION_X, ARCADE_ROTATION_Y, 0, 'YXZ')
-
-// URL de l'arcade
-const ARCADE_IFRAME_SRC = 'https://joan-arcade-machine.vercel.app'
+// Calculer le quaternion en appliquant rotateY puis rotateX comme Joan
+// rotateY puis rotateX = q_y * q_x (l'ordre de multiplication est inversé dans Three.js)
+const q_y = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ARCADE_ROTATION_Y)
+const q_x = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), ARCADE_ROTATION_X)
+const ARCADE_QUATERNION = q_y.multiply(q_x)
 
 interface ArcadeScreenProps {
   onHover: (objects: THREE.Object3D[]) => void
@@ -31,11 +30,11 @@ interface ArcadeScreenProps {
 }
 
 /**
- * Composant ArcadeScreen avec iframe.
+ * Composant ArcadeScreen - modèle 3D uniquement.
+ * L'iframe est rendu par CSS3DRenderer.
  */
 export function ArcadeScreen({ onHover, onSelect }: ArcadeScreenProps) {
   const groupRef = useRef<THREE.Group>(null)
-  const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const [isActive, setIsActive] = useState(false)
 
   const currentStage = usePierreStore((s) => s.currentStage)
@@ -43,7 +42,7 @@ export function ArcadeScreen({ onHover, onSelect }: ArcadeScreenProps) {
   // Charger le modèle de la machine arcade
   const { scene } = useGLTF('/pierre/assets/models/arcadeMachine.glb')
 
-  // Récupérer le matériau baked (material2 comme dans Joan's version)
+  // Récupérer le matériau baked
   const { material2 } = useBakedMaterials()
 
   // Appliquer le matériau baked au modèle
@@ -65,11 +64,14 @@ export function ArcadeScreen({ onHover, onSelect }: ArcadeScreenProps) {
     setIsActive(currentStage === 'arcadeMachine')
   }, [currentStage])
 
-  // Communication avec l'iframe
+  // Communication avec l'iframe via postMessage (iframe géré par CSS3DRenderer)
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (isActive && iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage({ type: 'keyDownParent', key: e.key }, '*')
+      if (isActive) {
+        const iframe = document.getElementById('css3d-iframe-arcadeMachine') as HTMLIFrameElement
+        if (iframe?.contentWindow) {
+          iframe.contentWindow.postMessage({ type: 'keyDownParent', key: e.key }, '*')
+        }
       }
     },
     [isActive]
@@ -77,8 +79,11 @@ export function ArcadeScreen({ onHover, onSelect }: ArcadeScreenProps) {
 
   const handleKeyUp = useCallback(
     (e: KeyboardEvent) => {
-      if (isActive && iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage({ type: 'keyUpParent', key: e.key }, '*')
+      if (isActive) {
+        const iframe = document.getElementById('css3d-iframe-arcadeMachine') as HTMLIFrameElement
+        if (iframe?.contentWindow) {
+          iframe.contentWindow.postMessage({ type: 'keyUpParent', key: e.key }, '*')
+        }
       }
     },
     [isActive]
@@ -108,46 +113,16 @@ export function ArcadeScreen({ onHover, onSelect }: ArcadeScreenProps) {
       {/* Modèle de la machine */}
       <primitive object={scene} />
 
-      {/* Écran noir par défaut (visible quand inactif) */}
-      {!isActive && (
-        <mesh position={ARCADE_POSITION.toArray()} scale={ARCADE_SCALE.toArray()} rotation={ARCADE_EULER}>
-          <planeGeometry args={[ARCADE_SCREEN_SIZE.width, ARCADE_SCREEN_SIZE.height]} />
-          <meshBasicMaterial color="black" />
-        </mesh>
-      )}
-
-      {/* iframe (visible seulement quand actif) */}
-      {isActive && (
-        <Html
-          position={ARCADE_POSITION.toArray()}
-          scale={[ARCADE_SCALE.x * 1000, ARCADE_SCALE.y * 1000, 1]}
-          rotation={ARCADE_EULER}
-          transform
-          zIndexRange={[0, 0]}
-        >
-          <div
-            style={{
-              width: `${ARCADE_SCREEN_SIZE.width}px`,
-              height: `${ARCADE_SCREEN_SIZE.height}px`,
-              overflow: 'hidden',
-            }}
-          >
-            <iframe
-              ref={iframeRef}
-              src={ARCADE_IFRAME_SRC}
-              style={{
-                width: '100%',
-                height: '100%',
-                border: 'none',
-                background: 'black',
-                padding: '16px',
-                boxSizing: 'border-box',
-              }}
-              title="Arcade Game"
-            />
-          </div>
-        </Html>
-      )}
+      {/* Mesh transparent pour le raycasting - utilise quaternion comme Joan */}
+      <mesh
+        position={ARCADE_POSITION.toArray()}
+        scale={ARCADE_SCALE.toArray()}
+        quaternion={ARCADE_QUATERNION}
+        name="arcadeMachineScreen"
+      >
+        <planeGeometry args={[ARCADE_SCREEN_SIZE.width, ARCADE_SCREEN_SIZE.height]} />
+        <meshBasicMaterial transparent opacity={0} side={THREE.DoubleSide} />
+      </mesh>
     </group>
   )
 }

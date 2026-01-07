@@ -11,7 +11,7 @@
 
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import { useThree } from '@react-three/fiber'
-import { useGLTF, Html, useTexture } from '@react-three/drei'
+import { useGLTF, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
 

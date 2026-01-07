@@ -1,0 +1,134 @@
+/**
+ * Styles pour l'Arcade Machine.
+ * Adapté du projet joan-arcade-machine.
+ */
+
+@font-face {
+  font-family: 'ArcadeFont';
+  src: url('/fonts/ARCADE.TTF') format('truetype');
+}
+
+.container {
+  width: 100%;
+  height: 100%;
+  background: rgb(22, 22, 22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'ArcadeFont', monospace;
+  overflow: hidden;
+}
+
+.menuContainer {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+.title {
+  width: 100%;
+  font-size: 80px;
+  color: #00ff00;
+  line-height: 0.9;
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.menu {
+  margin-top: 20px;
+}
+
+.gameMenu {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.gameOption {
+  padding: 10px;
+  color: #00ff00;
+  font-size: 60px;
+  cursor: pointer;
+  transition: color 0.1s;
+}
+
+.gameOption:hover {
+  color: #88ff88;
+}
+
+.instructions {
+  position: absolute;
+  left: 50%;
+  bottom: 50px;
+  transform: translateX(-50%);
+  font-size: 32px;
+  color: #00ff00;
+  text-align: center;
+  width: 90%;
+  animation: blink 0.5s infinite alternate;
+}
+
+@keyframes blink {
+  0% { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+
+.canvas {
+  border: 8px solid white;
+  display: block;
+}
+
+.scoreContainer {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  width: 100%;
+}
+
+.currentScore {
+  font-size: 36px;
+  color: #00ff00;
+  margin-bottom: 5px;
+}
+
+.maxScore {
+  font-size: 32px;
+  color: #00ff00;
+}
+
+/* Bouton 3D Worlds */
+.hubButton {
+  margin-top: 30px;
+  padding: 15px 30px;
+  font-size: 40px;
+  font-family: 'ArcadeFont', monospace;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  border: 4px solid #6366f1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.hubButton:hover {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: #818cf8;
+  color: #818cf8;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+  transform: scale(1.05);
+}
+
+/* Séparateur avant le bouton */
+.separator {
+  width: 60%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ff00, transparent);
+  margin: 30px auto;
+  opacity: 0.5;
+}
