@@ -10,8 +10,7 @@
  */
 
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { useThree } from '@react-three/fiber'
-import { useGLTF, Html } from '@react-three/drei'
+import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import gsap from 'gsap'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
@@ -21,10 +20,11 @@ const RUBIK_ORIGINAL_POSITION = new THREE.Vector3(-0.67868, 1.499, -3.92849)
 const RUBIK_ORIGINAL_SCALE = 0.021432
 const RUBIK_ORIGINAL_ROTATION = new THREE.Euler(Math.PI, (-152.484 * Math.PI) / 180, Math.PI)
 
-// Position centrale quand actif (comme Joan's reubicateCube)
-const RUBIK_CENTER_POSITION = new THREE.Vector3(0, 0, 0)
-const RUBIK_CENTER_SCALE = 1
-const RUBIK_CENTER_ROTATION = new THREE.Euler(0, 0, 0)
+// Position centrale quand en mode jeu (après double clic)
+// Position sur la ligne de vue caméra(-23,17,23) → target(0,2,0), à ~30% du chemin
+const RUBIK_CENTER_POSITION = new THREE.Vector3(-16, 12.5, 16)
+const RUBIK_CENTER_SCALE = 0.08
+const RUBIK_CENTER_ROTATION = new THREE.Euler(0.3, 0.5, 0)
 
 interface CubeInfo {
   row: number
@@ -51,7 +51,6 @@ interface RubiksCubeProps {
 export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
   const groupRef = useRef<THREE.Group>(null)
   const pivotRef = useRef<THREE.Object3D>(new THREE.Object3D())
-  const { camera, raycaster } = useThree()
 
   // États
   const [isActive, setIsActive] = useState(false)
@@ -73,17 +72,32 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
   const clickedNormal = useRef<{ layer: string; sign: number } | null>(null)
   const pointer = useRef(new THREE.Vector2())
 
+  // Ref pour éviter de recharger les cubies
+  const cubiesLoaded = useRef(false)
+
+  // Ref pour éviter les clics multiples pendant l'animation
+  const isAnimating = useRef(false)
+
   // Charger les données des cubies et initialiser
   useEffect(() => {
-    if (!scene) return
+    if (!scene || !groupRef.current || cubiesLoaded.current) return
+
+    // Vérifier qu'il y a des enfants à traiter
+    if (scene.children.length === 0) {
+      return
+    }
+
+    cubiesLoaded.current = true
 
     fetch('/pierre/assets/json/cubeInfo.json')
       .then((res) => res.json())
       .then((cubeInfo: Record<string, CubeInfo>) => {
         const newCubies: THREE.Object3D[] = []
 
-        for (let i = scene.children.length - 1; i >= 0; i--) {
-          const currentChild = scene.children[i]
+        // Clone les enfants car on va les déplacer
+        const children = [...scene.children]
+        for (let i = children.length - 1; i >= 0; i--) {
+          const currentChild = children[i]
           if (!currentChild) continue
 
           const info = cubeInfo[i.toString()]
@@ -94,6 +108,11 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
             ;(currentChild as any).colors = { ...info.colors }
             ;(currentChild as any).isRubik = true
 
+            // Marquer comme interactif pour le raycaster filtering
+            currentChild.userData.interactive = true
+
+            // Attacher au groupe
+            groupRef.current!.add(currentChild)
             newCubies.push(currentChild)
           }
         }
@@ -105,38 +124,29 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
 
   /**
    * Déplace le cube au centre de l'écran (comme Joan's reubicateCube).
+   * IMPORTANT: On anime seulement le GROUPE, pas les cubies individuellement.
+   * Les cubies gardent leur position relative pour former le cube.
    */
   const reubicateCube = useCallback(() => {
-    if (!groupRef.current) return
+    if (!groupRef.current) {
+      return
+    }
 
     setIsPlaced(false)
 
-    // Rendre le cube transparent et devant tout (comme Joan)
+    // Rendre le cube devant tout mais garder depthTest pour le raycaster
     groupRef.current.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh
         mesh.renderOrder = 999
-        if (mesh.material) {
-          const mat = mesh.material as THREE.MeshStandardMaterial
-          mat.transparent = true
-          mat.depthTest = false
-        }
+        // NE PAS désactiver depthTest, sinon le raycaster ne fonctionne plus
       }
     })
 
-    // Animer chaque cubie vers le centre (position relative 0,0,0)
-    cubies.forEach((cubie) => {
-      gsap.to(cubie.position, {
-        x: 0,
-        y: 0,
-        z: 0,
-        duration: 1,
-        ease: 'sine.out',
-      })
-    })
+    // Animer le GROUPE vers le centre (pas les cubies individuellement!)
+    const group = groupRef.current
 
-    // Animer le groupe vers le centre
-    gsap.to(groupRef.current.scale, {
+    gsap.to(group.scale, {
       x: RUBIK_CENTER_SCALE,
       y: RUBIK_CENTER_SCALE,
       z: RUBIK_CENTER_SCALE,
@@ -144,7 +154,7 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
       ease: 'sine.out',
     })
 
-    gsap.to(groupRef.current.position, {
+    gsap.to(group.position, {
       x: RUBIK_CENTER_POSITION.x,
       y: RUBIK_CENTER_POSITION.y,
       z: RUBIK_CENTER_POSITION.z,
@@ -152,7 +162,7 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
       ease: 'sine.out',
     })
 
-    gsap.to(groupRef.current.rotation, {
+    gsap.to(group.rotation, {
       x: RUBIK_CENTER_ROTATION.x,
       y: RUBIK_CENTER_ROTATION.y,
       z: RUBIK_CENTER_ROTATION.z,
@@ -160,42 +170,19 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
       ease: 'sine.out',
       onComplete: () => {
         setIsActive(true)
+        isAnimating.current = false
       },
     })
-  }, [cubies])
+  }, [])
 
   /**
    * Remet le cube sur le bureau (position originale).
+   * IMPORTANT: On anime seulement le GROUPE, pas les cubies individuellement.
    */
   const resetOriginalConfig = useCallback(() => {
     if (!groupRef.current) return
 
-    // Animer chaque cubie vers sa position originale
-    cubies.forEach((cubie) => {
-      gsap.to(cubie.position, {
-        x: RUBIK_ORIGINAL_POSITION.x,
-        y: RUBIK_ORIGINAL_POSITION.y,
-        z: RUBIK_ORIGINAL_POSITION.z,
-        duration: 1,
-        ease: 'sine.out',
-        onComplete: () => {
-          setIsPlaced(true)
-          // Restaurer le rendu normal
-          groupRef.current?.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              const mesh = child as THREE.Mesh
-              mesh.renderOrder = 0
-              if (mesh.material) {
-                const mat = mesh.material as THREE.MeshStandardMaterial
-                mat.transparent = false
-                mat.depthTest = true
-              }
-            }
-          })
-        },
-      })
-    })
-
+    // Animer le GROUPE vers sa position originale
     gsap.to(groupRef.current.scale, {
       x: RUBIK_ORIGINAL_SCALE,
       y: RUBIK_ORIGINAL_SCALE,
@@ -218,162 +205,42 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
       z: RUBIK_ORIGINAL_ROTATION.z,
       duration: 1,
       ease: 'sine.out',
+      onComplete: () => {
+        setIsPlaced(true)
+        isAnimating.current = false
+        // Restaurer le rendu normal
+        groupRef.current?.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh
+            mesh.renderOrder = 0
+            if (mesh.material) {
+              const mat = mesh.material as THREE.MeshStandardMaterial
+              mat.transparent = false
+              mat.depthTest = true
+            }
+          }
+        })
+      },
     })
-  }, [cubies])
+  }, [])
 
-  // Activer/désactiver selon le stage
+  // Désactiver le mode jeu quand on quitte le stage rubikGroup
   useEffect(() => {
-    const shouldBeActive = currentStage === 'rubikGroup'
-
-    if (shouldBeActive && !isActive && isPlaced) {
-      // Activer: déplacer au centre
-      reubicateCube()
-    } else if (!shouldBeActive && !isPlaced) {
-      // Désactiver: remettre sur le bureau
+    // Si on n'est plus en mode rubikGroup mais qu'on est encore actif, désactiver
+    if (currentStage !== 'rubikGroup' && isActive) {
       setIsActive(false)
-      resetOriginalConfig()
+      // Remettre le cube sur le bureau seulement s'il n'est pas déjà placé
+      if (!isPlaced) {
+        resetOriginalConfig()
+      }
     }
-  }, [currentStage, isActive, isPlaced, reubicateCube, resetOriginalConfig])
+  }, [currentStage, isActive, isPlaced, resetOriginalConfig])
 
   // Gestion du pointeur
   const handlePointerMove = useCallback((e: PointerEvent) => {
     pointer.current.x = (e.clientX / window.innerWidth) * 2 - 1
     pointer.current.y = -(e.clientY / window.innerHeight) * 2 + 1
   }, [])
-
-  const handlePointerDown = useCallback(() => {
-    if (!isActive || isMoving) return
-
-    raycaster.setFromCamera(pointer.current, camera)
-    const intersects = raycaster.intersectObjects(cubies, true)
-
-    if (intersects.length > 0) {
-      const hit = intersects[0]
-      if (hit && hit.object.parent && (hit.object.parent as any).isRubik) {
-        clickedCubie.current = hit.object.parent
-        startPosition.current.copy(pointer.current)
-
-        if (hit.face) {
-          const normal = hit.face.normal.clone()
-          normal.transformDirection(hit.object.parent.matrixWorld)
-          clickedNormal.current = getRealNormal(normal)
-        }
-
-        isDragging.current = true
-      }
-    }
-  }, [isActive, isMoving, camera, raycaster, cubies])
-
-  const handlePointerUp = useCallback(() => {
-    if (!isDragging.current || !clickedCubie.current || !clickedNormal.current) {
-      isDragging.current = false
-      return
-    }
-
-    const distX = pointer.current.x - startPosition.current.x
-    const distY = pointer.current.y - startPosition.current.y
-
-    if (Math.abs(distX) < 0.01 && Math.abs(distY) < 0.01) {
-      isDragging.current = false
-      return
-    }
-
-    const vertical = Math.abs(distX) <= Math.abs(distY)
-    const positiveX = distX >= 0
-    const positiveY = distY >= 0
-    const cubie = clickedCubie.current as any
-    const normal = clickedNormal.current
-
-    let layer: 'row' | 'col' | 'depth' = 'row'
-    let number = 1
-    let orientation = 0
-
-    if (vertical) {
-      if (normal.layer === 'x') {
-        layer = 'depth'
-        number = cubie.depth
-        orientation = normal.sign === 0 ? (positiveY ? 0 : 1) : positiveY ? 1 : 0
-      } else {
-        layer = 'col'
-        number = cubie.col
-        orientation = normal.sign === 0 ? (positiveY ? 1 : 0) : positiveY ? 0 : 1
-      }
-    } else {
-      if (normal.layer === 'x') {
-        layer = 'row'
-        number = cubie.row
-        orientation = positiveX ? 1 : 0
-      } else if (normal.layer === 'y') {
-        layer = 'depth'
-        number = cubie.depth
-        orientation = normal.sign === 0 ? (positiveX ? 1 : 0) : positiveX ? 0 : 1
-      } else {
-        layer = 'row'
-        number = cubie.row
-        orientation = positiveX ? 1 : 0
-      }
-    }
-
-    rotateCubeLayer(layer, number, orientation)
-
-    isDragging.current = false
-    clickedCubie.current = null
-    clickedNormal.current = null
-  }, [])
-
-  // Rotation d'une couche
-  const rotateCubeLayer = useCallback(
-    (layer: 'row' | 'col' | 'depth', number: number, orientation: number) => {
-      if (isMoving || !groupRef.current) return
-
-      setIsMoving(true)
-
-      const cubiesToRotate = cubies.filter((cubie: any) => {
-        if (layer === 'row') return cubie.row === number
-        if (layer === 'col') return cubie.col === number
-        return cubie.depth === number
-      })
-
-      let axis: 'x' | 'y' | 'z' = 'y'
-      if (layer === 'row') axis = 'y'
-      else if (layer === 'col') axis = 'x'
-      else axis = 'z'
-
-      const targetAngle = ((orientation ? 1 : -1) * Math.PI) / 2
-      const pivot = pivotRef.current
-
-      // Position du pivot au centre du cube (0,0,0 quand au centre)
-      pivot.position.set(0, 0, 0)
-      pivot.rotation.set(0, 0, 0)
-      pivot.updateMatrixWorld()
-
-      if (groupRef.current && !groupRef.current.children.includes(pivot)) {
-        groupRef.current.add(pivot)
-      }
-
-      cubiesToRotate.forEach((cubie) => {
-        pivot.attach(cubie)
-      })
-
-      gsap.to(pivot.rotation, {
-        [axis]: targetAngle,
-        duration: 0.5,
-        ease: 'power1.inOut',
-        onComplete: () => {
-          pivot.updateMatrixWorld()
-          cubiesToRotate.forEach((cubie: any) => {
-            cubie.updateMatrixWorld()
-            groupRef.current?.attach(cubie)
-            updateCubieAfterRotation(cubie, layer, orientation)
-          })
-
-          setIsMoving(false)
-          checkIfSolved()
-        },
-      })
-    },
-    [cubies, isMoving]
-  )
 
   // Mettre à jour un cubie après rotation
   const updateCubieAfterRotation = (cubie: any, layer: string, orientation: number) => {
@@ -440,10 +307,13 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
 
   // Vérifier si le cube est résolu
   const checkIfSolved = useCallback(() => {
+    if (!groupRef.current) return
+
+    const allCubies = groupRef.current.children.filter((child: any) => child.isRubik)
     const faces: Record<string, string | null> = { U: null, D: null, L: null, R: null, F: null, B: null }
     let solved = true
 
-    cubies.forEach((cubie: any) => {
+    allCubies.forEach((cubie: any) => {
       if (!cubie.colors) return
 
       const checks = [
@@ -466,26 +336,219 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
       })
     })
 
-    if (solved && cubies.length > 0) {
+    if (solved && allCubies.length > 0) {
       setRubikSolved(true)
-      onSelect('default')
-    }
-  }, [cubies, setRubikSolved, onSelect])
 
-  // Event listeners
+      // Attendre 2.5 secondes pour la célébration AVANT de revenir au bureau
+      setTimeout(() => {
+        onSelect('default')
+        // Réinitialiser après un délai pour permettre de rejouer
+        setTimeout(() => {
+          setRubikSolved(false)
+        }, 1000)
+      }, 2500)
+    }
+  }, [setRubikSolved, onSelect])
+
+  // Rotation d'une couche
+  const rotateCubeLayer = useCallback(
+    (layer: 'row' | 'col' | 'depth', number: number, orientation: number) => {
+      if (isMoving || !groupRef.current) {
+        return
+      }
+
+      // Utiliser groupRef.current.children pour avoir la liste à jour (pas cubies de l'état)
+      const allCubies = groupRef.current.children.filter((child: any) => child.isRubik)
+
+      setIsMoving(true)
+
+      const cubiesToRotate = allCubies.filter((cubie: any) => {
+        if (layer === 'row') return cubie.row === number
+        if (layer === 'col') return cubie.col === number
+        return cubie.depth === number
+      })
+
+      let axis: 'x' | 'y' | 'z' = 'y'
+      if (layer === 'row') axis = 'y'
+      else if (layer === 'col') axis = 'x'
+      else axis = 'z'
+
+      const targetAngle = ((orientation ? 1 : -1) * Math.PI) / 2
+      const pivot = pivotRef.current
+
+      // Position du pivot au centre du cube (0,0,0 quand au centre)
+      pivot.position.set(0, 0, 0)
+      pivot.rotation.set(0, 0, 0)
+      pivot.updateMatrixWorld()
+
+      if (groupRef.current && !groupRef.current.children.includes(pivot)) {
+        groupRef.current.add(pivot)
+      }
+
+      cubiesToRotate.forEach((cubie) => {
+        pivot.attach(cubie)
+      })
+
+      gsap.to(pivot.rotation, {
+        [axis]: targetAngle,
+        duration: 0.5,
+        ease: 'power1.inOut',
+        onComplete: () => {
+          pivot.updateMatrixWorld()
+          cubiesToRotate.forEach((cubie: any) => {
+            cubie.updateMatrixWorld()
+            groupRef.current?.attach(cubie)
+            updateCubieAfterRotation(cubie, layer, orientation)
+          })
+
+          setIsMoving(false)
+          checkIfSolved()
+        },
+      })
+    },
+    [isMoving, checkIfSolved]
+  )
+
+  // Handler R3F pour pointerdown sur le cube (en mode jeu)
+  const handleR3FPointerDown = useCallback((e: any) => {
+    if (!isActive || isMoving) return
+
+    // Empêcher la propagation pour éviter les conflits
+    e.stopPropagation()
+
+    const hit = e.intersections[0]
+    if (!hit) return
+
+    // Chercher le cubie parent qui a isRubik = true
+    let cubie: THREE.Object3D | null = hit.object
+    while (cubie && !(cubie as any).isRubik) {
+      cubie = cubie.parent
+    }
+
+    if (cubie && (cubie as any).isRubik) {
+      clickedCubie.current = cubie
+      startPosition.current.set(
+        (e.nativeEvent.clientX / window.innerWidth) * 2 - 1,
+        -(e.nativeEvent.clientY / window.innerHeight) * 2 + 1
+      )
+
+      if (hit.face) {
+        const normal = hit.face.normal.clone()
+        normal.transformDirection(cubie.matrixWorld)
+        clickedNormal.current = getRealNormal(normal)
+      }
+
+      isDragging.current = true
+    }
+  }, [isActive, isMoving])
+
+  // Handler pour pointerup sur window (capture le relâchement même hors du cube)
+  const handleWindowPointerUp = useCallback((e: PointerEvent) => {
+    if (!isDragging.current || !clickedCubie.current || !clickedNormal.current) {
+      isDragging.current = false
+      return
+    }
+
+    const currentPointer = {
+      x: (e.clientX / window.innerWidth) * 2 - 1,
+      y: -(e.clientY / window.innerHeight) * 2 + 1
+    }
+
+    const distX = currentPointer.x - startPosition.current.x
+    const distY = currentPointer.y - startPosition.current.y
+
+    if (Math.abs(distX) < 0.01 && Math.abs(distY) < 0.01) {
+      isDragging.current = false
+      clickedCubie.current = null
+      clickedNormal.current = null
+      return
+    }
+
+    const vertical = Math.abs(distX) <= Math.abs(distY)
+    const positiveX = distX >= 0
+    const positiveY = distY >= 0
+    const cubie = clickedCubie.current as any
+    const normal = clickedNormal.current
+
+    let layer: 'row' | 'col' | 'depth' = 'row'
+    let number = 1
+    let orientation = 0
+
+    if (vertical) {
+      if (normal.layer === 'x') {
+        layer = 'depth'
+        number = cubie.depth
+        orientation = normal.sign === 0 ? (positiveY ? 0 : 1) : positiveY ? 1 : 0
+      } else {
+        layer = 'col'
+        number = cubie.col
+        orientation = normal.sign === 0 ? (positiveY ? 1 : 0) : positiveY ? 0 : 1
+      }
+    } else {
+      if (normal.layer === 'x') {
+        layer = 'row'
+        number = cubie.row
+        orientation = positiveX ? 1 : 0
+      } else if (normal.layer === 'y') {
+        layer = 'depth'
+        number = cubie.depth
+        orientation = normal.sign === 0 ? (positiveX ? 1 : 0) : positiveX ? 0 : 1
+      } else {
+        layer = 'row'
+        number = cubie.row
+        orientation = positiveX ? 1 : 0
+      }
+    }
+
+    rotateCubeLayer(layer, number, orientation)
+
+    isDragging.current = false
+    clickedCubie.current = null
+    clickedNormal.current = null
+  }, [rotateCubeLayer])
+
+  // Event listeners sur window pour capturer pointermove et pointerup partout
   useEffect(() => {
     if (!isActive) return
 
     window.addEventListener('pointermove', handlePointerMove)
-    window.addEventListener('pointerdown', handlePointerDown)
-    window.addEventListener('pointerup', handlePointerUp)
+    window.addEventListener('pointerup', handleWindowPointerUp)
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerdown', handlePointerDown)
-      window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('pointerup', handleWindowPointerUp)
     }
-  }, [isActive, handlePointerMove, handlePointerDown, handlePointerUp])
+  }, [isActive, handlePointerMove, handleWindowPointerUp])
+
+  // Handler de clic sur le cube
+  const handleCubeClick = useCallback((e?: any) => {
+    // Stopper la propagation pour éviter les événements parasites
+    e?.stopPropagation()
+
+    // Bloquer si déjà en animation ou en mode jeu
+    if (isActive || isAnimating.current) return
+
+    // Comme Joan : un seul clic active directement le mode jeu
+    // Le cube se déplace au centre et la scène disparaît
+    if (currentStage !== 'rubikGroup' && isPlaced) {
+      isAnimating.current = true
+      reubicateCube()
+      onSelect('rubikGroup')
+    }
+  }, [isActive, currentStage, isPlaced, reubicateCube, onSelect])
+
+  // Handlers mémorisés pour éviter la GC pressure des fonctions inline
+  const handlePointerOver = useCallback(() => {
+    if (!isActive && groupRef.current) {
+      onHover([groupRef.current])
+    }
+  }, [isActive, onHover])
+
+  const handlePointerOut = useCallback(() => {
+    if (!isActive) {
+      onHover([])
+    }
+  }, [isActive, onHover])
 
   return (
     <group
@@ -494,32 +557,12 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
       position={RUBIK_ORIGINAL_POSITION.toArray()}
       scale={RUBIK_ORIGINAL_SCALE}
       rotation={[RUBIK_ORIGINAL_ROTATION.x, RUBIK_ORIGINAL_ROTATION.y, RUBIK_ORIGINAL_ROTATION.z]}
-      onPointerOver={() => groupRef.current && onHover([groupRef.current])}
-      onPointerOut={() => onHover([])}
-      onClick={() => !isActive && isPlaced && onSelect('rubikGroup')}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+      onClick={!isActive ? handleCubeClick : undefined}
+      onPointerDown={isActive ? handleR3FPointerDown : undefined}
     >
-      {cubies.map((cubie, i) => (
-        <primitive key={i} object={cubie} />
-      ))}
-
-      {/* Texte d'instruction (visible quand actif et au centre) */}
-      {isActive && !isPlaced && (
-        <Html position={[0, -2.5, 0]} center>
-          <div
-            style={{
-              color: '#f5a623',
-              fontFamily: "'Caveat', cursive",
-              fontSize: '24px',
-              fontStyle: 'italic',
-              textAlign: 'center',
-              whiteSpace: 'nowrap',
-              textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-            }}
-          >
-            Click and drag anywhere on the cube to rotate it in that direction.
-          </div>
-        </Html>
-      )}
+      {/* Les cubies sont ajoutés directement au groupe via groupRef.current.add() dans useEffect */}
     </group>
   )
 }

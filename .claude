@@ -427,3 +427,658 @@ import { Defaults } from '@pmndrs/uikit-default'
 - Pas de support `<iframe>`
 - Fonts custom nécessitent conversion MSDF
 - Pas de CSS natif (seulement propriétés supportées)
+
+## React Three Fiber - Exemples de Référence (r3f.docs.pmnd.rs)
+
+### Showcase Avancés (Inspiration Production)
+
+#### Effets Visuels & Matériaux
+| Technique | Description | Use Case |
+|-----------|-------------|----------|
+| **Transmission Glass** | Matériau verre réaliste avec réfraction | Objets transparents, vitrines |
+| **Bloom HDR** | Surexposition contrôlée | Effets lumineux, néons |
+| **Caustics** | Réfraction lumière sur surfaces | Eau, cristaux, diamants |
+| **Volumetric Light** | Rayons Godray | Atmosphère dramatique |
+| **Soft Shadows** | Ombres douces réalistes | Scènes réalistes |
+| **Ground Reflections** | Réflexions sol temps réel | Showrooms, galeries |
+| **Iridescent Decals** | Matériaux irisés | Bulles, surfaces métalliques |
+
+#### Configurateurs Interactifs
+```tsx
+// Pattern: Configurateur avec sélection
+const [selected, setSelected] = useState(null)
+const [color, setColor] = useState('#ffffff')
+
+<mesh onClick={() => setSelected('part')} material-color={color}>
+  <Outlines thickness={selected ? 0.05 : 0} color="white" />
+</mesh>
+```
+
+#### Portails & Transitions Spatiales
+```tsx
+// Pattern: Portal avec MeshPortalMaterial (drei)
+import { MeshPortalMaterial, RoundedBox } from '@react-three/drei'
+
+<RoundedBox args={[2, 3, 0.1]}>
+  <MeshPortalMaterial>
+    {/* Scène à l'intérieur du portal */}
+    <ambientLight />
+    <mesh><sphereGeometry /></mesh>
+  </MeshPortalMaterial>
+</RoundedBox>
+```
+
+#### Environment Mapping Dynamique
+```tsx
+// Pattern: Environment avec PMREM
+import { Environment, useEnvironment } from '@react-three/drei'
+
+<Environment
+  files="/hdri/studio.hdr"
+  ground={{ height: 15, radius: 60 }}
+  blur={0.5}
+/>
+
+// Ou dynamique avec CubeCamera
+<CubeCamera resolution={256} frames={Infinity}>
+  {(texture) => (
+    <mesh>
+      <meshStandardMaterial envMap={texture} />
+    </mesh>
+  )}
+</CubeCamera>
+```
+
+### Prototypes de Jeux
+
+#### Racing Game Pattern
+```tsx
+// Véhicule avec Rapier
+import { RigidBody, useRapier } from '@react-three/rapier'
+
+function Car({ position }) {
+  const rigidBody = useRef()
+
+  useFrame(() => {
+    if (keys.forward) {
+      rigidBody.current.applyImpulse({ x: 0, y: 0, z: -1 })
+    }
+  })
+
+  return (
+    <RigidBody ref={rigidBody} colliders="hull">
+      <mesh geometry={carGeometry} />
+    </RigidBody>
+  )
+}
+```
+
+#### Pinball/Breakout Pattern (70 lignes)
+```tsx
+// Balle avec rebond
+const velocity = useRef([1, 1])
+
+useFrame((_, delta) => {
+  ball.current.position.x += velocity.current[0] * delta * speed
+  ball.current.position.y += velocity.current[1] * delta * speed
+
+  // Collision murs
+  if (Math.abs(ball.current.position.x) > bounds) {
+    velocity.current[0] *= -1
+  }
+})
+```
+
+#### Space Shooter Pattern
+```tsx
+// Bullets instanciées
+const [bullets, setBullets] = useState([])
+
+const shoot = () => {
+  setBullets(prev => [...prev, {
+    id: Date.now(),
+    position: playerPos.clone(),
+    velocity: new Vector3(0, 0, -10)
+  }])
+}
+
+<Instances limit={100}>
+  <sphereGeometry args={[0.1]} />
+  <meshBasicMaterial color="yellow" />
+  {bullets.map(b => <Instance key={b.id} position={b.position} />)}
+</Instances>
+```
+
+### Techniques de Base Essentielles
+
+#### RenderTexture (Écrans dans la scène)
+```tsx
+import { RenderTexture, PerspectiveCamera, Text } from '@react-three/drei'
+
+<mesh>
+  <planeGeometry args={[3, 2]} />
+  <meshBasicMaterial>
+    <RenderTexture attach="map" anisotropy={16}>
+      <PerspectiveCamera makeDefault position={[0, 0, 5]} />
+      <color attach="background" args={['#1a1a2e']} />
+      <Text>Contenu dynamique</Text>
+    </RenderTexture>
+  </meshBasicMaterial>
+</mesh>
+```
+
+#### Instancing avec Vertex Colors
+```tsx
+import { Instances, Instance } from '@react-three/drei'
+
+<Instances limit={1000}>
+  <boxGeometry />
+  <meshStandardMaterial vertexColors />
+  {items.map((item, i) => (
+    <Instance
+      key={i}
+      position={item.pos}
+      color={item.color}
+      scale={item.scale}
+    />
+  ))}
+</Instances>
+```
+
+#### Shader Material avec HMR
+```tsx
+import { shaderMaterial } from '@react-three/drei'
+import { extend } from '@react-three/fiber'
+
+const CustomMaterial = shaderMaterial(
+  { uTime: 0, uColor: new THREE.Color(0.2, 0.0, 0.1) },
+  // Vertex
+  `varying vec2 vUv;
+   void main() {
+     vUv = uv;
+     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+   }`,
+  // Fragment
+  `uniform float uTime;
+   uniform vec3 uColor;
+   varying vec2 vUv;
+   void main() {
+     gl_FragColor = vec4(uColor + sin(uTime), 1.0);
+   }`
+)
+
+extend({ CustomMaterial })
+
+// Utilisation
+<mesh>
+  <planeGeometry />
+  <customMaterial uTime={clock.elapsedTime} />
+</mesh>
+```
+
+#### HTML Integration avec Occlusion
+```tsx
+import { Html } from '@react-three/drei'
+
+<mesh>
+  <boxGeometry />
+  <Html
+    position={[0, 1, 0]}
+    center
+    distanceFactor={10}        // Mise à l'échelle par distance
+    occlude={[meshRef]}        // Masqué par ces objets
+    transform                  // Transform CSS3D
+  >
+    <div className="annotation">Label</div>
+  </Html>
+</mesh>
+```
+
+#### Scroll Controls
+```tsx
+import { ScrollControls, Scroll, useScroll } from '@react-three/drei'
+
+<ScrollControls pages={3} damping={0.1}>
+  <Scroll>
+    {/* Contenu 3D qui scroll */}
+    <AnimatedModel />
+  </Scroll>
+  <Scroll html>
+    {/* Contenu HTML qui scroll */}
+    <section style={{ height: '100vh' }}>Page 1</section>
+  </Scroll>
+</ScrollControls>
+
+// Dans un composant enfant
+function AnimatedModel() {
+  const scroll = useScroll()
+  useFrame(() => {
+    const offset = scroll.offset // 0 à 1
+    mesh.current.rotation.y = offset * Math.PI * 2
+  })
+}
+```
+
+#### TransformControls
+```tsx
+import { TransformControls, OrbitControls } from '@react-three/drei'
+
+const [mode, setMode] = useState('translate') // translate, rotate, scale
+
+<TransformControls
+  object={meshRef}
+  mode={mode}
+  onObjectChange={() => console.log('moved')}
+/>
+<OrbitControls makeDefault />  // makeDefault requis pour cohabitation
+```
+
+#### Bounds & Auto-Framing
+```tsx
+import { Bounds, useBounds } from '@react-three/drei'
+
+<Bounds fit clip observe margin={1.2}>
+  <SelectToZoom>
+    <mesh onClick={(e) => e.stopPropagation()}>
+      <boxGeometry />
+    </mesh>
+  </SelectToZoom>
+</Bounds>
+
+function SelectToZoom({ children }) {
+  const api = useBounds()
+  return (
+    <group
+      onClick={(e) => {
+        e.stopPropagation()
+        api.refresh(e.object).fit()
+      }}
+    >
+      {children}
+    </group>
+  )
+}
+```
+
+#### GLTF Animations
+```tsx
+import { useGLTF, useAnimations } from '@react-three/drei'
+
+function Model() {
+  const { scene, animations } = useGLTF('/model.glb')
+  const { actions, names } = useAnimations(animations, scene)
+
+  useEffect(() => {
+    // Jouer animation au scroll
+    const action = actions[names[0]]
+    action.play().paused = true
+  }, [])
+
+  useFrame(() => {
+    const action = actions[names[0]]
+    action.time = scroll.offset * action.getClip().duration
+  })
+
+  return <primitive object={scene} />
+}
+```
+
+#### Progressive Loading
+```tsx
+import { Suspense } from 'react'
+import { useProgress, Html } from '@react-three/drei'
+
+function Loader() {
+  const { progress } = useProgress()
+  return <Html center>{progress.toFixed(0)}%</Html>
+}
+
+<Suspense fallback={<Loader />}>
+  <HeavyModel />
+</Suspense>
+```
+
+### Patterns Physique (Rapier)
+
+#### Ragdoll
+```tsx
+import { RigidBody, SphericalJoint } from '@react-three/rapier'
+
+// Corps connectés par joints
+<RigidBody ref={torso}>
+  <mesh><boxGeometry args={[0.5, 0.8, 0.3]} /></mesh>
+</RigidBody>
+
+<RigidBody ref={head}>
+  <mesh><sphereGeometry args={[0.2]} /></mesh>
+</RigidBody>
+
+<SphericalJoint
+  body1={torso}
+  body2={head}
+  anchor1={[0, 0.5, 0]}
+  anchor2={[0, -0.2, 0]}
+/>
+```
+
+#### Trigger Zones
+```tsx
+<RigidBody type="fixed" sensor>
+  <CuboidCollider
+    args={[2, 2, 2]}
+    onIntersectionEnter={(e) => console.log('entered', e.rigidBodyObject)}
+    onIntersectionExit={(e) => console.log('exited')}
+  />
+</RigidBody>
+```
+
+### Post-Processing Avancé
+
+#### Multi-Effects Composer
+```tsx
+import { EffectComposer, Bloom, DepthOfField, Vignette } from '@react-three/postprocessing'
+
+<EffectComposer>
+  <DepthOfField
+    focusDistance={0}
+    focalLength={0.02}
+    bokehScale={2}
+  />
+  <Bloom
+    luminanceThreshold={0.9}
+    luminanceSmoothing={0.9}
+    intensity={0.5}
+  />
+  <Vignette eskil={false} offset={0.1} darkness={1.1} />
+</EffectComposer>
+```
+
+### Bibliothèques Complémentaires R3F
+
+| Package | Usage |
+|---------|-------|
+| `@react-three/drei` | 100+ helpers (controls, loaders, abstractions) |
+| `@react-three/postprocessing` | Effets post-process GPU |
+| `@react-three/rapier` | Physique Rapier (recommandé) |
+| `@react-three/cannon` | Physique Cannon.js (legacy) |
+| `@react-three/xr` | WebXR (VR/AR) |
+| `@react-three/flex` | Flexbox 3D natif |
+| `@pmndrs/uikit` | UI 3D sans DOM |
+| `leva` | GUI debug panels |
+| `zustand` | State management léger |
+
+### Ressources CodeSandbox
+- Showcase: https://codesandbox.io/u/drcmda (Paul Henschel)
+- Exemples officiels: https://r3f.docs.pmnd.rs/getting-started/examples
+- Drei storybook: https://drei.docs.pmnd.rs
+
+## Architecture Enterprise R3F (2026)
+
+### Plan d'Implémentation
+Voir `ARCHITECTURE_PLAN_R3F.md` pour le plan complet.
+
+### Phases Principales
+1. **Camera System** - CameraControls + Zustand (remplace GSAP)
+2. **LOD System** - Distance-based rendering pour monitors
+3. **Suspense Groups** - 3 groupes prioritaires (critical/secondary/deferred)
+4. **Interaction System** - Store centralisé hover/selection
+5. **Post-Processing** - DepthOfField conditionnel + optimisations
+6. **Cleanup** - Suppression code mort (JoanOS.tsx)
+
+### Store Architecture (Zustand Slices)
+```typescript
+// Pattern: Slices séparés combinés
+src/stores/
+├── slices/
+│   ├── cameraSlice.ts      // position, target, flyTo()
+│   ├── interactionSlice.ts // hovered, selected, cursor
+│   └── performanceSlice.ts // fps, drawCalls, quality
+├── cameraStore.ts          // Export combiné
+└── interactionStore.ts
+```
+
+### Core Components Pattern
+```
+src/components/3d/pierre/core/
+├── CameraSystem.tsx        // CameraControls wrapper
+├── InteractionSystem.tsx   // Cursor + hover management
+├── LODWrapper.tsx          // Detailed wrapper générique
+├── PostProcessing.tsx      // EffectComposer centralisé
+└── SuspenseGroup.tsx       // Priority-based Suspense
+```
+
+### Feature Flags
+```typescript
+// src/config/featureFlags.ts
+export const FEATURES = {
+  USE_CAMERA_CONTROLS: true,
+  USE_LOD_MONITORS: false,
+  USE_SUSPENSE_GROUPS: false,
+  USE_CENTRALIZED_INTERACTIONS: false,
+  USE_ADVANCED_POST_PROCESSING: false,
+}
+```
+
+### Performance Budgets
+| Métrique | Desktop | Mobile | Alerte |
+|----------|---------|--------|--------|
+| FPS | 60 | 30 | <45/<25 |
+| Draw Calls | 150 | 80 | >180 |
+| Triangles | 400K | 200K | >500K |
+| LCP | 2.5s | 3.5s | >3s |
+
+### Migration Checklist par Phase
+- [ ] Créer slice Zustand
+- [ ] Implémenter composant core
+- [ ] Feature flag activé (10% → 100%)
+- [ ] Tests unitaires + visual regression
+- [ ] Metrics validées
+- [ ] Documentation mise à jour
+- [ ] Code legacy supprimé
+
+## Optimisation Événements R3F (CRITIQUE)
+
+### Problèmes Courants à Éviter
+```typescript
+// ❌ Fonctions inline = GC pressure + re-renders
+onPointerOver={() => onHover([ref.current])}
+
+// ❌ Pas de stopPropagation = bubbling inutile
+onClick={() => handleClick()}
+
+// ❌ Événements sur meshes non-interactifs = raycasts gaspillés
+<primitive object={room.scene} />  // 10K triangles testés inutilement
+
+// ❌ Événements actifs en mode focus = CPU gaspillé
+// Quand caméra focalisée sur moniteur, hover sur autres éléments inutile
+```
+
+### Solutions Enterprise
+
+#### 1. InteractiveMesh Wrapper
+```typescript
+// Marque les meshes avec userData.interactive pour le raycaster filter
+<InteractiveMesh name="linkedin" onSelect={handler}>
+  <primitive object={scene} />
+</InteractiveMesh>
+```
+
+#### 2. EventGate Context
+```typescript
+// Désactive événements quand currentStage !== 'default'
+<EventGate>
+  <InteractiveMesh ... />
+</EventGate>
+```
+
+#### 3. Raycaster Filter sur Canvas
+```typescript
+<Canvas
+  raycaster={{
+    filter: (intersects) => intersects.filter(
+      (hit) => hit.object.userData.interactive === true
+    ),
+  }}
+>
+```
+
+#### 4. BVH pour Raycasting Accéléré
+```typescript
+import { Bvh } from '@react-three/drei'
+
+<Bvh firstHitOnly>
+  {/* Seulement les éléments interactifs */}
+</Bvh>
+```
+
+#### 5. Debounce sur setHovered
+```typescript
+// 16ms debounce = max 60 updates/sec pour outline
+const debouncedSetHovered = debounce(setHovered, 16)
+```
+
+### Handlers Mémorisés Pattern
+```typescript
+// ✅ Handlers mémorisés une seule fois
+const handlers = useMemo(() => ({
+  linkedin: () => window.open(url, '_blank'),
+  github: () => window.open(url, '_blank'),
+}), [])
+
+// ✅ useCallback avec deps stables
+const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
+  e.stopPropagation()
+  onSelect?.()
+}, [onSelect])
+```
+
+### Métriques Cibles
+| Métrique | Avant | Après |
+|----------|-------|-------|
+| Raycasts/frame | ~15-20 | ~3-5 |
+| Event handlers | ~40 | ~12 |
+| GC closures | Haute | Basse |
+
+## Animations R3F - useFrame Best Practices (CRITIQUE)
+
+### NE JAMAIS faire dans useFrame
+```typescript
+// ❌ setState dans useFrame = freeze/lag/re-renders massifs
+useFrame(() => {
+  setParticles(prev => prev.map(p => ({ ...p, y: p.y + 0.1 })))
+})
+
+// ❌ Créer des objets dans useFrame = GC pressure
+useFrame(() => {
+  const newPos = new THREE.Vector3(x, y, z)  // Mauvais!
+})
+```
+
+### Pattern Correct pour Animations
+```typescript
+// ✅ Refs + mutation directe + delta framerate-independent
+const meshRef = useRef<THREE.Mesh>(null)
+const velocityRef = useRef({ x: 0, y: 1, z: 0 })
+
+useFrame((_, delta) => {
+  if (!meshRef.current) return
+  meshRef.current.position.y += velocityRef.current.y * delta * 60
+  meshRef.current.rotation.x += 0.01 * delta * 60
+})
+```
+
+### InstancedMesh pour Particules (Confetti, etc.)
+```typescript
+// ✅ Pattern performant pour N particules
+const COUNT = 200
+const meshRef = useRef<THREE.InstancedMesh>(null)
+const dataRef = useRef<ParticleData[]>([])
+const dummyRef = useRef(new THREE.Object3D())  // Réutilisé!
+
+// Initialisation une seule fois
+useEffect(() => {
+  dataRef.current = Array.from({ length: COUNT }, () => ({
+    position: new THREE.Vector3(...),
+    velocity: new THREE.Vector3(...),
+    rotation: new THREE.Euler(...),
+  }))
+}, [])
+
+// Animation par mutation directe
+useFrame((_, delta) => {
+  const mesh = meshRef.current
+  const dummy = dummyRef.current
+  if (!mesh) return
+
+  dataRef.current.forEach((p, i) => {
+    // Mise à jour données
+    p.position.y += p.velocity.y * delta * 60
+    p.rotation.x += 0.02 * delta * 60
+
+    // Appliquer au dummy puis à l'instance
+    dummy.position.copy(p.position)
+    dummy.rotation.copy(p.rotation)
+    dummy.updateMatrix()
+    mesh.setMatrixAt(i, dummy.matrix)
+  })
+
+  mesh.instanceMatrix.needsUpdate = true  // CRITIQUE!
+})
+
+return (
+  <instancedMesh ref={meshRef} args={[geometry, material, COUNT]} frustumCulled={false} />
+)
+```
+
+### Pourquoi InstancedMesh?
+- 1 draw call pour N objets (vs N draw calls)
+- Manipulation GPU via matrices
+- `needsUpdate = true` déclenche le transfert GPU
+- `frustumCulled={false}` évite calculs de culling inutiles
+
+## Pointer Events R3F - Capture Globale
+
+### Problème: onPointerUp sur group
+```typescript
+// ❌ Ne fonctionne PAS si le curseur quitte le mesh pendant le drag
+<group onPointerUp={handleUp}>  // Jamais appelé si curseur sort!
+```
+
+### Solution: Event listener sur window
+```typescript
+// ✅ Capture le pointerup partout sur l'écran
+const handleWindowPointerUp = useCallback((e: PointerEvent) => {
+  if (!isDragging.current) return
+  // Logique de fin de drag...
+  isDragging.current = false
+}, [])
+
+useEffect(() => {
+  if (!isActive) return
+  window.addEventListener('pointerup', handleWindowPointerUp)
+  return () => window.removeEventListener('pointerup', handleWindowPointerUp)
+}, [isActive, handleWindowPointerUp])
+
+// R3F pour le début du drag seulement
+<group onPointerDown={handleR3FPointerDown} />
+```
+
+## Règles Anti-Debug Production
+
+### Supprimer tous les console.log avant commit
+- `console.log` dans useFrame = lag (string formatting chaque frame)
+- `console.log` dans handlers = pollution console
+- Garder uniquement `console.warn` et `console.error` pour erreurs critiques
+
+### Pattern: Logs conditionnels (si vraiment nécessaire)
+```typescript
+const DEBUG = import.meta.env.DEV
+
+useFrame(() => {
+  if (DEBUG) console.log('position:', mesh.position.toArray())
+})
+```
+
+
+
+NE PAS Réinveter la ROUE !!!

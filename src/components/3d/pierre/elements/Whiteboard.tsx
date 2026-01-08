@@ -60,6 +60,9 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
   // Store
   const currentStage = usePierreStore((s) => s.currentStage)
 
+  // Cacher complètement en mode Rubik
+  const isHidden = currentStage === 'rubikGroup'
+
   // Charger le modèle du tableau
   const { scene } = useGLTF('/pierre/assets/models/whiteboard.glb')
 
@@ -221,6 +224,9 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
       window.removeEventListener('pointerup', handlePointerUp)
     }
   }, [isActive, handlePointerMove, handlePointerDown, handlePointerUp])
+
+  // Ne pas rendre en mode Rubik
+  if (isHidden) return null
 
   return (
     <group

@@ -266,10 +266,10 @@ function ExperienceContent() {
  */
 function ContactContent() {
   const contacts: Array<{ Icon: IconComponent; label: string; value: string }> = [
-    { Icon: Mail, label: 'Email', value: 'contact@pierrelegrand.fr' },
-    { Icon: Github, label: 'GitHub', value: 'github.com/pierrelegrand' },
-    { Icon: Linkedin, label: 'LinkedIn', value: 'linkedin.com/in/pierrelegrand' },
-    { Icon: Twitter, label: 'Twitter', value: '@pierrelegrand' },
+    { Icon: Mail, label: 'Email', value: 'pro@pierrelegrand.fr' },
+    { Icon: Github, label: 'GitHub', value: 'github.com/pi3Block' },
+    { Icon: Linkedin, label: 'LinkedIn', value: 'linkedin.com/in/legrand-pierre/' },
+    { Icon: Twitter, label: 'Twitter', value: '@pi3r2dev' },
   ]
 
   return (

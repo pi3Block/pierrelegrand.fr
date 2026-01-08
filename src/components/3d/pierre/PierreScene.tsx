@@ -10,7 +10,7 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
-import { OrbitControls, Html } from '@react-three/drei'
+import { OrbitControls } from '@react-three/drei'
 import { EffectComposer, Outline, SMAA } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
@@ -62,8 +62,9 @@ const STAGE_POSITIONS: Record<PierreStage, { position: THREE.Vector3; target: TH
     target: new THREE.Vector3(-3.3927, 3.18774, -4.61366),
   },
   rubikGroup: {
-    position: new THREE.Vector3(-2.5, 2.5, -2),
-    target: new THREE.Vector3(-0.67868, 1.499, -3.92849),
+    // Caméra reste en place, target vers la position du cube au centre de la vue
+    position: new THREE.Vector3(-23, 17, 23),
+    target: new THREE.Vector3(-16, 12.5, 16),
   },
   hubPortal: {
     position: new THREE.Vector3(-23, 17, 23),
@@ -153,12 +154,18 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
    */
   const flyToStage = useCallback(
     (stage: PierreStage) => {
-      if (isCameraMoving) return
+      if (isCameraMoving) {
+        return
+      }
 
       const stageConfig = STAGE_POSITIONS[stage]
-      if (!stageConfig) return
+      if (!stageConfig) {
+        return
+      }
 
       setIsCameraMoving(true)
+      // Mettre à jour le stage IMMÉDIATEMENT pour que RubiksCube sache qu'on est en mode rubikGroup
+      setCurrentStage(stage)
 
       // Désactiver les contrôles pendant la transition
       if (controlsRef.current) {
@@ -184,7 +191,6 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
           duration: 1,
           ease: 'sine.out',
           onComplete: () => {
-            setCurrentStage(stage)
             setIsCameraMoving(false)
 
             // Réactiver les contrôles seulement si on revient à default
@@ -205,13 +211,6 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
     return () => {
       globalFlyToStage = null
     }
-  }, [flyToStage])
-
-  /**
-   * Retour à la vue par défaut.
-   */
-  const backToDefault = useCallback(() => {
-    flyToStage('default')
   }, [flyToStage])
 
   // Mettre à jour les contrôles à chaque frame
@@ -259,40 +258,6 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
 
       {/* Monde Pierre */}
       <PierreWorld onHover={handleHover} onSelect={flyToStage} />
-
-      {/* Bouton retour */}
-      {currentStage !== 'default' && (
-        <Html fullscreen>
-          <button
-            onClick={backToDefault}
-            style={{
-              position: 'fixed',
-              bottom: '30px',
-              left: '30px',
-              padding: '12px 24px',
-              background: 'rgba(0, 0, 0, 0.7)',
-              color: 'white',
-              border: '2px solid rgba(255, 255, 255, 0.3)',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              zIndex: 100,
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.6)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(0, 0, 0, 0.7)'
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'
-            }}
-          >
-            ← Back
-          </button>
-        </Html>
-      )}
     </>
   )
 }

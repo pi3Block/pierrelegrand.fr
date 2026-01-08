@@ -103,9 +103,9 @@ const STAGE_POSITIONS: Record<
     target: new THREE.Vector3(-3.3927, 3.18774, -4.61366),
   },
   rubikGroup: {
-    // Position de caméra pour bien voir le cube (approche simplifiée vs Joan qui déplace le cube)
-    position: new THREE.Vector3(-2.5, 2.5, -2),
-    target: new THREE.Vector3(-0.67868, 1.499, -3.92849),
+    // Caméra reste en place, target vers la position du cube au centre de la vue
+    position: new THREE.Vector3(-23, 17, 23),
+    target: new THREE.Vector3(-16, 12.5, 16),
   },
   hubPortal: {
     position: new THREE.Vector3(-23, 17, 23),
@@ -203,6 +203,22 @@ function PierreScene() {
   const controlsRef = useRef<any>(null)
   const [hoveredObjects, setHoveredObjects] = useState<THREE.Object3D[]>([])
 
+  // Store Pierre pour l'état de la scène
+  const currentStage = usePierreStore((s) => s.currentStage)
+  const setCurrentStage = usePierreStore((s) => s.setCurrentStage)
+  const isCameraMoving = usePierreStore((s) => s.isCameraMoving)
+  const setIsCameraMoving = usePierreStore((s) => s.setIsCameraMoving)
+
+  // Désactiver l'outline quand on est focalisé sur un élément (pas en default)
+  const isInInteractiveZone = currentStage !== 'default'
+
+  // Vider les outlines quand on entre dans une zone interactive
+  useEffect(() => {
+    if (isInInteractiveZone) {
+      setHoveredObjects([])
+    }
+  }, [isInInteractiveZone])
+
   /**
    * Collecte tous les meshes d'un groupe pour l'OutlinePass.
    */
@@ -220,9 +236,16 @@ function PierreScene() {
 
   /**
    * Gère le hover sur les éléments interactifs.
+   * Désactivé quand on est dans une zone interactive.
    */
   const handleHover = useCallback(
     (objects: THREE.Object3D[]) => {
+      // Désactiver l'outline quand on est focalisé sur un élément
+      if (isInInteractiveZone) {
+        setHoveredObjects([])
+        return
+      }
+
       if (objects.length === 0) {
         setHoveredObjects([])
       } else {
@@ -230,13 +253,8 @@ function PierreScene() {
         setHoveredObjects(meshes)
       }
     },
-    [collectMeshes]
+    [collectMeshes, isInInteractiveZone]
   )
-
-  // Store Pierre pour l'état de la scène
-  const setCurrentStage = usePierreStore((s) => s.setCurrentStage)
-  const isCameraMoving = usePierreStore((s) => s.isCameraMoving)
-  const setIsCameraMoving = usePierreStore((s) => s.setIsCameraMoving)
 
   const { camera } = useThree()
 
@@ -245,12 +263,18 @@ function PierreScene() {
    */
   const flyToStage = useCallback(
     (stage: PierreStage) => {
-      if (isCameraMoving) return
+      if (isCameraMoving) {
+        return
+      }
 
       const stageConfig = STAGE_POSITIONS[stage]
-      if (!stageConfig) return
+      if (!stageConfig) {
+        return
+      }
 
       setIsCameraMoving(true)
+      // Mettre à jour le stage immédiatement pour afficher le bouton BACK
+      setCurrentStage(stage)
 
       // Désactiver les contrôles pendant la transition (comme Joan)
       if (controlsRef.current) {
@@ -276,7 +300,6 @@ function PierreScene() {
           duration: 1,
           ease: 'sine.out',
           onComplete: () => {
-            setCurrentStage(stage)
             setIsCameraMoving(false)
 
             // Réactiver les contrôles seulement si on revient à default
@@ -329,16 +352,18 @@ function PierreScene() {
         target={CAMERA_CONFIG.initialTarget}
       />
 
-      {/* Post-processing */}
+      {/* Post-processing - désactivé en mode interactif */}
       <EffectComposer autoClear={false}>
-        <Outline
-          selection={hoveredObjects}
-          visibleEdgeColor={0xffffff}
-          hiddenEdgeColor={0xffffff}
-          edgeStrength={10}
-          blendFunction={BlendFunction.SCREEN}
-          xRay={true}
-        />
+        {!isInInteractiveZone && hoveredObjects.length > 0 && (
+          <Outline
+            selection={hoveredObjects}
+            visibleEdgeColor={0xffffff}
+            hiddenEdgeColor={0xffffff}
+            edgeStrength={10}
+            blendFunction={BlendFunction.SCREEN}
+            xRay={true}
+          />
+        )}
         <SMAA />
       </EffectComposer>
 

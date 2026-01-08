@@ -34,6 +34,9 @@ export function ArcadeScreen({ onHover, onSelect }: ArcadeScreenProps) {
   const setCurrentLevel = useGameStore((s) => s.setCurrentLevel)
   const isActive = currentStage === 'arcadeMachine'
 
+  // Cacher complètement en mode Rubik (Html de drei ignore visible=false du parent)
+  const isHidden = currentStage === 'rubikGroup'
+
   // Callback pour naviguer vers le Hub (level 0)
   const handleNavigateToHub = () => setCurrentLevel(0)
 
@@ -55,6 +58,9 @@ export function ArcadeScreen({ onHover, onSelect }: ArcadeScreenProps) {
   }, [scene, material2])
 
   scene.name = 'arcadeMachine'
+
+  // Ne pas rendre en mode Rubik
+  if (isHidden) return null
 
   return (
     <group

@@ -58,6 +58,9 @@ export function MonitorScreenUikit({ type, onHover, onSelect }: MonitorScreenUik
   const setCurrentLevel = useGameStore((s) => s.setCurrentLevel)
   const isActive = currentStage === config.stage
 
+  // Cacher complètement le moniteur quand on est en mode Rubik
+  const isHidden = currentStage === 'rubikGroup'
+
   // Callback pour naviguer vers le Hub (level 0)
   const handleNavigateToHub = () => setCurrentLevel(0)
 
@@ -80,6 +83,9 @@ export function MonitorScreenUikit({ type, onHover, onSelect }: MonitorScreenUik
 
   // Nommer la scène pour le raycasting
   scene.name = `${type}Monitor`
+
+  // Ne pas rendre du tout le moniteur en mode Rubik (uikit Root ignore visible=false)
+  if (isHidden) return null
 
   return (
     <group

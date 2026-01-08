@@ -1,148 +1,198 @@
 /**
  * Confetti - Effet de particules pour célébration.
- * 
+ *
  * Utilisé quand le Rubik's cube est résolu.
  * Particules colorées tombant avec gravité et rotation.
+ *
+ * Optimisé selon les best practices R3F:
+ * - Utilise useRef au lieu de useState pour les updates dans useFrame
+ * - Mutation directe des positions (pas de setState dans le render loop)
+ * - Frame delta pour animation indépendante du framerate
  */
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { usePierreStore } from '../stores/pierreStore'
 
 // Configuration
-const CONFETTI_COUNT = 200
+const CONFETTI_COUNT = 150
 const CONFETTI_COLORS = [
-  '#ff6b6b', // Rouge
-  '#4ecdc4', // Turquoise
-  '#45b7d1', // Bleu
-  '#96ceb4', // Vert menthe
-  '#ffeaa7', // Jaune
-  '#dfe6e9', // Blanc cassé
-  '#fd79a8', // Rose
-  '#a29bfe', // Lavande
+  0xff6b6b, // Rouge
+  0x4ecdc4, // Turquoise
+  0x45b7d1, // Bleu
+  0x96ceb4, // Vert menthe
+  0xffeaa7, // Jaune
+  0xdfe6e9, // Blanc cassé
+  0xfd79a8, // Rose
+  0xa29bfe, // Lavande
 ]
-const GRAVITY = -4
-const SPAWN_HEIGHT = 8
-const SPAWN_RADIUS = 3
-const DURATION = 5000 // ms
+const GRAVITY = -9.8
+// Position du cube au centre quand en mode jeu
+const CENTER_POS = { x: -16, y: 12.5, z: 16 }
+const SPAWN_HEIGHT = CENTER_POS.y + 2
+const SPAWN_RADIUS = 1.5
+const DURATION = 3000 // ms
 
-interface ConfettiParticle {
-  position: THREE.Vector3
+interface ParticleData {
   velocity: THREE.Vector3
-  rotation: THREE.Euler
   rotationSpeed: THREE.Vector3
-  scale: number
-  color: string
 }
 
 /**
- * Composant Confetti avec effet de particules.
+ * Composant Confetti avec InstancedMesh pour performance optimale.
  */
 export function Confetti() {
-  const groupRef = useRef<THREE.Group>(null)
-  const [particles, setParticles] = useState<ConfettiParticle[]>([])
-  const [isActive, setIsActive] = useState(false)
-  const startTimeRef = useRef<number>(0)
-  
+  const meshRef = useRef<THREE.InstancedMesh>(null)
+  const isActiveRef = useRef(false)
+  const startTimeRef = useRef(0)
+  const particleDataRef = useRef<ParticleData[]>([])
+  const dummyRef = useRef(new THREE.Object3D())
+
   const rubikSolved = usePierreStore((s) => s.rubikSolved)
 
-  // Générer les particules quand le cube est résolu
+  // Créer la géométrie et le matériau une seule fois
+  const geometry = useMemo(() => new THREE.PlaneGeometry(0.08, 0.08), [])
+  const material = useMemo(() => new THREE.MeshBasicMaterial({
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.9,
+  }), [])
+
+  // Initialiser les particules quand le cube est résolu
   useEffect(() => {
-    if (rubikSolved && !isActive) {
-      setIsActive(true)
+    if (rubikSolved && !isActiveRef.current && meshRef.current) {
+      isActiveRef.current = true
       startTimeRef.current = Date.now()
-      
-      const newParticles: ConfettiParticle[] = []
-      
+
+      const mesh = meshRef.current
+      const dummy = dummyRef.current
+      const particleData: ParticleData[] = []
+
       for (let i = 0; i < CONFETTI_COUNT; i++) {
-        // Position initiale aléatoire dans un disque au-dessus
+        // Position initiale aléatoire
         const angle = Math.random() * Math.PI * 2
         const radius = Math.random() * SPAWN_RADIUS
-        
-        newParticles.push({
-          position: new THREE.Vector3(
-            Math.cos(angle) * radius,
-            SPAWN_HEIGHT + Math.random() * 2,
-            Math.sin(angle) * radius
-          ),
+
+        dummy.position.set(
+          CENTER_POS.x + Math.cos(angle) * radius,
+          SPAWN_HEIGHT + Math.random() * 2,
+          CENTER_POS.z + Math.sin(angle) * radius
+        )
+
+        // Rotation initiale aléatoire
+        dummy.rotation.set(
+          Math.random() * Math.PI,
+          Math.random() * Math.PI,
+          Math.random() * Math.PI
+        )
+
+        // Scale aléatoire
+        const scale = 0.5 + Math.random() * 1
+        dummy.scale.set(scale, scale, scale)
+
+        dummy.updateMatrix()
+        mesh.setMatrixAt(i, dummy.matrix)
+
+        // Couleur aléatoire
+        const colorIndex = Math.floor(Math.random() * CONFETTI_COLORS.length)
+        mesh.setColorAt(i, new THREE.Color(CONFETTI_COLORS[colorIndex]))
+
+        // Stocker les données de vélocité
+        particleData.push({
           velocity: new THREE.Vector3(
-            (Math.random() - 0.5) * 2,
-            -Math.random() * 2,
-            (Math.random() - 0.5) * 2
-          ),
-          rotation: new THREE.Euler(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
+            (Math.random() - 0.5) * 4,
+            Math.random() * 2 + 2, // Éjection vers le haut
+            (Math.random() - 0.5) * 4
           ),
           rotationSpeed: new THREE.Vector3(
-            (Math.random() - 0.5) * 10,
-            (Math.random() - 0.5) * 10,
-            (Math.random() - 0.5) * 10
+            (Math.random() - 0.5) * 8,
+            (Math.random() - 0.5) * 8,
+            (Math.random() - 0.5) * 8
           ),
-          scale: 0.03 + Math.random() * 0.05,
-          color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)] || '#ffffff',
         })
       }
-      
-      setParticles(newParticles)
-    }
-  }, [rubikSolved, isActive])
 
-  // Animation des particules
+      particleDataRef.current = particleData
+      mesh.instanceMatrix.needsUpdate = true
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+      mesh.visible = true
+    }
+  }, [rubikSolved])
+
+  // Animation des particules - mutation directe, pas de setState
   useFrame((_, delta) => {
-    if (!isActive || particles.length === 0) return
-    
+    if (!isActiveRef.current || !meshRef.current) return
+
     // Vérifier la durée
     if (Date.now() - startTimeRef.current > DURATION) {
-      setIsActive(false)
-      setParticles([])
+      isActiveRef.current = false
+      meshRef.current.visible = false
       return
     }
-    
-    // Mettre à jour chaque particule
-    setParticles((prev) =>
-      prev.map((p) => {
-        // Appliquer la gravité
-        p.velocity.y += GRAVITY * delta
-        
-        // Mettre à jour la position
-        p.position.add(p.velocity.clone().multiplyScalar(delta))
-        
-        // Mettre à jour la rotation
-        p.rotation.x += p.rotationSpeed.x * delta
-        p.rotation.y += p.rotationSpeed.y * delta
-        p.rotation.z += p.rotationSpeed.z * delta
-        
-        return p
-      }).filter((p) => p.position.y > -2) // Supprimer les particules sous le sol
-    )
+
+    const mesh = meshRef.current
+    const dummy = dummyRef.current
+    const particleData = particleDataRef.current
+    const matrix = new THREE.Matrix4()
+    const position = new THREE.Vector3()
+    const rotation = new THREE.Euler()
+    const quaternion = new THREE.Quaternion()
+    const scale = new THREE.Vector3()
+
+    for (let i = 0; i < CONFETTI_COUNT; i++) {
+      const data = particleData[i]
+      if (!data) continue
+
+      // Récupérer la matrice actuelle
+      mesh.getMatrixAt(i, matrix)
+      matrix.decompose(position, quaternion, scale)
+      rotation.setFromQuaternion(quaternion)
+
+      // Appliquer la gravité à la vélocité
+      data.velocity.y += GRAVITY * delta
+
+      // Mettre à jour la position avec delta pour indépendance du framerate
+      position.x += data.velocity.x * delta
+      position.y += data.velocity.y * delta
+      position.z += data.velocity.z * delta
+
+      // Mettre à jour la rotation
+      rotation.x += data.rotationSpeed.x * delta
+      rotation.y += data.rotationSpeed.y * delta
+      rotation.z += data.rotationSpeed.z * delta
+
+      // Reconstruire la matrice
+      dummy.position.copy(position)
+      dummy.rotation.copy(rotation)
+      dummy.scale.copy(scale)
+      dummy.updateMatrix()
+
+      mesh.setMatrixAt(i, dummy.matrix)
+    }
+
+    // Signaler que la matrice a été mise à jour
+    mesh.instanceMatrix.needsUpdate = true
   })
 
-  if (!isActive || particles.length === 0) return null
+  // Reset quand rubikSolved redevient false
+  useEffect(() => {
+    if (!rubikSolved) {
+      isActiveRef.current = false
+      if (meshRef.current) {
+        meshRef.current.visible = false
+      }
+    }
+  }, [rubikSolved])
 
   return (
-    <group ref={groupRef} name="confetti">
-      {particles.map((particle, i) => (
-        <mesh
-          key={i}
-          position={particle.position}
-          rotation={particle.rotation}
-          scale={particle.scale}
-        >
-          <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial
-            color={particle.color}
-            side={THREE.DoubleSide}
-            transparent
-            opacity={0.9}
-          />
-        </mesh>
-      ))}
-    </group>
+    <instancedMesh
+      ref={meshRef}
+      args={[geometry, material, CONFETTI_COUNT]}
+      visible={false}
+      frustumCulled={false}
+    />
   )
 }
 
 export default Confetti
-

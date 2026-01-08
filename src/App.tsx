@@ -43,6 +43,13 @@ export default function App() {
     setCurrentLevel(0)
   }
 
+  const handleBackToDefault = () => {
+    const flyToStage = getGlobalFlyToStage()
+    if (flyToStage) {
+      flyToStage('default')
+    }
+  }
+
   // Écouter les messages de l'arcade iframe pour naviguer vers le Hub
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -59,7 +66,7 @@ export default function App() {
     <>
       {/* Bandeau Pierre (visible uniquement sur Level 5) */}
       {isPierreLevel && (
-        <PierreBanner onNavigate={handlePierreNavigate} onBackToHub={handleBackToHub} />
+        <PierreBanner onNavigate={handlePierreNavigate} onBackToHub={handleBackToHub} onBackToDefault={handleBackToDefault} />
       )}
 
       {/* Canvas 3D unique pour tous les niveaux */}

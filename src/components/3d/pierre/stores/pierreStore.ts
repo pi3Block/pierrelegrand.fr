@@ -10,13 +10,13 @@ import { create } from 'zustand'
 /**
  * Zones interactives de la scène Pierre.
  */
-export type PierreStage = 
+export type PierreStage =
   | 'default'        // Vue d'ensemble
   | 'arcadeMachine'  // Machine arcade
   | 'leftMonitor'    // Moniteur gauche (About Me)
   | 'rightMonitor'   // Moniteur droit (Projects)
   | 'whiteboard'     // Tableau blanc
-  | 'rubikGroup'     // Rubik's Cube
+  | 'rubikGroup'     // Rubik's Cube (mode jeu, cube au centre)
   | 'hubPortal'      // Portail vers le Hub
   | 'hub'            // Retour au Hub 3D principal
 

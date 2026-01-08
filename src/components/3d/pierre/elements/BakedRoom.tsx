@@ -24,9 +24,9 @@ const MODELS = {
 
 // URLs externes des réseaux sociaux
 const SOCIAL_URLS = {
-  linkedin: 'https://www.linkedin.com/in/pierrelegrand/',
-  github: 'https://github.com/pierrelegrand',
-  itchio: 'https://pierrelegrand.itch.io/',
+  linkedin: 'https://www.linkedin.com/in/legrand-pierre/',
+  github: 'https://github.com/pi3Block',
+  itchio: 'https://pi3r2dev.itch.io/',
 }
 
 interface BakedRoomProps {

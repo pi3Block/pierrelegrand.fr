@@ -306,25 +306,25 @@ export function JoanOS({ onNavigateToHub }: JoanOSProps) {
                 <div className={styles.contactValue}>contact@pierrelegrand.fr</div>
               </div>
             </div>
-            <div className={styles.contactItem} onClick={() => window.open('https://github.com/pierrelegrand', '_blank')}>
+            <div className={styles.contactItem} onClick={() => window.open('https://github.com/pi3Block', '_blank')}>
               <span className={styles.contactIcon}>🐙</span>
               <div className={styles.contactInfo}>
                 <div className={styles.contactLabel}>GitHub</div>
-                <div className={styles.contactValue}>github.com/pierrelegrand</div>
+                <div className={styles.contactValue}>github.com/pi3Block</div>
               </div>
             </div>
-            <div className={styles.contactItem} onClick={() => window.open('https://linkedin.com/in/pierrelegrand', '_blank')}>
+            <div className={styles.contactItem} onClick={() => window.open('https://www.linkedin.com/in/legrand-pierre/', '_blank')}>
               <span className={styles.contactIcon}>💼</span>
               <div className={styles.contactInfo}>
                 <div className={styles.contactLabel}>LinkedIn</div>
                 <div className={styles.contactValue}>linkedin.com/in/pierrelegrand</div>
               </div>
             </div>
-            <div className={styles.contactItem} onClick={() => window.open('https://twitter.com/pierrelegrand', '_blank')}>
+            <div className={styles.contactItem} onClick={() => window.open('https://twitter.com/pi3r2dev', '_blank')}>
               <span className={styles.contactIcon}>🐦</span>
               <div className={styles.contactInfo}>
                 <div className={styles.contactLabel}>Twitter</div>
-                <div className={styles.contactValue}>@pierrelegrand</div>
+                <div className={styles.contactValue}>@pi3r2dev</div>
               </div>
             </div>
           </div>
