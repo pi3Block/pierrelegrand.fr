@@ -8,7 +8,7 @@
 
 import { useRef, useEffect } from 'react'
 import { useGLTF } from '@react-three/drei'
-import { Root } from '@react-three/uikit'
+import { Root, FontFamilyProvider } from '@react-three/uikit'
 import * as THREE from 'three'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
 import { useBakedMaterials } from '../contexts/BakedMaterialContext'
@@ -16,6 +16,9 @@ import { PierreOSUikit } from '../apps/os'
 import { ArtGalleryUikit } from '../apps/gallery'
 import { useGameStore } from '@stores/gameStore'
 import { useMonitorResponsive } from '@hooks/useResponsive'
+
+// Font Inter avec support des caractères latins étendus (accents français)
+const INTER_FONT_URL = '/fonts/Inter-Regular.ttf'
 
 // Configuration des moniteurs (depuis constants.js de Joan)
 // Taille écran en unités Three.js: calculée depuis les pixels
@@ -91,34 +94,94 @@ export function MonitorScreenUikit({ type, onHover, onSelect }: MonitorScreenUik
   // Ne pas rendre du tout le moniteur en mode Rubik (uikit Root ignore visible=false)
   if (isHidden) return null
 
+  // Désactiver le hover quand on n'est pas en vue default (focalisé sur un élément)
+  const isInDefaultView = currentStage === 'default'
+
   return (
     <group
       ref={groupRef}
       name={`${type}Monitor`}
-      onPointerOver={() => groupRef.current && onHover([groupRef.current])}
-      onPointerOut={() => onHover([])}
-      onClick={() => !isActive && onSelect(config.stage)}
     >
-      {/* Modèle du moniteur */}
-      <primitive object={scene} />
+      {/* Modèle du moniteur - zone cliquable pour naviguer vers le moniteur */}
+      <primitive
+        object={scene}
+        onPointerOver={(e: any) => {
+          if (isInDefaultView && groupRef.current) {
+            e.stopPropagation()
+            onHover([groupRef.current])
+          }
+        }}
+        onPointerOut={(e: any) => {
+          if (isInDefaultView) {
+            e.stopPropagation()
+            onHover([])
+          }
+        }}
+        onClick={(e: any) => {
+          if (isInDefaultView && !isActive) {
+            e.stopPropagation()
+            onSelect(config.stage)
+          }
+        }}
+      />
 
-      {/* Écran interactif via uikit Root */}
+      {/* Écran interactif via uikit Root - actif seulement quand on est focalisé sur ce moniteur */}
       <group
         position={config.screenPosition}
         rotation={config.screenRotation}
       >
-        <Root
-          sizeX={MONITOR_SIZE_X}
-          sizeY={MONITOR_SIZE_Y}
-          pixelSize={responsiveConfig.pixelSize}
-          flexDirection="column"
+        {/* Mesh invisible pour capturer le hover sur toute la surface de l'écran
+            - depthWrite={false} et colorWrite={false} pour ne rien écrire au rendu
+            - side={THREE.DoubleSide} pour capturer les rayons des deux côtés */}
+        {isInDefaultView && (
+          <mesh
+            position={[0, 0, 0.005]} // Légèrement devant l'écran pour capturer les événements
+            onPointerOver={(e) => {
+              e.stopPropagation()
+              if (groupRef.current) {
+                onHover([groupRef.current])
+              }
+            }}
+            onPointerOut={(e) => {
+              e.stopPropagation()
+              onHover([])
+            }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelect(config.stage)
+            }}
+          >
+            <planeGeometry args={[MONITOR_SIZE_X, MONITOR_SIZE_Y]} />
+            <meshBasicMaterial
+              transparent
+              opacity={0}
+              depthWrite={false}
+              depthTest={false}
+            />
+          </mesh>
+        )}
+
+        <FontFamilyProvider
+          fontFamilies={{
+            inter: {
+              normal: INTER_FONT_URL,
+            },
+          }}
         >
-          {type === 'left' ? (
-            <PierreOSUikit onNavigateToHub={handleNavigateToHub} responsiveConfig={responsiveConfig} />
-          ) : (
-            <ArtGalleryUikit onNavigateToHub={handleNavigateToHub} responsiveConfig={responsiveConfig} />
-          )}
-        </Root>
+          <Root
+            sizeX={MONITOR_SIZE_X}
+            sizeY={MONITOR_SIZE_Y}
+            pixelSize={responsiveConfig.pixelSize}
+            flexDirection="column"
+            pointerEvents={isActive ? 'listener' : 'none'}
+          >
+            {type === 'left' ? (
+              <PierreOSUikit onNavigateToHub={handleNavigateToHub} responsiveConfig={responsiveConfig} />
+            ) : (
+              <ArtGalleryUikit onNavigateToHub={handleNavigateToHub} responsiveConfig={responsiveConfig} />
+            )}
+          </Root>
+        </FontFamilyProvider>
       </group>
     </group>
   )

@@ -4,8 +4,35 @@
  * Style identique au portfolio Joan : fond bleu foncé, texte doré.
  */
 
+import { useState, useEffect } from 'react'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
 import styles from './PierreBanner.module.css'
+
+/**
+ * Hook pour détecter si on est en mode portrait sur mobile.
+ */
+function useIsPortraitMobile() {
+  const [isPortraitMobile, setIsPortraitMobile] = useState(false)
+
+  useEffect(() => {
+    const checkOrientation = () => {
+      const isMobile = window.innerWidth < 768
+      const isPortrait = window.innerHeight > window.innerWidth
+      setIsPortraitMobile(isMobile && isPortrait)
+    }
+
+    checkOrientation()
+    window.addEventListener('resize', checkOrientation)
+    window.addEventListener('orientationchange', checkOrientation)
+
+    return () => {
+      window.removeEventListener('resize', checkOrientation)
+      window.removeEventListener('orientationchange', checkOrientation)
+    }
+  }, [])
+
+  return isPortraitMobile
+}
 
 // Emoji dé à 6 faces pour le bouton
 const SHUFFLE_ICON = '🎲'
@@ -32,9 +59,14 @@ export function PierreBanner({ onNavigate, onBackToHub, onBackToDefault }: Pierr
   const currentStage = usePierreStore((s) => s.currentStage)
   const isRubikShuffling = usePierreStore((s) => s.isRubikShuffling)
   const shuffleRubik = usePierreStore((s) => s.shuffleRubik)
+  const isPortraitMobile = useIsPortraitMobile()
 
   const isFocused = currentStage !== 'default'
   const isRubikMode = currentStage === 'rubikGroup'
+  const isOnMonitor = currentStage === 'leftMonitor' || currentStage === 'rightMonitor'
+
+  // Afficher le message "tournez votre téléphone" si on est sur un moniteur en mode portrait
+  const showRotateMessage = isOnMonitor && isPortraitMobile
 
   const handleNavClick = (id: PierreStage) => {
     onNavigate(id)
@@ -42,6 +74,18 @@ export function PierreBanner({ onNavigate, onBackToHub, onBackToDefault }: Pierr
 
   return (
     <>
+      {/* Message "Tournez votre téléphone" (visible sur moniteur en mode portrait) */}
+      {showRotateMessage && (
+        <div className={styles.rotateOverlay}>
+          <div className={styles.rotateContent}>
+            <div className={styles.rotateIcon}>📱</div>
+            <p className={styles.rotateText}>
+              Tournez votre téléphone en mode paysage pour une meilleure expérience
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Bouton retour flottant (visible uniquement en mode focus) */}
       {isFocused && onBackToDefault && (
         <button

@@ -228,13 +228,16 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
   // Ne pas rendre en mode Rubik
   if (isHidden) return null
 
+  // Désactiver le hover quand on n'est pas en vue default
+  const isInDefaultView = currentStage === 'default'
+
   return (
     <group
       ref={groupRef}
       name="whiteboard"
-      onPointerOver={() => groupRef.current && onHover([groupRef.current])}
-      onPointerOut={() => onHover([])}
-      onClick={() => !isActive && onSelect('whiteboard')}
+      onPointerOver={() => isInDefaultView && groupRef.current && onHover([groupRef.current])}
+      onPointerOut={() => isInDefaultView && onHover([])}
+      onClick={() => isInDefaultView && !isActive && onSelect('whiteboard')}
     >
       {/* Modèle du tableau */}
       <primitive ref={whiteboardModelRef} object={scene} />

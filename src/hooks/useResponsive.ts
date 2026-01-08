@@ -115,50 +115,52 @@ export function useResponsive(): ResponsiveConfig {
 /**
  * Hook pour obtenir la configuration responsive des moniteurs 3D.
  * Adapte automatiquement les tailles selon l'appareil.
+ *
+ * IMPORTANT: On garde le pixelSize identique sur tous les appareils car
+ * le modifier change l'échelle globale du Root uikit et peut causer des
+ * problèmes de rendu. À la place, on adapte les dimensions des composants.
  */
 export function useMonitorResponsive(): MonitorResponsiveConfig {
   const { deviceType, isMobile, isTablet, pixelRatio } = useResponsive()
 
   return useMemo<MonitorResponsiveConfig>(() => {
-    // Configuration de base (desktop)
+    // Configuration de base - pixelSize identique pour tous les appareils
+    // pour éviter les problèmes de rendu uikit
     const basePixelSize = 0.00102
 
-    // Facteurs de scale selon l'appareil
-    // Sur mobile, on augmente le pixelSize pour que le contenu soit plus grand
+    // Facteur de scale pour les calculs internes (pas pour pixelSize)
     const scaleFactors = {
-      mobile: 2.2,    // 2.2x plus grand sur mobile
-      tablet: 1.5,    // 1.5x plus grand sur tablette
+      mobile: 1.8,    // UI 1.8x plus grande sur mobile
+      tablet: 1.4,    // UI 1.4x plus grande sur tablette
       desktop: 1.0,   // Taille normale sur desktop
     }
 
     const scaleFactor = scaleFactors[deviceType]
 
-    // PixelSize adapté - plus grand sur mobile = UI plus grande
-    const pixelSize = basePixelSize * scaleFactor
-
-    // Dimensions des fenêtres adaptées
+    // Dimensions des fenêtres adaptées (plus petites sur mobile pour tenir dans l'écran)
+    // Note: Sur mobile on réduit car le contenu sera affiché plus grand relativement
     const windowDimensions = {
-      mobile: { width: 280, height: 320 },
-      tablet: { width: 400, height: 350 },
+      mobile: { width: 320, height: 280 },
+      tablet: { width: 420, height: 360 },
       desktop: { width: 500, height: 400 },
     }
 
-    // Taille des icônes
+    // Taille des icônes (plus grandes sur mobile pour faciliter le touch)
     const iconSizes = {
-      mobile: 64,
-      tablet: 72,
+      mobile: 90,
+      tablet: 85,
       desktop: 80,
     }
 
-    // Taille de police de base
+    // Taille de police de base (plus grande sur mobile pour la lisibilité)
     const fontSizes = {
-      mobile: 14,
+      mobile: 13,
       tablet: 12,
       desktop: 11,
     }
 
     return {
-      pixelSize,
+      pixelSize: basePixelSize, // Garder le même pixelSize partout
       uiScale: scaleFactor,
       windowWidth: windowDimensions[deviceType].width,
       windowHeight: windowDimensions[deviceType].height,

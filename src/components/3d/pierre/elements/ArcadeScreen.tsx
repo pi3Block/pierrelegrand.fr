@@ -62,13 +62,16 @@ export function ArcadeScreen({ onHover, onSelect }: ArcadeScreenProps) {
   // Ne pas rendre en mode Rubik
   if (isHidden) return null
 
+  // Désactiver le hover quand on n'est pas en vue default
+  const isInDefaultView = currentStage === 'default'
+
   return (
     <group
       ref={groupRef}
       name="arcadeMachine"
-      onPointerOver={() => groupRef.current && onHover([groupRef.current])}
-      onPointerOut={() => onHover([])}
-      onClick={() => !isActive && onSelect('arcadeMachine')}
+      onPointerOver={() => isInDefaultView && groupRef.current && onHover([groupRef.current])}
+      onPointerOut={() => isInDefaultView && onHover([])}
+      onClick={() => isInDefaultView && !isActive && onSelect('arcadeMachine')}
     >
       {/* Modèle de la machine */}
       <primitive object={scene} />

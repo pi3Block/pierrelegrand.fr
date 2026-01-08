@@ -9,7 +9,7 @@
 import { useEffect, useRef } from 'react'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
-import { type PierreStage } from '../stores/pierreStore'
+import { type PierreStage, usePierreStore } from '../stores/pierreStore'
 import { useBakedMaterials } from '../contexts/BakedMaterialContext'
 
 // Chemins vers les assets
@@ -38,6 +38,10 @@ interface BakedRoomProps {
  * Composant de la pièce avec textures baked.
  */
 export function BakedRoom({ onHover }: BakedRoomProps) {
+  // Store pour vérifier si on est en vue default
+  const currentStage = usePierreStore((s) => s.currentStage)
+  const isInDefaultView = currentStage === 'default'
+
   // Chargement des modèles GLB
   const room1 = useGLTF(MODELS.room1)
   const room2 = useGLTF(MODELS.room2)
@@ -102,8 +106,8 @@ export function BakedRoom({ onHover }: BakedRoomProps) {
       {/* Icônes sociales interactives */}
       <group
         ref={linkedinRef}
-        onPointerOver={() => linkedinRef.current && onHover([linkedinRef.current])}
-        onPointerOut={() => onHover([])}
+        onPointerOver={() => isInDefaultView && linkedinRef.current && onHover([linkedinRef.current])}
+        onPointerOut={() => isInDefaultView && onHover([])}
         onClick={() => handleSocialClick('linkedin')}
       >
         <primitive object={linkedin.scene} />
@@ -111,8 +115,8 @@ export function BakedRoom({ onHover }: BakedRoomProps) {
 
       <group
         ref={githubRef}
-        onPointerOver={() => githubRef.current && onHover([githubRef.current])}
-        onPointerOut={() => onHover([])}
+        onPointerOver={() => isInDefaultView && githubRef.current && onHover([githubRef.current])}
+        onPointerOut={() => isInDefaultView && onHover([])}
         onClick={() => handleSocialClick('github')}
       >
         <primitive object={github.scene} />
@@ -120,8 +124,8 @@ export function BakedRoom({ onHover }: BakedRoomProps) {
 
       <group
         ref={itchioRef}
-        onPointerOver={() => itchioRef.current && onHover([itchioRef.current])}
-        onPointerOut={() => onHover([])}
+        onPointerOver={() => isInDefaultView && itchioRef.current && onHover([itchioRef.current])}
+        onPointerOut={() => isInDefaultView && onHover([])}
         onClick={() => handleSocialClick('itchio')}
       >
         <primitive object={itchio.scene} />

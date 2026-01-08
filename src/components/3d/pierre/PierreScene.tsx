@@ -76,6 +76,18 @@ const STAGE_POSITIONS: Record<PierreStage, { position: THREE.Vector3; target: TH
   },
 }
 
+// Positions de caméra ajustées pour mobile (plus éloignées pour voir tout l'écran)
+const STAGE_POSITIONS_MOBILE: Partial<Record<PierreStage, { position: THREE.Vector3; target: THREE.Vector3 }>> = {
+  leftMonitor: {
+    position: new THREE.Vector3(1.06738, 2.60725, 2.5),
+    target: new THREE.Vector3(1.06738, 2.50725, -4.23009),
+  },
+  rightMonitor: {
+    position: new THREE.Vector3(2.13997, 2.60716, 2.6),
+    target: new THREE.Vector3(2.47898, 2.50716, -4.14566),
+  },
+}
+
 // Store global pour exposer flyToStage depuis le bandeau
 let globalFlyToStage: ((stage: PierreStage) => void) | null = null
 
@@ -95,11 +107,21 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
   const controlsRef = useRef<any>(null)
   const [hoveredObjects, setHoveredObjects] = useState<THREE.Object3D[]>([])
 
-  // currentStage utilisé uniquement par PierreWorld via props
-  usePierreStore((s) => s.currentStage)
+  // currentStage pour savoir si on est en vue default ou focalisé sur un élément
+  const currentStage = usePierreStore((s) => s.currentStage)
   const setCurrentStage = usePierreStore((s) => s.setCurrentStage)
   const isCameraMoving = usePierreStore((s) => s.isCameraMoving)
   const setIsCameraMoving = usePierreStore((s) => s.setIsCameraMoving)
+
+  // Désactiver l'outline quand on est focalisé sur un élément (pas en default)
+  const isInInteractiveZone = currentStage !== 'default'
+
+  // Vider les outlines quand on entre dans une zone interactive
+  useEffect(() => {
+    if (isInInteractiveZone) {
+      setHoveredObjects([])
+    }
+  }, [isInInteractiveZone])
 
   const { camera } = useThree()
 
@@ -137,9 +159,16 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
 
   /**
    * Gère le hover sur les éléments interactifs.
+   * Désactivé quand on est dans une zone interactive.
    */
   const handleHover = useCallback(
     (objects: THREE.Object3D[]) => {
+      // Désactiver l'outline quand on est focalisé sur un élément
+      if (isInInteractiveZone) {
+        setHoveredObjects([])
+        return
+      }
+
       if (objects.length === 0) {
         setHoveredObjects([])
       } else {
@@ -147,11 +176,12 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
         setHoveredObjects(meshes)
       }
     },
-    [collectMeshes]
+    [collectMeshes, isInInteractiveZone]
   )
 
   /**
    * Transition de la caméra vers une zone spécifique.
+   * Utilise les positions mobile si disponibles sur mobile.
    */
   const flyToStage = useCallback(
     (stage: PierreStage) => {
@@ -159,7 +189,18 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
         return
       }
 
-      const stageConfig = STAGE_POSITIONS[stage]
+      // Détection mobile directe pour éviter les closures stale
+      const isMobileNow = window.innerWidth < 768
+
+      // Debug: vérifier si isMobile est détecté
+      console.log('[flyToStage] isMobileNow:', isMobileNow, 'stage:', stage, 'window.innerWidth:', window.innerWidth)
+
+      // Utiliser les positions mobile si disponibles, sinon les positions desktop
+      const mobileConfig = isMobileNow ? STAGE_POSITIONS_MOBILE[stage] : undefined
+      const stageConfig = mobileConfig || STAGE_POSITIONS[stage]
+
+      console.log('[flyToStage] Using config:', mobileConfig ? 'MOBILE' : 'DESKTOP', stageConfig?.position)
+
       if (!stageConfig) {
         return
       }
@@ -244,10 +285,10 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
         target={CAMERA_CONFIG.target}
       />
 
-      {/* Post-processing */}
+      {/* Post-processing - outline désactivé en mode interactif */}
       <EffectComposer autoClear={false}>
         <Outline
-          selection={hoveredObjects}
+          selection={!isInInteractiveZone && hoveredObjects.length > 0 ? hoveredObjects : []}
           visibleEdgeColor={0xffffff}
           hiddenEdgeColor={0xffffff}
           edgeStrength={10}

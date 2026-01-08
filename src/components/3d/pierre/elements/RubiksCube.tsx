@@ -650,18 +650,21 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
     }
   }, [isActive, currentStage, isPlaced, reubicateCube, onSelect])
 
+  // Désactiver le hover quand on n'est pas en vue default
+  const isInDefaultView = currentStage === 'default'
+
   // Handlers mémorisés pour éviter la GC pressure des fonctions inline
   const handlePointerOver = useCallback(() => {
-    if (!isActive && groupRef.current) {
+    if (!isActive && isInDefaultView && groupRef.current) {
       onHover([groupRef.current])
     }
-  }, [isActive, onHover])
+  }, [isActive, isInDefaultView, onHover])
 
   const handlePointerOut = useCallback(() => {
-    if (!isActive) {
+    if (!isActive && isInDefaultView) {
       onHover([])
     }
-  }, [isActive, onHover])
+  }, [isActive, isInDefaultView, onHover])
 
   return (
     <group

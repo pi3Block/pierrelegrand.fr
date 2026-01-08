@@ -215,3 +215,58 @@
     margin-top: 8px;
   }
 }
+
+/* Overlay "Tournez votre téléphone" */
+.rotateOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(7, 36, 70, 0.95);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.rotateContent {
+  text-align: center;
+  padding: 32px;
+  max-width: 300px;
+}
+
+.rotateIcon {
+  font-size: 64px;
+  margin-bottom: 24px;
+  animation: rotate 2s ease-in-out infinite;
+}
+
+@keyframes rotate {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(90deg);
+  }
+}
+
+.rotateText {
+  color: #fff;
+  font-size: 18px;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 0;
+}

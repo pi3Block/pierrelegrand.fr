@@ -77,6 +77,7 @@ export default function App() {
             antialias: true,
             alpha: false,
             powerPreference: 'high-performance',
+            localClippingEnabled: true, // Requis pour @pmndrs/uikit (scroll/clipping)
           }}
           dpr={[1, 2]}
         >
