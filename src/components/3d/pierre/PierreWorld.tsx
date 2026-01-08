@@ -110,7 +110,7 @@ export function PierreWorld({ onHover, onSelect }: PierreWorldProps) {
             <ArcadeScreen onHover={onHover} onSelect={onSelect} />
           </Suspense>
 
-          {/* Moniteur gauche - JoanOS (uikit) */}
+          {/* Moniteur gauche - PierreOS (uikit) */}
           <Suspense fallback={null}>
             <MonitorScreenUikit
               type="left"

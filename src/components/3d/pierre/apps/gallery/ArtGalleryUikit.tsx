@@ -19,12 +19,25 @@ import {
   Landmark,
   LogOut,
 } from '@react-three/uikit-lucide'
+import type { MonitorResponsiveConfig } from '@hooks/useResponsive'
 
 type IconComponent = typeof Gamepad2
 
 interface ArtGalleryUikitProps {
   /** Callback pour naviguer vers le Hub 3D */
   onNavigateToHub?: () => void
+  /** Configuration responsive pour adapter l'UI selon l'appareil */
+  responsiveConfig?: MonitorResponsiveConfig
+}
+
+// Valeurs par défaut pour le responsive (desktop)
+const DEFAULT_RESPONSIVE: MonitorResponsiveConfig = {
+  pixelSize: 0.00102,
+  uiScale: 1,
+  windowWidth: 500,
+  windowHeight: 400,
+  iconSize: 80,
+  baseFontSize: 11,
 }
 
 interface Artwork {
@@ -101,10 +114,19 @@ const COLORS = {
   frameInner: '#2a2a2a',
 }
 
-export function ArtGalleryUikit({ onNavigateToHub }: ArtGalleryUikitProps) {
+export function ArtGalleryUikit({ onNavigateToHub, responsiveConfig }: ArtGalleryUikitProps) {
+  // Utiliser la config responsive ou les valeurs par défaut
+  const config = responsiveConfig || DEFAULT_RESPONSIVE
+  const isMobile = config.uiScale > 1.5 // Si scale > 1.5, on est sur mobile
+
   const [currentIndex, setCurrentIndex] = useState(0)
 
   const currentArtwork = ARTWORKS[currentIndex]
+
+  // Dimensions adaptatives basées sur le scale
+  const artworkWidth = isMobile ? 200 : 300
+  const artworkHeight = isMobile ? 133 : 200
+  const infoPanelWidth = isMobile ? 160 : 200
 
   // Navigation
   const goToNext = useCallback(() => {
@@ -212,13 +234,13 @@ export function ArtGalleryUikit({ onNavigateToHub }: ArtGalleryUikitProps) {
               >
                 {/* Artwork */}
                 <Container
-                  width={300}
-                  height={200}
+                  width={artworkWidth}
+                  height={artworkHeight}
                   backgroundColor={COLORS.primary}
                   justifyContent="center"
                   alignItems="center"
                 >
-                  <currentArtwork.Icon width={64} height={64} color={COLORS.text} />
+                  <currentArtwork.Icon width={isMobile ? 48 : 64} height={isMobile ? 48 : 64} color={COLORS.text} />
                 </Container>
               </Container>
             </Container>
@@ -242,12 +264,12 @@ export function ArtGalleryUikit({ onNavigateToHub }: ArtGalleryUikitProps) {
           {/* Info Panel */}
           <Container
             positionType="absolute"
-            positionRight={24}
-            positionTop={50}
-            width={200}
+            positionRight={isMobile ? 12 : 24}
+            positionTop={isMobile ? 24 : 50}
+            width={infoPanelWidth}
             backgroundColor="rgba(0,0,0,0.7)"
             borderRadius={8}
-            padding={16}
+            padding={isMobile ? 12 : 16}
             borderWidth={1}
             borderColor={COLORS.border}
             flexDirection="column"

@@ -1,12 +1,12 @@
 /**
- * JoanOS - Simulation Windows OS pour le moniteur gauche.
+ * PierreOS - Simulation Windows OS pour le moniteur gauche.
  * Adapté du projet joan-os de jrefusta pour fonctionner en React.
  *
  * Contenu personnalisé pour Pierre Legrand (About Me, Experience, Contact, Projects).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import styles from './JoanOS.module.css'
+import styles from './PierreOS.module.css'
 
 // Types
 interface WindowState {
@@ -21,7 +21,7 @@ interface WindowState {
   zIndex: number
 }
 
-interface JoanOSProps {
+interface PierreOSProps {
   /** Callback pour naviguer vers le Hub 3D */
   onNavigateToHub?: () => void
 }
@@ -44,7 +44,7 @@ const DESKTOP_ICONS = [
   { id: 'credits', label: 'Credits', icon: '⌨️' },
 ]
 
-export function JoanOS({ onNavigateToHub }: JoanOSProps) {
+export function PierreOS({ onNavigateToHub }: PierreOSProps) {
   // État des fenêtres
   const [windows, setWindows] = useState<Map<string, WindowState>>(() => {
     const map = new Map<string, WindowState>()
@@ -591,4 +591,4 @@ export function JoanOS({ onNavigateToHub }: JoanOSProps) {
   )
 }
 
-export default JoanOS
+export default PierreOS

@@ -1,3 +1,3 @@
-export { JoanOS } from './JoanOS'
-export { JoanOSUikit } from './JoanOSUikit'
+export { PierreOS } from './PierreOS'
+export { PierreOSUikit } from './PierreOSUikit'
 export { WindowManager } from './WindowManager'

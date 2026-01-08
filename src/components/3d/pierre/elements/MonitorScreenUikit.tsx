@@ -3,6 +3,7 @@
  *
  * Version utilisant uikit pour un rendu 3D natif au lieu de Html de drei.
  * Meilleure intégration visuelle et pas de problèmes d'alignement DOM/3D.
+ * Supporte le responsive avec adaptation automatique sur mobile/tablette.
  */
 
 import { useRef, useEffect } from 'react'
@@ -11,9 +12,10 @@ import { Root } from '@react-three/uikit'
 import * as THREE from 'three'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
 import { useBakedMaterials } from '../contexts/BakedMaterialContext'
-import { JoanOSUikit } from '../apps/os'
+import { PierreOSUikit } from '../apps/os'
 import { ArtGalleryUikit } from '../apps/gallery'
 import { useGameStore } from '@stores/gameStore'
+import { useMonitorResponsive } from '@hooks/useResponsive'
 
 // Configuration des moniteurs (depuis constants.js de Joan)
 // Taille écran en unités Three.js: calculée depuis les pixels
@@ -21,7 +23,6 @@ import { useGameStore } from '@stores/gameStore'
 // Donc: 1370.178 * 0.00102 ≈ 1.4 unités, 764.798 * 0.00102 ≈ 0.78 unités
 const MONITOR_SIZE_X = 1.4  // Largeur en unités Three.js
 const MONITOR_SIZE_Y = 0.78 // Hauteur en unités Three.js
-const PIXEL_SIZE = 0.00102  // 1px = 0.00102 unités 3D (comme Joan)
 
 const MONITOR_CONFIG = {
   left: {
@@ -57,6 +58,9 @@ export function MonitorScreenUikit({ type, onHover, onSelect }: MonitorScreenUik
   const currentStage = usePierreStore((s) => s.currentStage)
   const setCurrentLevel = useGameStore((s) => s.setCurrentLevel)
   const isActive = currentStage === config.stage
+
+  // Configuration responsive pour adapter le pixelSize sur mobile
+  const responsiveConfig = useMonitorResponsive()
 
   // Cacher complètement le moniteur quand on est en mode Rubik
   const isHidden = currentStage === 'rubikGroup'
@@ -106,13 +110,13 @@ export function MonitorScreenUikit({ type, onHover, onSelect }: MonitorScreenUik
         <Root
           sizeX={MONITOR_SIZE_X}
           sizeY={MONITOR_SIZE_Y}
-          pixelSize={PIXEL_SIZE}
+          pixelSize={responsiveConfig.pixelSize}
           flexDirection="column"
         >
           {type === 'left' ? (
-            <JoanOSUikit onNavigateToHub={handleNavigateToHub} />
+            <PierreOSUikit onNavigateToHub={handleNavigateToHub} responsiveConfig={responsiveConfig} />
           ) : (
-            <ArtGalleryUikit onNavigateToHub={handleNavigateToHub} />
+            <ArtGalleryUikit onNavigateToHub={handleNavigateToHub} responsiveConfig={responsiveConfig} />
           )}
         </Root>
       </group>

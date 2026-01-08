@@ -20,6 +20,7 @@ import { usePierreStore, type PierreStage } from './stores/pierreStore'
 import { PierreWorld } from './PierreWorld'
 import { PierreBanner } from './ui/PierreBanner'
 import { useGameStore } from '@stores/gameStore'
+import { useResponsive } from '@hooks/useResponsive'
 
 /**
  * Composant qui force le cleanup du WebGL renderer au démontage.
@@ -117,6 +118,26 @@ const STAGE_POSITIONS: Record<
   },
 }
 
+// Positions de caméra ajustées pour mobile (plus proches des moniteurs)
+const STAGE_POSITIONS_MOBILE: Partial<Record<
+  PierreStage,
+  {
+    position: THREE.Vector3
+    target: THREE.Vector3
+  }
+>> = {
+  leftMonitor: {
+    // Plus proche du moniteur sur mobile pour mieux voir l'UI
+    position: new THREE.Vector3(1.06738, 2.60725, -0.8),
+    target: new THREE.Vector3(1.06738, 2.50725, -4.23009),
+  },
+  rightMonitor: {
+    // Plus proche du moniteur sur mobile
+    position: new THREE.Vector3(2.13997, 2.60716, -0.7),
+    target: new THREE.Vector3(2.47898, 2.50716, -4.14566),
+  },
+}
+
 // Store global pour exposer flyToStage en dehors du Canvas
 let globalFlyToStage: ((stage: PierreStage) => void) | null = null
 
@@ -203,6 +224,9 @@ function PierreScene() {
   const controlsRef = useRef<any>(null)
   const [hoveredObjects, setHoveredObjects] = useState<THREE.Object3D[]>([])
 
+  // Configuration responsive pour la caméra
+  const { isMobile } = useResponsive()
+
   // Store Pierre pour l'état de la scène
   const currentStage = usePierreStore((s) => s.currentStage)
   const setCurrentStage = usePierreStore((s) => s.setCurrentStage)
@@ -260,6 +284,7 @@ function PierreScene() {
 
   /**
    * Transition de la caméra vers une zone spécifique.
+   * Utilise les positions mobile si disponibles sur mobile.
    */
   const flyToStage = useCallback(
     (stage: PierreStage) => {
@@ -267,7 +292,9 @@ function PierreScene() {
         return
       }
 
-      const stageConfig = STAGE_POSITIONS[stage]
+      // Utiliser les positions mobile si disponibles, sinon les positions desktop
+      const mobileConfig = isMobile ? STAGE_POSITIONS_MOBILE[stage] : undefined
+      const stageConfig = mobileConfig || STAGE_POSITIONS[stage]
       if (!stageConfig) {
         return
       }
@@ -311,7 +338,7 @@ function PierreScene() {
         })
       }
     },
-    [camera, isCameraMoving, setCurrentStage, setIsCameraMoving]
+    [camera, isCameraMoving, isMobile, setCurrentStage, setIsCameraMoving]
   )
 
   // Exposer flyToStage globalement pour le bandeau

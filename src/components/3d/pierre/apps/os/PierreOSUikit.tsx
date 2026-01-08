@@ -1,7 +1,7 @@
 /**
- * JoanOSUikit - Simulation Windows OS avec @pmndrs/uikit.
+ * PierreOSUikit - Simulation Windows OS avec @pmndrs/uikit.
  *
- * Version native 3D de JoanOS utilisant uikit au lieu de Html de drei.
+ * Version native 3D de PierreOS utilisant uikit au lieu de Html de drei.
  * Rendu directement en Three.js pour une meilleure intégration visuelle.
  */
 
@@ -25,6 +25,7 @@ import {
   Target,
   Joystick,
 } from '@react-three/uikit-lucide'
+import type { MonitorResponsiveConfig } from '@hooks/useResponsive'
 
 // Types
 type IconComponent = typeof User
@@ -38,9 +39,21 @@ interface WindowState {
   zIndex: number
 }
 
-interface JoanOSUikitProps {
+interface PierreOSUikitProps {
   /** Callback pour naviguer vers le Hub 3D */
   onNavigateToHub?: () => void
+  /** Configuration responsive pour adapter l'UI selon l'appareil */
+  responsiveConfig?: MonitorResponsiveConfig
+}
+
+// Valeurs par défaut pour le responsive (desktop)
+const DEFAULT_RESPONSIVE: MonitorResponsiveConfig = {
+  pixelSize: 0.00102,
+  uiScale: 1,
+  windowWidth: 500,
+  windowHeight: 400,
+  iconSize: 80,
+  baseFontSize: 11,
 }
 
 // Configuration des fenêtres
@@ -81,17 +94,22 @@ const COLORS = {
 function DesktopIcon({
   Icon,
   label,
-  onDoubleClick
+  onDoubleClick,
+  iconSize = 80,
+  baseFontSize = 11,
 }: {
   Icon: IconComponent
   label: string
   onDoubleClick: () => void
+  iconSize?: number
+  baseFontSize?: number
 }) {
+  const iconDimension = Math.round(iconSize * 0.4) // 40% de la taille du conteneur
   return (
     <Container
       flexDirection="column"
       alignItems="center"
-      width={80}
+      width={iconSize}
       padding={8}
       borderRadius={4}
       hover={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
@@ -99,8 +117,8 @@ function DesktopIcon({
       cursor="pointer"
       onDblClick={onDoubleClick}
     >
-      <Icon width={32} height={32} color={COLORS.text} marginBottom={4} />
-      <Text fontSize={11} color={COLORS.text} textAlign="center">{label}</Text>
+      <Icon width={iconDimension} height={iconDimension} color={COLORS.text} marginBottom={4} />
+      <Text fontSize={baseFontSize} color={COLORS.text} textAlign="center">{label}</Text>
     </Container>
   )
 }
@@ -116,6 +134,8 @@ function Window({
   onClose,
   onMinimize,
   onFocus,
+  windowWidth = 500,
+  windowHeight = 400,
 }: {
   title: string
   Icon: IconComponent
@@ -124,14 +144,16 @@ function Window({
   onClose: () => void
   onMinimize: () => void
   onFocus: () => void
+  windowWidth?: number
+  windowHeight?: number
 }) {
   return (
     <Container
       positionType="absolute"
       positionTop={60}
       positionLeft={40}
-      width={500}
-      height={400}
+      width={windowWidth}
+      height={windowHeight}
       flexDirection="column"
       backgroundColor={COLORS.surface}
       borderRadius={8}
@@ -428,9 +450,12 @@ function TaskbarApp({
 }
 
 /**
- * Composant JoanOSUikit - OS complet
+ * Composant PierreOSUikit - OS complet
  */
-export function JoanOSUikit({ onNavigateToHub }: JoanOSUikitProps) {
+export function PierreOSUikit({ onNavigateToHub, responsiveConfig }: PierreOSUikitProps) {
+  // Utiliser la config responsive ou les valeurs par défaut
+  const config = responsiveConfig || DEFAULT_RESPONSIVE
+
   // État des fenêtres
   const [windows, setWindows] = useState<Map<string, WindowState>>(() => {
     const map = new Map<string, WindowState>()
@@ -553,6 +578,8 @@ export function JoanOSUikit({ onNavigateToHub }: JoanOSUikitProps) {
               Icon={item.Icon}
               label={item.label}
               onDoubleClick={() => openWindow(item.id)}
+              iconSize={config.iconSize}
+              baseFontSize={config.baseFontSize}
             />
           ))}
         </Container>
@@ -569,6 +596,8 @@ export function JoanOSUikit({ onNavigateToHub }: JoanOSUikitProps) {
               onClose={() => closeWindow(win.id)}
               onMinimize={() => minimizeWindow(win.id)}
               onFocus={() => focusWindow(win.id)}
+              windowWidth={config.windowWidth}
+              windowHeight={config.windowHeight}
             >
               {renderWindowContent(win.id)}
             </Window>
@@ -674,4 +703,4 @@ export function JoanOSUikit({ onNavigateToHub }: JoanOSUikitProps) {
   )
 }
 
-export default JoanOSUikit
+export default PierreOSUikit

@@ -1,5 +1,5 @@
 /**
- * WindowManager - Gestion des fenêtres pour JoanOS.
+ * WindowManager - Gestion des fenêtres pour PierreOS.
  * Adapté du projet joan-os de jrefusta.
  */
 

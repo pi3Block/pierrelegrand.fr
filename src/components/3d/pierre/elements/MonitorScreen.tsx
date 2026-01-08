@@ -2,7 +2,7 @@
  * MonitorScreen - Moniteur avec écran interactif.
  *
  * Composant réutilisable pour les deux moniteurs:
- * - Gauche: JoanOS (simulation Windows)
+ * - Gauche: PierreOS (simulation Windows)
  * - Droite: Art Gallery (galerie 3D) - À implémenter
  */
 
@@ -11,7 +11,7 @@ import { useGLTF, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
 import { useBakedMaterials } from '../contexts/BakedMaterialContext'
-import { JoanOS } from '../apps/os'
+import { PierreOS } from '../apps/os'
 import { ArtGallery } from '../apps/gallery'
 import { useGameStore } from '@stores/gameStore'
 
@@ -87,7 +87,7 @@ export function MonitorScreen({ type, onHover, onSelect }: MonitorScreenProps) {
   // Rendu du contenu de l'écran selon le type
   const renderScreenContent = () => {
     if (type === 'left') {
-      return <JoanOS onNavigateToHub={handleNavigateToHub} />
+      return <PierreOS onNavigateToHub={handleNavigateToHub} />
     }
     // Moniteur droit: Art Gallery
     return <ArtGallery onNavigateToHub={handleNavigateToHub} />
