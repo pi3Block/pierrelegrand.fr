@@ -41,28 +41,34 @@
   transform: translateY(0);
 }
 
-/* Bouton retour */
-.backButton {
+/* Bouton retour flottant (toujours visible quand focalisé) */
+.floatingBackButton {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1001;
   color: #fff;
-  font-size: 1.5vw;
+  font-size: 14px;
   text-align: center;
   user-select: none;
   cursor: pointer;
-  margin: 0 1vw;
   transition: all 0.2s ease-in-out;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(10, 51, 98, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.4);
   border-radius: 8px;
-  padding: 6px 16px;
+  padding: 10px 20px;
   font-family: 'Outfit', 'Inter', sans-serif;
   font-weight: 700;
   letter-spacing: 0.05em;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.backButton:hover {
-  font-size: 1.6vw;
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.6);
+.floatingBackButton:hover {
+  background: rgba(10, 51, 98, 1);
+  border-color: rgba(255, 255, 255, 0.8);
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
 .bannerLink {

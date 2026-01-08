@@ -7,6 +7,20 @@
 
 import { useCallback, useState } from 'react'
 import { Container, Text, DefaultProperties } from '@react-three/uikit'
+import {
+  Gamepad2,
+  Globe,
+  Bird,
+  Joystick,
+  Monitor,
+  Image,
+  ChevronLeft,
+  ChevronRight,
+  Landmark,
+  LogOut,
+} from '@react-three/uikit-lucide'
+
+type IconComponent = typeof Gamepad2
 
 interface ArtGalleryUikitProps {
   /** Callback pour naviguer vers le Hub 3D */
@@ -18,7 +32,7 @@ interface Artwork {
   title: string
   artist: string
   description: string
-  icon: string
+  Icon: IconComponent
   tags: string[]
 }
 
@@ -29,7 +43,7 @@ const ARTWORKS: Artwork[] = [
     title: '3D Portfolio',
     artist: 'Pierre Legrand',
     description: 'An immersive 3D portfolio featuring multiple biomes, physics-based interactions, and a character controller for exploration.',
-    icon: '🎮',
+    Icon: Gamepad2,
     tags: ['React', 'R3F', 'Rapier', 'Zustand'],
   },
   {
@@ -37,7 +51,7 @@ const ARTWORKS: Artwork[] = [
     title: 'Procedural World',
     artist: 'Pierre Legrand',
     description: 'A procedurally generated terrain system with heightmaps, biome transitions, water systems, and instanced decorations.',
-    icon: '🌍',
+    Icon: Globe,
     tags: ['Three.js', 'GLSL', 'Noise', 'LOD'],
   },
   {
@@ -45,7 +59,7 @@ const ARTWORKS: Artwork[] = [
     title: 'Angry Birds 3D',
     artist: 'Pierre Legrand',
     description: 'A physics-based destruction game inspired by Angry Birds, built with Rapier physics and GSAP animations.',
-    icon: '🐦',
+    Icon: Bird,
     tags: ['Rapier', 'GSAP', 'Physics', 'R3F'],
   },
   {
@@ -53,7 +67,7 @@ const ARTWORKS: Artwork[] = [
     title: 'Arcade Collection',
     artist: 'Pierre Legrand',
     description: 'Classic arcade games (Snake, Tetris, Breakout) reimplemented in TypeScript with canvas rendering.',
-    icon: '🕹️',
+    Icon: Joystick,
     tags: ['Canvas', 'TypeScript', 'Games'],
   },
   {
@@ -61,7 +75,7 @@ const ARTWORKS: Artwork[] = [
     title: 'Desktop Experience',
     artist: 'Pierre Legrand',
     description: 'A Windows-inspired desktop interface built with uikit, featuring draggable windows and interactive applications.',
-    icon: '🖥️',
+    Icon: Monitor,
     tags: ['uikit', 'R3F', 'UI/UX'],
   },
   {
@@ -69,7 +83,7 @@ const ARTWORKS: Artwork[] = [
     title: 'Virtual Gallery',
     artist: 'Pierre Legrand',
     description: 'This very art gallery you are viewing! A virtual museum experience to showcase projects.',
-    icon: '🖼️',
+    Icon: Image,
     tags: ['uikit', 'Design', 'Interactive'],
   },
 ]
@@ -128,7 +142,7 @@ export function ArtGalleryUikit({ onNavigateToHub }: ArtGalleryUikitProps) {
         >
           {/* Logo */}
           <Container flexDirection="row" alignItems="center" gap={12}>
-            <Text fontSize={24}>🏛️</Text>
+            <Landmark width={24} height={24} color={COLORS.text} />
             <Text fontSize={18} color={COLORS.text} fontWeight="bold" letterSpacing={2}>
               GALLERY
             </Text>
@@ -149,7 +163,7 @@ export function ArtGalleryUikit({ onNavigateToHub }: ArtGalleryUikitProps) {
               cursor="pointer"
               onClick={goToPrev}
             >
-              <Text fontSize={16} color={COLORS.text}>←</Text>
+              <ChevronLeft width={16} height={16} color={COLORS.text} />
             </Container>
             <Container
               width={40}
@@ -164,7 +178,7 @@ export function ArtGalleryUikit({ onNavigateToHub }: ArtGalleryUikitProps) {
               cursor="pointer"
               onClick={goToNext}
             >
-              <Text fontSize={16} color={COLORS.text}>→</Text>
+              <ChevronRight width={16} height={16} color={COLORS.text} />
             </Container>
           </Container>
         </Container>
@@ -204,7 +218,7 @@ export function ArtGalleryUikit({ onNavigateToHub }: ArtGalleryUikitProps) {
                   justifyContent="center"
                   alignItems="center"
                 >
-                  <Text fontSize={64}>{currentArtwork.icon}</Text>
+                  <currentArtwork.Icon width={64} height={64} color={COLORS.text} />
                 </Container>
               </Container>
             </Container>
@@ -303,11 +317,11 @@ export function ArtGalleryUikit({ onNavigateToHub }: ArtGalleryUikitProps) {
 
           {/* Navigation Hint */}
           <Container flexDirection="row" alignItems="center" gap={8}>
-            <Container paddingX={8} paddingY={2} backgroundColor="rgba(255,255,255,0.1)" borderRadius={4}>
-              <Text fontSize={10} color={COLORS.textMuted} fontFamily="monospace">←</Text>
+            <Container paddingX={8} paddingY={4} backgroundColor="rgba(255,255,255,0.1)" borderRadius={4}>
+              <ChevronLeft width={10} height={10} color={COLORS.textMuted} />
             </Container>
-            <Container paddingX={8} paddingY={2} backgroundColor="rgba(255,255,255,0.1)" borderRadius={4}>
-              <Text fontSize={10} color={COLORS.textMuted} fontFamily="monospace">→</Text>
+            <Container paddingX={8} paddingY={4} backgroundColor="rgba(255,255,255,0.1)" borderRadius={4}>
+              <ChevronRight width={10} height={10} color={COLORS.textMuted} />
             </Container>
             <Text fontSize={11} color={COLORS.textMuted}>Navigate</Text>
           </Container>
@@ -322,7 +336,11 @@ export function ArtGalleryUikit({ onNavigateToHub }: ArtGalleryUikitProps) {
               hover={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
               cursor="pointer"
               onClick={onNavigateToHub}
+              flexDirection="row"
+              alignItems="center"
+              gap={6}
             >
+              <LogOut width={11} height={11} color={COLORS.text} />
               <Text fontSize={11} color={COLORS.text}>Exit Gallery</Text>
             </Container>
           )}

@@ -34,39 +34,41 @@ export function PierreBanner({ onNavigate, onBackToHub, onBackToDefault }: Pierr
   }
 
   return (
-    <header className={`${styles.banner} ${isFocused ? styles.collapsed : ''}`}>
-      {/* Bouton retour (visible uniquement en mode focus) */}
+    <>
+      {/* Bouton retour flottant (visible uniquement en mode focus) */}
       {isFocused && onBackToDefault && (
         <button
-          className={styles.backButton}
+          className={styles.floatingBackButton}
           onClick={onBackToDefault}
         >
           ← BACK
         </button>
       )}
 
-      {NAV_ITEMS.map((item) => (
+      <header className={`${styles.banner} ${isFocused ? styles.collapsed : ''}`}>
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item.id}
+            className={`${styles.bannerLink} ${currentStage === item.id ? styles.active : ''}`}
+            onClick={() => handleNavClick(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+
+        {/* Séparateur visuel */}
+        <span className={styles.separator}>|</span>
+
+        {/* Lien vers le Hub 3D */}
         <button
-          key={item.id}
-          className={`${styles.bannerLink} ${currentStage === item.id ? styles.active : ''}`}
-          onClick={() => handleNavClick(item.id)}
+          className={styles.hubLink}
+          onClick={onBackToHub}
+          title="Explorer les mondes 3D"
         >
-          {item.label}
+          3D WORLDS
         </button>
-      ))}
-
-      {/* Séparateur visuel */}
-      <span className={styles.separator}>|</span>
-
-      {/* Lien vers le Hub 3D */}
-      <button
-        className={styles.hubLink}
-        onClick={onBackToHub}
-        title="Explorer les mondes 3D"
-      >
-        3D WORLDS
-      </button>
-    </header>
+      </header>
+    </>
   )
 }
 

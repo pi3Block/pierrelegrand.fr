@@ -7,12 +7,32 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Container, Text, DefaultProperties } from '@react-three/uikit'
+import {
+  User,
+  Briefcase,
+  Mail,
+  Rocket,
+  Keyboard,
+  X,
+  Minus,
+  Monitor,
+  Globe,
+  Github,
+  Linkedin,
+  Twitter,
+  Gamepad2,
+  Building2,
+  Target,
+  Joystick,
+} from '@react-three/uikit-lucide'
 
 // Types
+type IconComponent = typeof User
+
 interface WindowState {
   id: string
   title: string
-  icon: string
+  Icon: IconComponent
   isOpen: boolean
   isMinimized: boolean
   zIndex: number
@@ -24,21 +44,21 @@ interface JoanOSUikitProps {
 }
 
 // Configuration des fenêtres
-const WINDOW_CONFIGS = [
-  { id: 'about', title: 'About Me', icon: '👤' },
-  { id: 'experience', title: 'Experience', icon: '💼' },
-  { id: 'contact', title: 'Contact', icon: '📧' },
-  { id: 'projects', title: 'Projects', icon: '🚀' },
-  { id: 'credits', title: 'Credits', icon: '⌨️' },
+const WINDOW_CONFIGS: Array<{ id: string; title: string; Icon: IconComponent }> = [
+  { id: 'about', title: 'About Me', Icon: User },
+  { id: 'experience', title: 'Experience', Icon: Briefcase },
+  { id: 'contact', title: 'Contact', Icon: Mail },
+  { id: 'projects', title: 'Projects', Icon: Rocket },
+  { id: 'credits', title: 'Credits', Icon: Keyboard },
 ]
 
 // Icônes du bureau
-const DESKTOP_ICONS = [
-  { id: 'about', label: 'About Me', icon: '👤' },
-  { id: 'experience', label: 'Experience', icon: '💼' },
-  { id: 'contact', label: 'Contact', icon: '📧' },
-  { id: 'projects', label: 'Projects', icon: '🚀' },
-  { id: 'credits', label: 'Credits', icon: '⌨️' },
+const DESKTOP_ICONS: Array<{ id: string; label: string; Icon: IconComponent }> = [
+  { id: 'about', label: 'About Me', Icon: User },
+  { id: 'experience', label: 'Experience', Icon: Briefcase },
+  { id: 'contact', label: 'Contact', Icon: Mail },
+  { id: 'projects', label: 'Projects', Icon: Rocket },
+  { id: 'credits', label: 'Credits', Icon: Keyboard },
 ]
 
 // Couleurs du thème
@@ -59,11 +79,11 @@ const COLORS = {
  * Composant DesktopIcon - Icône du bureau
  */
 function DesktopIcon({
-  icon,
+  Icon,
   label,
   onDoubleClick
 }: {
-  icon: string
+  Icon: IconComponent
   label: string
   onDoubleClick: () => void
 }) {
@@ -79,7 +99,7 @@ function DesktopIcon({
       cursor="pointer"
       onDblClick={onDoubleClick}
     >
-      <Text fontSize={32} marginBottom={4}>{icon}</Text>
+      <Icon width={32} height={32} color={COLORS.text} marginBottom={4} />
       <Text fontSize={11} color={COLORS.text} textAlign="center">{label}</Text>
     </Container>
   )
@@ -90,7 +110,7 @@ function DesktopIcon({
  */
 function Window({
   title,
-  icon,
+  Icon,
   children,
   zIndex,
   onClose,
@@ -98,7 +118,7 @@ function Window({
   onFocus,
 }: {
   title: string
-  icon: string
+  Icon: IconComponent
   children: React.ReactNode
   zIndex: number
   onClose: () => void
@@ -128,7 +148,7 @@ function Window({
         borderTopLeftRadius={8}
         borderTopRightRadius={8}
       >
-        <Text fontSize={14} marginRight={8}>{icon}</Text>
+        <Icon width={14} height={14} color={COLORS.text} marginRight={8} />
         <Text fontSize={12} color={COLORS.text} flexGrow={1}>{title}</Text>
 
         {/* Window Controls */}
@@ -141,7 +161,7 @@ function Window({
           cursor="pointer"
           onClick={() => onMinimize()}
         >
-          <Text fontSize={10} color={COLORS.text}>─</Text>
+          <Minus width={10} height={10} color={COLORS.text} />
         </Container>
         <Container
           width={46}
@@ -153,7 +173,7 @@ function Window({
           borderTopRightRadius={8}
           onClick={() => onClose()}
         >
-          <Text fontSize={10} color={COLORS.text}>✕</Text>
+          <X width={10} height={10} color={COLORS.text} />
         </Container>
       </Container>
 
@@ -245,11 +265,11 @@ function ExperienceContent() {
  * Composant ContactContent - Contenu de la fenêtre Contact
  */
 function ContactContent() {
-  const contacts = [
-    { icon: '📧', label: 'Email', value: 'contact@pierrelegrand.fr' },
-    { icon: '🐙', label: 'GitHub', value: 'github.com/pierrelegrand' },
-    { icon: '💼', label: 'LinkedIn', value: 'linkedin.com/in/pierrelegrand' },
-    { icon: '🐦', label: 'Twitter', value: '@pierrelegrand' },
+  const contacts: Array<{ Icon: IconComponent; label: string; value: string }> = [
+    { Icon: Mail, label: 'Email', value: 'contact@pierrelegrand.fr' },
+    { Icon: Github, label: 'GitHub', value: 'github.com/pierrelegrand' },
+    { Icon: Linkedin, label: 'LinkedIn', value: 'linkedin.com/in/pierrelegrand' },
+    { Icon: Twitter, label: 'Twitter', value: '@pierrelegrand' },
   ]
 
   return (
@@ -266,7 +286,7 @@ function ContactContent() {
           hover={{ backgroundColor: '#3d3d3d' }}
           cursor="pointer"
         >
-          <Text fontSize={24}>{contact.icon}</Text>
+          <contact.Icon width={24} height={24} color={COLORS.text} />
           <Container flexDirection="column" flexGrow={1}>
             <Text fontSize={12} color={COLORS.textMuted}>{contact.label}</Text>
             <Text fontSize={14} color={COLORS.text}>{contact.value}</Text>
@@ -281,11 +301,11 @@ function ContactContent() {
  * Composant ProjectsContent - Contenu de la fenêtre Projects
  */
 function ProjectsContent() {
-  const projects = [
-    { icon: '🎮', title: '3D Portfolio', desc: 'Interactive 3D portfolio with biomes', tags: ['React', 'R3F'] },
-    { icon: '🏗️', title: 'Procedural World', desc: 'Terrain generation with biomes', tags: ['Three.js', 'GLSL'] },
-    { icon: '🎯', title: 'Angry Birds 3D', desc: 'Physics-based destruction game', tags: ['Rapier'] },
-    { icon: '🕹️', title: 'Arcade Games', desc: 'Snake, Tetris, Breakout', tags: ['Canvas', 'TS'] },
+  const projects: Array<{ Icon: IconComponent; title: string; desc: string; tags: string[] }> = [
+    { Icon: Gamepad2, title: '3D Portfolio', desc: 'Interactive 3D portfolio with biomes', tags: ['React', 'R3F'] },
+    { Icon: Building2, title: 'Procedural World', desc: 'Terrain generation with biomes', tags: ['Three.js', 'GLSL'] },
+    { Icon: Target, title: 'Angry Birds 3D', desc: 'Physics-based destruction game', tags: ['Rapier'] },
+    { Icon: Joystick, title: 'Arcade Games', desc: 'Snake, Tetris, Breakout', tags: ['Canvas', 'TS'] },
   ]
 
   return (
@@ -306,7 +326,7 @@ function ProjectsContent() {
             justifyContent="center"
             alignItems="center"
           >
-            <Text fontSize={32}>{project.icon}</Text>
+            <project.Icon width={32} height={32} color={COLORS.text} />
           </Container>
           <Container padding={12} flexDirection="column">
             <Text fontSize={14} color={COLORS.text} fontWeight="bold">{project.title}</Text>
@@ -376,12 +396,12 @@ function CreditsContent() {
  * Composant TaskbarApp - Application dans la barre des tâches
  */
 function TaskbarApp({
-  icon,
+  Icon,
   title,
   isActive,
   onClick,
 }: {
-  icon: string
+  Icon: IconComponent
   title: string
   isActive: boolean
   onClick: () => void
@@ -401,7 +421,7 @@ function TaskbarApp({
       cursor="pointer"
       onClick={onClick}
     >
-      <Text fontSize={16}>{icon}</Text>
+      <Icon width={16} height={16} color={COLORS.text} />
       <Text fontSize={12} color={COLORS.text}>{title}</Text>
     </Container>
   )
@@ -527,12 +547,12 @@ export function JoanOSUikit({ onNavigateToHub }: JoanOSUikitProps) {
           gap={8}
           alignContent="flex-start"
         >
-          {DESKTOP_ICONS.map((icon) => (
+          {DESKTOP_ICONS.map((item) => (
             <DesktopIcon
-              key={icon.id}
-              icon={icon.icon}
-              label={icon.label}
-              onDoubleClick={() => openWindow(icon.id)}
+              key={item.id}
+              Icon={item.Icon}
+              label={item.label}
+              onDoubleClick={() => openWindow(item.id)}
             />
           ))}
         </Container>
@@ -544,7 +564,7 @@ export function JoanOSUikit({ onNavigateToHub }: JoanOSUikitProps) {
             <Window
               key={win.id}
               title={win.title}
-              icon={win.icon}
+              Icon={win.Icon}
               zIndex={win.zIndex}
               onClose={() => closeWindow(win.id)}
               onMinimize={() => minimizeWindow(win.id)}
@@ -568,9 +588,9 @@ export function JoanOSUikit({ onNavigateToHub }: JoanOSUikitProps) {
             zIndexOffset={1000}
           >
             <Container flexDirection="row" flexWrap="wrap" gap={8}>
-              {DESKTOP_ICONS.map((icon) => (
+              {DESKTOP_ICONS.map((item) => (
                 <Container
-                  key={icon.id}
+                  key={item.id}
                   flexDirection="column"
                   alignItems="center"
                   width={90}
@@ -578,10 +598,10 @@ export function JoanOSUikit({ onNavigateToHub }: JoanOSUikitProps) {
                   borderRadius={4}
                   hover={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
                   cursor="pointer"
-                  onClick={() => openWindow(icon.id)}
+                  onClick={() => openWindow(item.id)}
                 >
-                  <Text fontSize={24} marginBottom={4}>{icon.icon}</Text>
-                  <Text fontSize={11} color={COLORS.text} textAlign="center">{icon.label}</Text>
+                  <item.Icon width={24} height={24} color={COLORS.text} marginBottom={4} />
+                  <Text fontSize={11} color={COLORS.text} textAlign="center">{item.label}</Text>
                 </Container>
               ))}
               {onNavigateToHub && (
@@ -595,7 +615,7 @@ export function JoanOSUikit({ onNavigateToHub }: JoanOSUikitProps) {
                   cursor="pointer"
                   onClick={onNavigateToHub}
                 >
-                  <Text fontSize={24} marginBottom={4}>🌍</Text>
+                  <Globe width={24} height={24} color={COLORS.text} marginBottom={4} />
                   <Text fontSize={11} color={COLORS.text} textAlign="center">3D Worlds</Text>
                 </Container>
               )}
@@ -623,7 +643,7 @@ export function JoanOSUikit({ onNavigateToHub }: JoanOSUikitProps) {
             cursor="pointer"
             onClick={() => setStartMenuOpen(!startMenuOpen)}
           >
-            <Text fontSize={20} color={COLORS.text}>⊞</Text>
+            <Monitor width={20} height={20} color={COLORS.text} />
           </Container>
 
           {/* Open Apps */}
@@ -631,7 +651,7 @@ export function JoanOSUikit({ onNavigateToHub }: JoanOSUikitProps) {
             {openWindows.map((win) => (
               <TaskbarApp
                 key={win.id}
-                icon={win.icon}
+                Icon={win.Icon}
                 title={win.title}
                 isActive={activeWindowId === win.id}
                 onClick={() => focusWindow(win.id)}
