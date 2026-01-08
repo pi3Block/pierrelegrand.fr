@@ -56,11 +56,13 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
   const [isActive, setIsActive] = useState(false)
   const [isMoving, setIsMoving] = useState(false)
   const [isPlaced, setIsPlaced] = useState(true) // true = sur le bureau, false = au centre
-  const [cubies, setCubies] = useState<THREE.Object3D[]>([])
+  const [_cubies, setCubies] = useState<THREE.Object3D[]>([])
 
   // Store
   const currentStage = usePierreStore((s) => s.currentStage)
   const setRubikSolved = usePierreStore((s) => s.setRubikSolved)
+  const setShuffleRubikCallback = usePierreStore((s) => s.setShuffleRubikCallback)
+  const setIsRubikShuffling = usePierreStore((s) => s.setIsRubikShuffling)
 
   // Charger le modèle
   const { scene } = useGLTF('/pierre/assets/models/Rubik.glb')
@@ -77,6 +79,10 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
 
   // Ref pour éviter les clics multiples pendant l'animation
   const isAnimating = useRef(false)
+
+  // Refs pour le shuffle
+  const shuffleQueueRef = useRef<Array<{ layer: 'row' | 'col' | 'depth'; number: number; orientation: number }>>([])
+  const isShufflingRef = useRef(false)
 
   // Charger les données des cubies et initialiser
   useEffect(() => {
@@ -408,6 +414,113 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
     },
     [isMoving, checkIfSolved]
   )
+
+  /**
+   * Exécute le prochain mouvement de la file de shuffle.
+   * Version rapide de rotateCubeLayer (0.12s au lieu de 0.5s).
+   */
+  const executeNextShuffleMove = useCallback(() => {
+    if (shuffleQueueRef.current.length === 0) {
+      isShufflingRef.current = false
+      setIsMoving(false)
+      setIsRubikShuffling(false)
+      return
+    }
+
+    const move = shuffleQueueRef.current.shift()!
+    if (!groupRef.current) return
+
+    const allCubies = groupRef.current.children.filter((child: any) => child.isRubik)
+
+    const cubiesToRotate = allCubies.filter((cubie: any) => {
+      if (move.layer === 'row') return cubie.row === move.number
+      if (move.layer === 'col') return cubie.col === move.number
+      return cubie.depth === move.number
+    })
+
+    let axis: 'x' | 'y' | 'z' = 'y'
+    if (move.layer === 'row') axis = 'y'
+    else if (move.layer === 'col') axis = 'x'
+    else axis = 'z'
+
+    const targetAngle = ((move.orientation ? 1 : -1) * Math.PI) / 2
+    const pivot = pivotRef.current
+
+    pivot.position.set(0, 0, 0)
+    pivot.rotation.set(0, 0, 0)
+    pivot.updateMatrixWorld()
+
+    if (groupRef.current && !groupRef.current.children.includes(pivot)) {
+      groupRef.current.add(pivot)
+    }
+
+    cubiesToRotate.forEach((cubie) => {
+      pivot.attach(cubie)
+    })
+
+    gsap.to(pivot.rotation, {
+      [axis]: targetAngle,
+      duration: 0.12,
+      ease: 'power1.inOut',
+      onComplete: () => {
+        pivot.updateMatrixWorld()
+        cubiesToRotate.forEach((cubie: any) => {
+          cubie.updateMatrixWorld()
+          groupRef.current?.attach(cubie)
+          updateCubieAfterRotation(cubie, move.layer, move.orientation)
+        })
+
+        // Continuer avec le prochain mouvement
+        executeNextShuffleMove()
+      },
+    })
+  }, [setIsRubikShuffling])
+
+  /**
+   * Mélange le cube avec 20 mouvements aléatoires.
+   */
+  const shuffleCube = useCallback(() => {
+    if (isMoving || isShufflingRef.current || !groupRef.current) return
+
+    isShufflingRef.current = true
+    setIsMoving(true)
+    setIsRubikShuffling(true)
+
+    // Générer 20 mouvements aléatoires
+    const moves: Array<{ layer: 'row' | 'col' | 'depth'; number: number; orientation: number }> = []
+    const layers: Array<'row' | 'col' | 'depth'> = ['row', 'col', 'depth']
+
+    for (let i = 0; i < 20; i++) {
+      moves.push({
+        layer: layers[Math.floor(Math.random() * 3)]!,
+        number: Math.floor(Math.random() * 3) + 1, // 1, 2, ou 3
+        orientation: Math.floor(Math.random() * 2), // 0 ou 1
+      })
+    }
+
+    shuffleQueueRef.current = moves
+    executeNextShuffleMove()
+  }, [isMoving, executeNextShuffleMove, setIsRubikShuffling])
+
+  // Enregistrer le callback shuffle dans le store quand le cube est actif
+  useEffect(() => {
+    console.log('[DEBUG] RubiksCube useEffect - isActive:', isActive)
+    if (isActive) {
+      console.log('[DEBUG] Registering shuffle callback')
+      // Créer la fonction callback
+      const callback = () => {
+        console.log('[DEBUG] Shuffle callback executed!')
+        shuffleCube()
+      }
+      setShuffleRubikCallback(callback)
+    } else {
+      console.log('[DEBUG] Clearing shuffle callback')
+      setShuffleRubikCallback(null)
+    }
+    return () => {
+      setShuffleRubikCallback(null)
+    }
+  }, [isActive, shuffleCube, setShuffleRubikCallback])
 
   // Handler R3F pour pointerdown sur le cube (en mode jeu)
   const handleR3FPointerDown = useCallback((e: any) => {

@@ -7,6 +7,9 @@
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
 import styles from './PierreBanner.module.css'
 
+// Emoji dé à 6 faces pour le bouton
+const SHUFFLE_ICON = '🎲'
+
 // Configuration des sections de navigation (style Joan)
 const NAV_ITEMS: { id: PierreStage; label: string }[] = [
   { id: 'leftMonitor', label: 'ABOUT ME' },
@@ -27,7 +30,11 @@ interface PierreBannerProps {
  */
 export function PierreBanner({ onNavigate, onBackToHub, onBackToDefault }: PierreBannerProps) {
   const currentStage = usePierreStore((s) => s.currentStage)
+  const isRubikShuffling = usePierreStore((s) => s.isRubikShuffling)
+  const shuffleRubik = usePierreStore((s) => s.shuffleRubik)
+
   const isFocused = currentStage !== 'default'
+  const isRubikMode = currentStage === 'rubikGroup'
 
   const handleNavClick = (id: PierreStage) => {
     onNavigate(id)
@@ -42,6 +49,17 @@ export function PierreBanner({ onNavigate, onBackToHub, onBackToDefault }: Pierr
           onClick={onBackToDefault}
         >
           ← BACK
+        </button>
+      )}
+
+      {/* Bouton Mélanger (visible uniquement en mode Rubik) */}
+      {isRubikMode && (
+        <button
+          className={`${styles.floatingShuffleButton} ${isRubikShuffling ? styles.disabled : ''}`}
+          onClick={shuffleRubik}
+          disabled={isRubikShuffling}
+        >
+          {SHUFFLE_ICON} MÉLANGER
         </button>
       )}
 

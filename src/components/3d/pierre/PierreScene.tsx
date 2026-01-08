@@ -95,7 +95,8 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
   const controlsRef = useRef<any>(null)
   const [hoveredObjects, setHoveredObjects] = useState<THREE.Object3D[]>([])
 
-  const currentStage = usePierreStore((s) => s.currentStage)
+  // currentStage utilisé uniquement par PierreWorld via props
+  usePierreStore((s) => s.currentStage)
   const setCurrentStage = usePierreStore((s) => s.setCurrentStage)
   const isCameraMoving = usePierreStore((s) => s.isCameraMoving)
   const setIsCameraMoving = usePierreStore((s) => s.setIsCameraMoving)

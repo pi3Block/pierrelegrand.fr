@@ -354,16 +354,14 @@ function PierreScene() {
 
       {/* Post-processing - désactivé en mode interactif */}
       <EffectComposer autoClear={false}>
-        {!isInInteractiveZone && hoveredObjects.length > 0 && (
-          <Outline
-            selection={hoveredObjects}
-            visibleEdgeColor={0xffffff}
-            hiddenEdgeColor={0xffffff}
-            edgeStrength={10}
-            blendFunction={BlendFunction.SCREEN}
-            xRay={true}
-          />
-        )}
+        <Outline
+          selection={!isInInteractiveZone && hoveredObjects.length > 0 ? hoveredObjects : []}
+          visibleEdgeColor={0xffffff}
+          hiddenEdgeColor={0xffffff}
+          edgeStrength={10}
+          blendFunction={BlendFunction.SCREEN}
+          xRay={true}
+        />
         <SMAA />
       </EffectComposer>
 

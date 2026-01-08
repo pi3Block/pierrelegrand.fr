@@ -37,13 +37,18 @@ interface PierreState {
   
   // Rubik's Cube
   rubikSolved: boolean
-  
+  shuffleRubikCallback: (() => void) | null
+  isRubikShuffling: boolean
+
   // Actions
   setCurrentStage: (stage: PierreStage) => void
   setIsCameraMoving: (moving: boolean) => void
   setControlsEnabled: (enabled: boolean) => void
   setMuted: (muted: boolean) => void
   setRubikSolved: (solved: boolean) => void
+  setShuffleRubikCallback: (callback: (() => void) | null) => void
+  setIsRubikShuffling: (shuffling: boolean) => void
+  shuffleRubik: () => void
   goBack: () => void
   reset: () => void
 }
@@ -59,6 +64,8 @@ export const usePierreStore = create<PierreState>((set, get) => ({
   controlsEnabled: true,
   isMuted: false,
   rubikSolved: false,
+  shuffleRubikCallback: null,
+  isRubikShuffling: false,
 
   // Actions
   setCurrentStage: (stage) => 
@@ -78,8 +85,24 @@ export const usePierreStore = create<PierreState>((set, get) => ({
   setMuted: (muted) => 
     set({ isMuted: muted }),
 
-  setRubikSolved: (solved) => 
+  setRubikSolved: (solved) =>
     set({ rubikSolved: solved }),
+
+  setShuffleRubikCallback: (callback) =>
+    set(() => ({ shuffleRubikCallback: callback })),
+
+  setIsRubikShuffling: (shuffling) =>
+    set({ isRubikShuffling: shuffling }),
+
+  shuffleRubik: () => {
+    const { shuffleRubikCallback } = get()
+    console.log('[DEBUG] shuffleRubik called, callback:', shuffleRubikCallback)
+    if (shuffleRubikCallback) {
+      shuffleRubikCallback()
+    } else {
+      console.warn('[DEBUG] No shuffle callback registered!')
+    }
+  },
 
   goBack: () => {
     const { previousStage } = get()
