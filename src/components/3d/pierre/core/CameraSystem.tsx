@@ -48,7 +48,7 @@ const STAGE_PRESETS: Record<PierreStage, CameraPreset> = {
     fov: 20,
   },
   arcadeMachine: {
-    position: [-4.5, 5.5, 2.3009],
+    position: [-2.5, 4.8, 2.3009],
     target: [3.25776, 2.74209, 2.3009],
   },
   leftMonitor: {
@@ -103,6 +103,8 @@ const CONTROLS_CONFIG = {
   maxAzimuthAngle: Math.PI / 30,
   smoothTime: 0.25,
   draggingSmoothTime: 0.1,
+  // Durée de la transition animée (en secondes) - plus bas = plus rapide
+  transitionSmoothTime: 0.6,
 }
 
 /**
@@ -172,10 +174,10 @@ export function CameraSystem({
       setIsCameraMoving(true)
       setCurrentStage(stage)
 
-      // Désactiver le damping pendant la transition
-      controlsRef.current.smoothTime = 0
+      // Utiliser un smoothTime plus long pour une transition fluide
+      controlsRef.current.smoothTime = CONTROLS_CONFIG.transitionSmoothTime
 
-      // Transition avec CameraControls
+      // Transition avec CameraControls (true = animé)
       await controlsRef.current.setLookAt(
         preset.position[0],
         preset.position[1],
@@ -186,7 +188,7 @@ export function CameraSystem({
         true
       )
 
-      // Réactiver le damping
+      // Remettre le smoothTime normal pour les contrôles utilisateur
       controlsRef.current.smoothTime = CONTROLS_CONFIG.smoothTime
 
       console.log('[CameraSystem] ✅ flyToStage DONE', { stage })

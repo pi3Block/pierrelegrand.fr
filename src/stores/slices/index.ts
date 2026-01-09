@@ -6,3 +6,6 @@
 
 export { createCameraSlice, cameraSelectors } from './cameraSlice'
 export type { CameraSlice, CameraPosition, CameraTransition } from './cameraSlice'
+
+export { createInteractionSlice, interactionSelectors } from './interactionSlice'
+export type { InteractionSlice, CursorStyle } from './interactionSlice'

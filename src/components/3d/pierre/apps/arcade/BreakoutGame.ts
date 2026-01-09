@@ -99,7 +99,7 @@ export class BreakoutGame {
       y: 300,
       width: 16,
       height: 16,
-      speed: 2,
+      speed: 4, // Vitesse initiale augmentée (était 2)
       dx: 0,
       dy: 0,
     }
@@ -197,6 +197,16 @@ export class BreakoutGame {
           case 'R':
             this.currentScore += 7
             break
+        }
+
+        // Accélération progressive : +0.1 à chaque brique cassée (max 8)
+        const speedIncrease = 0.1
+        const maxSpeed = 8
+        const currentSpeedMagnitude = Math.sqrt(this.ball.dx * this.ball.dx + this.ball.dy * this.ball.dy)
+        if (currentSpeedMagnitude < maxSpeed) {
+          const factor = (currentSpeedMagnitude + speedIncrease) / currentSpeedMagnitude
+          this.ball.dx *= factor
+          this.ball.dy *= factor
         }
 
         this.updateScore()
@@ -307,14 +317,15 @@ export class BreakoutGame {
 
   private resetLevel(): void {
     this.currentScore = 0
+    this.ball.speed = 4 // Reset vitesse initiale
     this.updateScore()
     this.bricks = []
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height)
     this.createLevel(this.level)
     this.paddle.x = this.canvas.width / 2 - this.brickWidth / 2
     this.paddle.y = 600
-    this.ball.dx = 2
-    this.ball.dy = 2
+    this.ball.dx = 4 // Vitesse initiale augmentée
+    this.ball.dy = 4
   }
 
   private updateScore(): void {
@@ -343,8 +354,8 @@ export class BreakoutGame {
 
   start(): void {
     this.createLevel(this.level)
-    this.ball.dx = 2
-    this.ball.dy = 2
+    this.ball.dx = 4 // Vitesse initiale augmentée
+    this.ball.dy = 4
     this.loopId = setInterval(this.loop, this.loopInterval)
   }
 }

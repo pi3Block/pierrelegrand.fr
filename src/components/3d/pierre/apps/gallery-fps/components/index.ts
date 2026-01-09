@@ -1,0 +1,8 @@
+/**
+ * Gallery FPS Components - Exports
+ */
+
+export { GalleryRoom } from './GalleryRoom'
+export { Paintings } from './Paintings'
+export { Vases } from './Vases'
+export { PaintingInfo3D } from './PaintingInfo3D'

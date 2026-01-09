@@ -8,6 +8,7 @@ import { DebugOverlay } from '@components/ui/DebugOverlay'
 import { BiomeIndicator } from '@components/ui/BiomeIndicator'
 import { Crosshair } from '@components/ui/Crosshair'
 import { PierreBanner } from '@components/3d/pierre/ui/PierreBanner'
+import { GalleryFPSOverlay } from '@components/3d/pierre/apps/gallery-fps'
 import { getGlobalFlyToStage } from '@components/3d/pierre/PierreScene'
 import type { PierreStage } from '@components/3d/pierre/stores/pierreStore'
 import { useGameStore } from '@stores/gameStore'
@@ -68,6 +69,9 @@ export default function App() {
       {isPierreLevel && (
         <PierreBanner onNavigate={handlePierreNavigate} onBackToHub={handleBackToHub} onBackToDefault={handleBackToDefault} />
       )}
+
+      {/* Controles mobiles pour la galerie FPS (visible uniquement sur mobile dans la galerie) */}
+      {isPierreLevel && <GalleryFPSOverlay />}
 
       {/* Canvas 3D unique pour tous les niveaux */}
       <div className="canvas-container">

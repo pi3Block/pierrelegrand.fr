@@ -39,10 +39,10 @@ const SHUFFLE_ICON = '🎲'
 
 // Configuration des sections de navigation (style Joan)
 const NAV_ITEMS: { id: PierreStage; label: string }[] = [
-  { id: 'leftMonitor', label: 'ABOUT ME' },
-  { id: 'rightMonitor', label: 'PROJECTS' },
+  { id: 'leftMonitor', label: 'À PROPOS' },
+  { id: 'rightMonitor', label: 'GALERIE' },
   { id: 'arcadeMachine', label: 'ARCADE MACHINE' },
-  { id: 'whiteboard', label: 'WHITEBOARD' },
+  { id: 'whiteboard', label: 'TABLEAU BLANC' },
   { id: 'rubikGroup', label: "RUBIK'S CUBE" },
 ]
 
@@ -127,7 +127,7 @@ export function PierreBanner({ onNavigate, onBackToHub, onBackToDefault }: Pierr
           onClick={onBackToHub}
           title="Explorer les mondes 3D"
         >
-          3D WORLDS
+          HUB 3D
         </button>
       </header>
     </>

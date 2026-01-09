@@ -904,6 +904,15 @@ function TaskbarApp({
 /**
  * Composant PierreOSUikit - OS complet
  */
+
+// Configuration des fonts avec support des accents français (fichiers MSDF)
+const FONT_FAMILIES = {
+  roboto: {
+    light: '/fonts/Roboto%20Light.json',
+    900: '/fonts/Roboto%20Black.json',
+  },
+}
+
 export function PierreOSUikit({ onNavigateToHub, responsiveConfig }: PierreOSUikitProps) {
   // Utiliser la config responsive ou les valeurs par défaut
   const config = responsiveConfig || DEFAULT_RESPONSIVE
@@ -1028,6 +1037,9 @@ export function PierreOSUikit({ onNavigateToHub, responsiveConfig }: PierreOSUik
         width="100%"
         height="100%"
         positionType="relative"
+        fontFamilies={FONT_FAMILIES}
+        fontFamily="roboto"
+        fontWeight="light"
       >
         {/* Desktop Icons */}
         <Container
@@ -1048,6 +1060,26 @@ export function PierreOSUikit({ onNavigateToHub, responsiveConfig }: PierreOSUik
               baseFontSize={config.baseFontSize}
             />
           ))}
+        </Container>
+
+        {/* Desktop Quote - Citation inspirante */}
+        <Container
+          positionType="absolute"
+          positionBottom={70}
+          positionRight={24}
+          maxWidth={400}
+          padding={20}
+          backgroundColor="rgba(0,0,0,0.3)"
+          borderRadius={8}
+          flexDirection="column"
+          gap={10}
+        >
+          <Text fontSize={14} color="rgba(255,255,255,0.85)" lineHeight={1.6} textAlign="right">
+            {"Pour que ma vie s'améliore, je dois m'améliorer.\nPour que les choses changent, je dois changer.\nJe suis à moi.\nC'est ma vie et je suis le créateur de mon destin."}
+          </Text>
+          <Text fontSize={12} color="rgba(255,255,255,0.5)" textAlign="right">
+            — Benjamin Franklin
+          </Text>
         </Container>
 
         {/* Windows - Afficher seulement la fenêtre active pour éviter les superpositions transparentes */}

@@ -24,6 +24,8 @@ export {
   useHoveredObjects,
 } from './InteractionContext'
 
+export { EventGateProvider, useEventGate } from './EventGate'
+
 export { BvhProvider } from './BvhProvider'
 
 // Phase 3: LOD System

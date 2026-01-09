@@ -13,7 +13,7 @@ import * as THREE from 'three'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
 import { useBakedMaterials } from '../contexts/BakedMaterialContext'
 import { PierreOSUikit } from '../apps/os'
-import { ArtGalleryUikit } from '../apps/gallery'
+import { GalleryFPSApp } from '../apps/gallery-fps'
 import { useGameStore } from '@stores/gameStore'
 import { useMonitorResponsive } from '@hooks/useResponsive'
 
@@ -161,27 +161,31 @@ export function MonitorScreenUikit({ type, onHover, onSelect }: MonitorScreenUik
           </mesh>
         )}
 
-        <FontFamilyProvider
-          fontFamilies={{
-            inter: {
-              normal: INTER_FONT_URL,
-            },
-          }}
-        >
-          <Root
-            sizeX={MONITOR_SIZE_X}
-            sizeY={MONITOR_SIZE_Y}
-            pixelSize={responsiveConfig.pixelSize}
-            flexDirection="column"
-            pointerEvents={isActive ? 'listener' : 'none'}
+        {/* Moniteur gauche: PierreOS via uikit Root */}
+        {type === 'left' && (
+          <FontFamilyProvider
+            fontFamilies={{
+              inter: {
+                normal: INTER_FONT_URL,
+              },
+            }}
           >
-            {type === 'left' ? (
+            <Root
+              sizeX={MONITOR_SIZE_X}
+              sizeY={MONITOR_SIZE_Y}
+              pixelSize={responsiveConfig.pixelSize}
+              flexDirection="column"
+              pointerEvents={isActive ? 'listener' : 'none'}
+            >
               <PierreOSUikit onNavigateToHub={handleNavigateToHub} responsiveConfig={responsiveConfig} />
-            ) : (
-              <ArtGalleryUikit onNavigateToHub={handleNavigateToHub} responsiveConfig={responsiveConfig} />
-            )}
-          </Root>
-        </FontFamilyProvider>
+            </Root>
+          </FontFamilyProvider>
+        )}
+
+        {/* Moniteur droit: Galerie FPS via RenderTexture (drei) */}
+        {type === 'right' && (
+          <GalleryFPSApp onNavigateToHub={handleNavigateToHub} responsiveConfig={responsiveConfig} />
+        )}
       </group>
     </group>
   )
