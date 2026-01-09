@@ -905,11 +905,13 @@ function TaskbarApp({
  * Composant PierreOSUikit - OS complet
  */
 
+import { FONTS } from '@config/assetPaths'
+
 // Configuration des fonts avec support des accents français (fichiers MSDF)
 const FONT_FAMILIES = {
   roboto: {
-    light: '/fonts/Roboto%20Light.json',
-    900: '/fonts/Roboto%20Black.json',
+    light: FONTS.ROBOTO_LIGHT_JSON,
+    900: FONTS.ROBOTO_BLACK_JSON,
   },
 }
 

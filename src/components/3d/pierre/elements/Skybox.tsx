@@ -9,6 +9,7 @@ import { useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useTexture } from '@react-three/drei'
 import * as THREE from 'three'
+import { PIERRE } from '@config/assetPaths'
 
 // Shaders (importés comme chaînes grâce à vite-plugin-glsl)
 // @ts-ignore - GLSL importé via vite-plugin-glsl
@@ -29,7 +30,7 @@ export function Skybox() {
 
   // Charger la texture du ciel
   // Note: On utilise une texture PNG de fallback si KTX2 n'est pas disponible
-  const skyTexture = useTexture('/pierre/assets/textures/perlin.png')
+  const skyTexture = useTexture(PIERRE.TEXTURES.PERLIN)
   
   // Configurer la texture
   useMemo(() => {

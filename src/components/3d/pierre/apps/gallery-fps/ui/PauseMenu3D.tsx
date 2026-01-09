@@ -9,6 +9,7 @@ import { useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Text } from '@react-three/drei'
 import * as THREE from 'three'
+import { FONTS } from '@config/assetPaths'
 
 interface PauseMenu3DProps {
   visible: boolean
@@ -53,7 +54,7 @@ export function PauseMenu3D({ visible }: PauseMenu3DProps) {
         color="#4ecdc4"
         anchorX="center"
         anchorY="middle"
-        font="/fonts/Roboto-Light.ttf"
+        font={FONTS.ROBOTO_LIGHT}
       >
         PAUSE
       </Text>
@@ -71,7 +72,7 @@ export function PauseMenu3D({ visible }: PauseMenu3DProps) {
         color="#ffffff"
         anchorX="center"
         anchorY="middle"
-        font="/fonts/Roboto-Light.ttf"
+        font={FONTS.ROBOTO_LIGHT}
         textAlign="center"
       >
         {`Controles:\n\nWASD / Fleches: Se deplacer\nSouris: Regarder\nE: Interagir avec un tableau\nESC: Pause`}
@@ -89,7 +90,7 @@ export function PauseMenu3D({ visible }: PauseMenu3DProps) {
           color="#000000"
           anchorX="center"
           anchorY="middle"
-          font="/fonts/Roboto-Light.ttf"
+          font={FONTS.ROBOTO_LIGHT}
         >
           Cliquez pour reprendre
         </Text>
@@ -102,7 +103,7 @@ export function PauseMenu3D({ visible }: PauseMenu3DProps) {
         color="#888888"
         anchorX="center"
         anchorY="middle"
-        font="/fonts/Roboto-Light.ttf"
+        font={FONTS.ROBOTO_LIGHT}
       >
         Appuyez sur Backspace pour quitter la galerie
       </Text>

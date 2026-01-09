@@ -14,6 +14,7 @@ import { useBakedMaterials } from '../contexts/BakedMaterialContext'
 import { PierreOS } from '../apps/os'
 import { ArtGallery } from '../apps/gallery'
 import { useGameStore } from '@stores/gameStore'
+import { PIERRE } from '@config/assetPaths'
 
 // Configuration des moniteurs (depuis constants.js de Joan)
 // Taille écran: 1370.178 x 764.798
@@ -24,7 +25,7 @@ const DISTANCE_FACTOR = 0.408
 
 const MONITOR_CONFIG = {
   left: {
-    model: '/pierre/assets/models/leftMonitor.glb',
+    model: PIERRE.MODELS.LEFT_MONITOR,
     // Position CSS de l'écran (depuis constants.js)
     screenPosition: [1.06738, 2.50725, -4.23009] as [number, number, number],
     screenSize: { width: MONITOR_SCREEN_WIDTH, height: MONITOR_SCREEN_HEIGHT },
@@ -34,7 +35,7 @@ const MONITOR_CONFIG = {
     distanceFactor: DISTANCE_FACTOR,
   },
   right: {
-    model: '/pierre/assets/models/rightMonitor.glb',
+    model: PIERRE.MODELS.RIGHT_MONITOR,
     // Position CSS de l'écran (depuis constants.js)
     screenPosition: [2.47898, 2.50716, -4.14566] as [number, number, number],
     screenSize: { width: MONITOR_SCREEN_WIDTH, height: MONITOR_SCREEN_HEIGHT },

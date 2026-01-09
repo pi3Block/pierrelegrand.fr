@@ -8,6 +8,7 @@
 import { useEffect, useRef } from 'react'
 import { Paddle, Ball } from './components'
 import { usePingPongStore } from './stores/pingpongStore'
+import { PINGPONG } from '@config/assetPaths'
 
 interface PingPongSceneProps {
   isActive: boolean
@@ -24,7 +25,7 @@ export function PingPongScene({ isActive }: PingPongSceneProps) {
 
   // Initialiser audio
   useEffect(() => {
-    pingRef.current = new Audio('/assets/pingpong/ping.mp3')
+    pingRef.current = new Audio(PINGPONG.SOUNDS.PING)
     return () => {
       pingRef.current = null
     }

@@ -4,27 +4,26 @@
  * Affiche des tableaux avec textures PNG/JPG.
  * Detecte quand le joueur regarde un tableau via raycasting.
  *
- * Note: Utilise useLoader de R3F pour charger les textures de maniere
- * compatible avec le contexte RenderTexture.
+ * Les positions sont maintenant définies dans galleryConfig.ts (paintingSlots)
+ * et associées aux données de contenu ici.
  */
 
 import { useRef, useMemo } from 'react'
-import { useFrame, useThree, useLoader } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
+import { useTexture } from '@react-three/drei'
 import * as THREE from 'three'
-import { TextureLoader } from 'three'
 import { useGalleryFPSStore, type PaintingInfo } from '../stores/galleryFPSStore'
+import { GALLERY_CONFIG } from '../galleryConfig'
+import { getPageImagePath } from '@config/assetPaths'
 
 /**
- * Configuration d'un tableau.
+ * Données de contenu d'un tableau (sans position, définie dans config).
  */
-interface PaintingConfig {
+interface PaintingData {
   id: string
   title: string
   description: string
-  texture: string // Chemin vers la texture PNG/JPG
-  position: [number, number, number]
-  rotation: [number, number, number]
-  size: [number, number]
+  texture: string
   links?: {
     demo?: string
     source?: string
@@ -32,98 +31,114 @@ interface PaintingConfig {
 }
 
 /**
- * Liste des tableaux de la galerie.
- * Le modele scene.glb est une piece d'environ 10x10 unites.
- * Positions ajustees pour correspondre aux murs du modele.
+ * Configuration complète d'un tableau (données + position du slot).
  */
-const PAINTINGS_CONFIG: PaintingConfig[] = [
-  // Mur gauche (X = -3.8, face vers +X) - 3 tableaux espaces sur Z
+interface PaintingConfig extends PaintingData {
+  position: [number, number, number]
+  rotation: [number, number, number]
+  size: [number, number]
+}
+
+/**
+ * Données de contenu des tableaux.
+ * L'ordre correspond aux slots définis dans galleryConfig.ts
+ */
+const PAINTINGS_DATA: PaintingData[] = [
+  // Mur Ouest (3 tableaux)
   {
     id: 'portfolio',
     title: 'Portfolio Pierre Legrand',
     description: 'Mon portfolio interactif en 3D avec React Three Fiber',
-    texture: '/images/pages/RougeFutur1.png',
-    position: [-3.8, 2, 2],
-    rotation: [0, Math.PI / 2, 0], // Face vers +X
-    size: [1.5, 1.1],
+    texture: getPageImagePath('RougeFutur1.png'),
     links: { demo: 'https://pierrelegrand.fr' },
   },
   {
     id: 'foudafrique',
     title: 'FouDafrique',
     description: 'Site e-commerce de produits africains',
-    texture: '/images/pages/Foudafrique-acceuil.png',
-    position: [-3.8, 2, -1],
-    rotation: [0, Math.PI / 2, 0],
-    size: [1.5, 1.1],
+    texture: getPageImagePath('Foudafrique-acceuil.png'),
     links: { demo: 'https://foudafrique.fr' },
   },
   {
     id: '2lb-gestion',
     title: '2LB Gestion',
     description: "Application de gestion d'avis Google",
-    texture: '/images/pages/2Lb-gestion-avis-google.png',
-    position: [-3.8, 2, -4],
-    rotation: [0, Math.PI / 2, 0],
-    size: [1.5, 1.1],
+    texture: getPageImagePath('2Lb-gestion-avis-google.png'),
   },
-  // Mur droit (X = +3.8, face vers -X) - 3 tableaux espaces sur Z
+  // Mur Est (3 tableaux)
   {
     id: 'gt-vintage',
     title: 'GT Vintage',
     description: 'Site de voitures de collection',
-    texture: '/images/pages/GtVicntage1.png',
-    position: [3.8, 2, 2],
-    rotation: [0, -Math.PI / 2, 0], // Face vers -X
-    size: [1.5, 1.1],
+    texture: getPageImagePath('GtVicntage1.png'),
   },
   {
     id: 'neghome',
     title: 'NegHome',
     description: 'Plateforme immobiliere',
-    texture: '/images/pages/neghome.com.png',
-    position: [3.8, 2, -1],
-    rotation: [0, -Math.PI / 2, 0],
-    size: [1.5, 1.1],
+    texture: getPageImagePath('neghome.com.png'),
     links: { demo: 'https://neghome.com' },
   },
   {
     id: 'mydata',
     title: 'MyData Machine',
     description: 'Solution de gestion de donnees',
-    texture: '/images/pages/MachineMydata5.webp',
-    position: [3.8, 2, -4],
-    rotation: [0, -Math.PI / 2, 0],
-    size: [1.5, 1.1],
+    texture: getPageImagePath('MachineMydata5.webp'),
   },
-  // Mur du fond (Z = -5.8, face vers +Z) - 1 tableau central
+  // Mur Nord (1 tableau)
   {
     id: 'carte-electronique',
     title: 'Carte Electronique',
     description: 'Projet de carte electronique',
-    texture: '/images/pages/CarteElectronique.jpg',
-    position: [0, 2, -5.8],
-    rotation: [0, 0, 0], // Face vers +Z
-    size: [2, 1.5],
+    texture: getPageImagePath('CarteElectronique.jpg'),
   },
 ]
 
 /**
+ * Combine les données de contenu avec les positions des slots.
+ */
+function buildPaintingsConfig(): PaintingConfig[] {
+  const slots = GALLERY_CONFIG.paintingSlots
+  const configs: PaintingConfig[] = []
+
+  // Associer chaque donnée à un slot dans l'ordre
+  PAINTINGS_DATA.forEach((data, index) => {
+    const slot = slots[index]
+    if (slot) {
+      configs.push({
+        ...data,
+        position: slot.position,
+        rotation: slot.rotation,
+        size: slot.size,
+      })
+    }
+  })
+
+  return configs
+}
+
+const PAINTINGS_CONFIG = buildPaintingsConfig()
+
+/**
  * Composant pour un seul tableau avec texture.
- * Utilise useLoader de R3F pour charger les textures de maniere
- * compatible avec le contexte RenderTexture.
+ * Utilise useTexture de drei pour charger les textures.
  */
 function PaintingFrame({ config }: { config: PaintingConfig }) {
   const meshRef = useRef<THREE.Mesh>(null)
 
-  // useLoader de R3F est compatible avec RenderTexture
-  const texture = useLoader(TextureLoader, config.texture)
+  // useTexture de drei avec configuration de colorSpace
+  const texture = useTexture(config.texture, (tex) => {
+    // Callback appelé quand la texture est chargée
+    if (tex instanceof THREE.Texture) {
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.needsUpdate = true
+    }
+  })
 
-  // Configurer la texture une seule fois via useMemo
+  // Configuration supplémentaire de la texture
   useMemo(() => {
     if (texture) {
       texture.colorSpace = THREE.SRGBColorSpace
-      texture.needsUpdate = true
     }
   }, [texture])
 
@@ -142,7 +157,7 @@ function PaintingFrame({ config }: { config: PaintingConfig }) {
       {/* Toile avec texture */}
       <mesh ref={meshRef} userData={{ paintingId: config.id }}>
         <planeGeometry args={config.size} />
-        <meshBasicMaterial map={texture} />
+        <meshBasicMaterial map={texture} toneMapped={false} />
       </mesh>
     </group>
   )

@@ -17,15 +17,16 @@ import { type PierreStage, usePierreStore } from '../stores/pierreStore'
 import { useBakedMaterials } from '../contexts/BakedMaterialContext'
 import { isFeatureEnabled } from '@config/featureFlags'
 import { InteractiveMesh } from '../core'
+import { PIERRE } from '@config/assetPaths'
 
 // Chemins vers les assets
 const MODELS = {
-  room1: '/pierre/assets/models/room.glb',
-  room2: '/pierre/assets/models/room2.glb',
-  room3: '/pierre/assets/models/room3.glb',
-  linkedin: '/pierre/assets/models/linkedin.glb',
-  github: '/pierre/assets/models/github.glb',
-  itchio: '/pierre/assets/models/itchio.glb',
+  room1: PIERRE.MODELS.ROOM1,
+  room2: PIERRE.MODELS.ROOM2,
+  room3: PIERRE.MODELS.ROOM3,
+  linkedin: PIERRE.MODELS.LINKEDIN,
+  github: PIERRE.MODELS.GITHUB,
+  itchio: PIERRE.MODELS.ITCHIO,
 }
 
 // URLs externes des réseaux sociaux

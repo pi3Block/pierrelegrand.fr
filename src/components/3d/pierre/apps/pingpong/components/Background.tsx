@@ -7,9 +7,10 @@
 
 import { useTexture } from '@react-three/drei'
 import * as THREE from 'three'
+import { PINGPONG } from '@config/assetPaths'
 
 export function Background() {
-  const texture = useTexture('/assets/pingpong/bg.jpg')
+  const texture = useTexture(PINGPONG.TEXTURES.BACKGROUND)
 
   return (
     <mesh rotation={[0, Math.PI / 1.25, 0]} scale={100}>

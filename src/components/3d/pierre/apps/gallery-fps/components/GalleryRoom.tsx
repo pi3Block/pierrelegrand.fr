@@ -1,122 +1,238 @@
 /**
- * GalleryRoom - Charge le modele GLTF de la galerie avec collisions Rapier.
+ * GalleryRoom - Galerie 3D procédurale.
  *
- * Utilise le modele scene.glb de joan-art-gallery avec texture baked KTX2.
- * Les murs sont detectes automatiquement et des colliders sont generes.
+ * Construit la galerie entièrement en code React/Three.js :
+ * - Sol et plafond (plans)
+ * - 4 murs avec découpe pour la porte
+ * - Piédestaux au centre
+ *
+ * Toutes les positions sont définies dans galleryConfig.ts
  */
 
-import { useMemo, useEffect, useRef } from 'react'
-import { useGLTF, useKTX2 } from '@react-three/drei'
 import { RigidBody } from '@react-three/rapier'
-import * as THREE from 'three'
-
-// Chemins vers les assets
-const GALLERY_MODEL_PATH = '/assets/models/scene.glb'
-const BAKED_TEXTURE_PATH = '/assets/baked/baked.ktx2'
-const BASIS_PATH = '/basis/'
+import { GALLERY_CONFIG } from '../galleryConfig'
 
 /**
- * GalleryRoom - Environnement 3D de la galerie charge depuis GLTF.
+ * Composant principal de la galerie procédurale.
  */
 export function GalleryRoom() {
-  const { scene } = useGLTF(GALLERY_MODEL_PATH)
-  const bakedTexture = useKTX2(BAKED_TEXTURE_PATH, BASIS_PATH)
-
-  // Configurer la texture baked - drei/useKTX2 gere flipY automatiquement
-  useEffect(() => {
-    if (bakedTexture) {
-      bakedTexture.colorSpace = THREE.SRGBColorSpace
-      bakedTexture.needsUpdate = true
-    }
-  }, [bakedTexture])
-
-  // Creer le materiau baked
-  const bakedMaterial = useMemo(() => {
-    if (!bakedTexture) return null
-    return new THREE.MeshBasicMaterial({
-      map: bakedTexture,
-    })
-  }, [bakedTexture])
-
-  // Cloner la scene et appliquer le materiau baked + logger les infos de debug
-  const clonedScene = useMemo(() => {
-    const clone = scene.clone()
-
-    // DEBUG: Log les infos de la scene
-    console.log('=== GALLERY ROOM DEBUG ===')
-    console.log('Scene children:', clone.children.map(c => ({ name: c.name, type: c.type })))
-
-    // Calculer la bounding box
-    const box = new THREE.Box3().setFromObject(clone)
-    const size = new THREE.Vector3()
-    const center = new THREE.Vector3()
-    box.getSize(size)
-    box.getCenter(center)
-    console.log('Bounding Box Size:', size)
-    console.log('Bounding Box Center:', center)
-    console.log('Bounding Box Min:', box.min)
-    console.log('Bounding Box Max:', box.max)
-
-    clone.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh
-        // DEBUG: Log chaque mesh avec sa position
-        console.log(`Mesh: ${mesh.name}, Position:`, mesh.position, 'Rotation:', mesh.rotation)
-
-        // Appliquer le materiau baked uniquement s'il est pret
-        if (bakedMaterial) {
-          mesh.material = bakedMaterial
-        }
-        mesh.receiveShadow = true
-        mesh.castShadow = true
-      }
-    })
-    console.log('=========================')
-    return clone
-  }, [scene, bakedMaterial])
-
-  // Ref pour le groupe et le box helper
-  const groupRef = useRef<THREE.Group>(null)
+  const { room, colors } = GALLERY_CONFIG
 
   return (
-    <group name="gallery-room" ref={groupRef}>
-      {/* Modele de la galerie avec collider trimesh pour les murs */}
-      <RigidBody type="fixed" colliders="trimesh">
-        <primitive object={clonedScene} />
+    <group name="procedural-gallery">
+      {/* Sol */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, 0, 0]}
+          receiveShadow
+        >
+          <planeGeometry args={[room.width, room.depth]} />
+          <meshStandardMaterial color={colors.floor} />
+        </mesh>
       </RigidBody>
 
-      {/* DEBUG: Box3Helper pour visualiser les bounds */}
-      <primitive object={new THREE.BoxHelper(clonedScene, 0xff0000)} />
+      {/* Plafond */}
+      <mesh
+        position={[0, room.height, 0]}
+        rotation={[Math.PI / 2, 0, 0]}
+      >
+        <planeGeometry args={[room.width, room.depth]} />
+        <meshStandardMaterial color={colors.ceiling} />
+      </mesh>
 
-      {/* Eclairage de la galerie */}
+      {/* Murs */}
+      <Walls />
+
+      {/* Piédestaux */}
+      <Pedestals />
+
+      {/* Éclairage */}
       <GalleryLighting />
     </group>
   )
 }
 
 /**
- * Eclairage de la galerie.
+ * Les 4 murs de la galerie.
+ * Le mur sud (Z+) a une découpe pour la porte.
  */
-function GalleryLighting() {
+function Walls() {
+  const { room, colors } = GALLERY_CONFIG
+  const halfWidth = room.width / 2
+  const halfDepth = room.depth / 2
+  const halfHeight = room.height / 2
+
   return (
-    <>
-      <ambientLight intensity={0.4} />
-      <directionalLight
-        position={[5, 10, 5]}
-        intensity={1}
-        castShadow
-        shadow-mapSize={[512, 512]}
-      />
-      {/* Lumieres d'ambiance pour les tableaux */}
-      <pointLight position={[0, 3, 0]} intensity={0.5} color="#fff5e6" />
-      <pointLight position={[0, 3, -10]} intensity={0.3} color="#e6f0ff" />
-      <pointLight position={[-8, 3, 0]} intensity={0.2} color="#ffe6f0" />
-      <pointLight position={[8, 3, 0]} intensity={0.2} color="#e6fff0" />
-    </>
+    <group name="walls">
+      {/* Mur Nord (Z-) - mur du fond, plein */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <mesh position={[0, halfHeight, -halfDepth]} receiveShadow castShadow>
+          <boxGeometry args={[room.width, room.height, room.wallThickness]} />
+          <meshStandardMaterial color={colors.walls} />
+        </mesh>
+      </RigidBody>
+
+      {/* Mur Sud (Z+) - avec découpe pour la porte */}
+      <SouthWallWithDoor />
+
+      {/* Mur Ouest (X-) */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <mesh
+          position={[-halfWidth, halfHeight, 0]}
+          rotation={[0, Math.PI / 2, 0]}
+          receiveShadow
+          castShadow
+        >
+          <boxGeometry args={[room.depth, room.height, room.wallThickness]} />
+          <meshStandardMaterial color={colors.walls} />
+        </mesh>
+      </RigidBody>
+
+      {/* Mur Est (X+) */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <mesh
+          position={[halfWidth, halfHeight, 0]}
+          rotation={[0, Math.PI / 2, 0]}
+          receiveShadow
+          castShadow
+        >
+          <boxGeometry args={[room.depth, room.height, room.wallThickness]} />
+          <meshStandardMaterial color={colors.walls} />
+        </mesh>
+      </RigidBody>
+    </group>
   )
 }
 
-// Preload du modele
-useGLTF.preload(GALLERY_MODEL_PATH)
+/**
+ * Mur sud avec découpe pour la porte.
+ * Composé de 3 sections : gauche de la porte, au-dessus de la porte, droite de la porte.
+ */
+function SouthWallWithDoor() {
+  const { room, door, colors } = GALLERY_CONFIG
+  const halfWidth = room.width / 2
+  const halfDepth = room.depth / 2
+  const halfHeight = room.height / 2
+
+  // Position X de la porte (centre de la porte)
+  const doorCenterX = door.position[0]
+  const doorHalfWidth = door.width / 2
+
+  // Section gauche du mur (de -halfWidth à doorCenterX - doorHalfWidth)
+  const leftSectionWidth = (doorCenterX - doorHalfWidth) + halfWidth
+  const leftSectionX = -halfWidth + leftSectionWidth / 2
+
+  // Section droite du mur (de doorCenterX + doorHalfWidth à halfWidth)
+  const rightSectionWidth = halfWidth - (doorCenterX + doorHalfWidth)
+  const rightSectionX = halfWidth - rightSectionWidth / 2
+
+  // Section au-dessus de la porte
+  const topSectionHeight = room.height - door.height
+  const topSectionY = door.height + topSectionHeight / 2
+
+  return (
+    <group name="south-wall">
+      {/* Section gauche */}
+      {leftSectionWidth > 0 && (
+        <RigidBody type="fixed" colliders="cuboid">
+          <mesh
+            position={[leftSectionX, halfHeight, halfDepth]}
+            receiveShadow
+            castShadow
+          >
+            <boxGeometry args={[leftSectionWidth, room.height, room.wallThickness]} />
+            <meshStandardMaterial color={colors.walls} />
+          </mesh>
+        </RigidBody>
+      )}
+
+      {/* Section droite */}
+      {rightSectionWidth > 0 && (
+        <RigidBody type="fixed" colliders="cuboid">
+          <mesh
+            position={[rightSectionX, halfHeight, halfDepth]}
+            receiveShadow
+            castShadow
+          >
+            <boxGeometry args={[rightSectionWidth, room.height, room.wallThickness]} />
+            <meshStandardMaterial color={colors.walls} />
+          </mesh>
+        </RigidBody>
+      )}
+
+      {/* Section au-dessus de la porte */}
+      {topSectionHeight > 0 && (
+        <RigidBody type="fixed" colliders="cuboid">
+          <mesh
+            position={[doorCenterX, topSectionY, halfDepth]}
+            receiveShadow
+            castShadow
+          >
+            <boxGeometry args={[door.width, topSectionHeight, room.wallThickness]} />
+            <meshStandardMaterial color={colors.walls} />
+          </mesh>
+        </RigidBody>
+      )}
+    </group>
+  )
+}
+
+/**
+ * Piédestaux au centre de la galerie.
+ */
+function Pedestals() {
+  const { pedestals, colors } = GALLERY_CONFIG
+
+  return (
+    <group name="pedestals">
+      {pedestals.map((pedestal) => (
+        <RigidBody key={pedestal.id} type="fixed" colliders="cuboid">
+          <mesh
+            position={pedestal.position}
+            receiveShadow
+            castShadow
+          >
+            <boxGeometry args={pedestal.size} />
+            <meshStandardMaterial color={colors.pedestals} />
+          </mesh>
+        </RigidBody>
+      ))}
+    </group>
+  )
+}
+
+/**
+ * Éclairage de la galerie.
+ */
+function GalleryLighting() {
+  const { room } = GALLERY_CONFIG
+
+  return (
+    <>
+      {/* Lumière ambiante */}
+      <ambientLight intensity={0.5} />
+
+      {/* Lumière directionnelle principale */}
+      <directionalLight
+        position={[5, room.height + 2, 5]}
+        intensity={0.8}
+        castShadow
+        shadow-mapSize={[1024, 1024]}
+        shadow-camera-far={50}
+        shadow-camera-left={-10}
+        shadow-camera-right={10}
+        shadow-camera-top={10}
+        shadow-camera-bottom={-10}
+      />
+
+      {/* Points lumineux pour ambiance galerie */}
+      <pointLight position={[0, room.height - 0.5, 0]} intensity={0.4} color="#fff5e6" />
+      <pointLight position={[-4, room.height - 0.5, 0]} intensity={0.3} color="#e6f0ff" />
+      <pointLight position={[4, room.height - 0.5, 0]} intensity={0.3} color="#e6f0ff" />
+      <pointLight position={[0, room.height - 0.5, -3]} intensity={0.3} color="#ffe6f0" />
+    </>
+  )
+}
 
 export default GalleryRoom

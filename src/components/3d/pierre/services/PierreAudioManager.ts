@@ -1,6 +1,6 @@
 /**
  * PierreAudioManager - Gestionnaire audio pour PierreExperience.
- * 
+ *
  * Fonctionnalités:
  * - Préchargement des sons
  * - Lecture avec gestion du volume
@@ -9,51 +9,52 @@
  */
 
 import * as THREE from 'three'
+import { PIERRE } from '@config/assetPaths'
 
 // Liste des sons disponibles
 const SOUND_PATHS: Record<string, string> = {
   // Rubik's cube
-  rubik_1: '/pierre/assets/sounds/rubik_1.mp3',
-  rubik_2: '/pierre/assets/sounds/rubik_2.mp3',
-  rubik_3: '/pierre/assets/sounds/rubik_3.mp3',
-  
+  rubik_1: PIERRE.SOUNDS.RUBIK_1,
+  rubik_2: PIERRE.SOUNDS.RUBIK_2,
+  rubik_3: PIERRE.SOUNDS.RUBIK_3,
+
   // Victoire
-  confetti: '/pierre/assets/sounds/confetti.mp3',
-  trophy: '/pierre/assets/sounds/trophy.mp3',
-  trophy_platinum: '/pierre/assets/sounds/trophy_platinum.mp3',
-  partyblower: '/pierre/assets/sounds/partyblower.mp3',
-  
+  confetti: PIERRE.SOUNDS.CONFETTI,
+  trophy: PIERRE.SOUNDS.TROPHY,
+  trophy_platinum: PIERRE.SOUNDS.TROPHY_PLATINUM,
+  partyblower: PIERRE.SOUNDS.PARTYBLOWER,
+
   // Tableau blanc
-  marker_open: '/pierre/assets/sounds/marker-open.mp3',
-  eraser: '/pierre/assets/sounds/eraser.mp3',
-  
+  marker_open: PIERRE.SOUNDS.MARKER_OPEN,
+  eraser: PIERRE.SOUNDS.ERASER,
+
   // Transitions
-  whoosh: '/pierre/assets/sounds/whoosh.mp3',
-  whoosh_: '/pierre/assets/sounds/whoosh_.mp3',
-  whoosh__: '/pierre/assets/sounds/whoosh__.mp3',
-  whoosh___: '/pierre/assets/sounds/whoosh___.mp3',
-  door: '/pierre/assets/sounds/door.mp3',
-  
+  whoosh: PIERRE.SOUNDS.WHOOSH,
+  whoosh_: PIERRE.SOUNDS.WHOOSH_,
+  whoosh__: PIERRE.SOUNDS.WHOOSH__,
+  whoosh___: PIERRE.SOUNDS.WHOOSH___,
+  door: PIERRE.SOUNDS.DOOR,
+
   // Interface
-  select1: '/pierre/assets/sounds/select1.ogg',
-  select2: '/pierre/assets/sounds/select2.ogg',
-  mouseclick: '/pierre/assets/sounds/mouseclick.ogg',
-  mouserelease: '/pierre/assets/sounds/mouserelease.ogg',
-  
+  select1: PIERRE.SOUNDS.SELECT1,
+  select2: PIERRE.SOUNDS.SELECT2,
+  mouseclick: PIERRE.SOUNDS.MOUSECLICK,
+  mouserelease: PIERRE.SOUNDS.MOUSERELEASE,
+
   // Arcade
-  hit: '/pierre/assets/sounds/hit.ogg',
-  tetris: '/pierre/assets/sounds/tetris.ogg',
-  die: '/pierre/assets/sounds/die.ogg',
-  start: '/pierre/assets/sounds/start.mp3',
-  
+  hit: PIERRE.SOUNDS.HIT,
+  tetris: PIERRE.SOUNDS.TETRIS,
+  die: PIERRE.SOUNDS.DIE,
+  start: PIERRE.SOUNDS.START,
+
   // Footsteps
-  footstep01: '/pierre/assets/sounds/footstep01.ogg',
-  footstep02: '/pierre/assets/sounds/footstep02.ogg',
-  footstep03: '/pierre/assets/sounds/footstep03.ogg',
-  
+  footstep01: PIERRE.SOUNDS.FOOTSTEP_01,
+  footstep02: PIERRE.SOUNDS.FOOTSTEP_02,
+  footstep03: PIERRE.SOUNDS.FOOTSTEP_03,
+
   // Divers
-  floral: '/pierre/assets/sounds/floral.mp3',
-  vase_break: '/pierre/assets/sounds/vase_break.mp3',
+  floral: PIERRE.SOUNDS.FLORAL,
+  vase_break: PIERRE.SOUNDS.VASE_BREAK,
 }
 
 // Volumes par défaut

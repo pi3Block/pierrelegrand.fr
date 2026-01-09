@@ -19,10 +19,11 @@ import { useGalleryFPSStore } from './stores/galleryFPSStore'
 import { useHeadBob } from './hooks/useHeadBob'
 import { GalleryRoom } from './components/GalleryRoom'
 import { Paintings } from './components/Paintings'
-import { Vases } from './components/Vases'
 import { Door } from './components/Door'
 import { PaintingInfo3D } from './components/PaintingInfo3D'
+import { WallText } from './components/WallText'
 import { PauseMenu3D } from './ui/PauseMenu3D'
+import { FONTS } from '@config/assetPaths'
 
 interface GalleryFPSSceneProps {
   isActive: boolean
@@ -40,9 +41,9 @@ function CameraAnimation({ isActive }: { isActive: boolean }) {
   useFrame((_, delta) => {
     if (isActive) return // Pas d'animation auto quand actif
 
-    // Rotation lente autour du centre
+    // Rotation lente autour du centre (rayon réduit pour rester dans la galerie)
     angleRef.current += delta * 0.2
-    const radius = 8
+    const radius = 4 // Réduit de 8 à 4 pour rester dans la pièce
     const x = Math.sin(angleRef.current) * radius
     const z = Math.cos(angleRef.current) * radius
 
@@ -114,7 +115,7 @@ function EnterPrompt({ visible, isPreview }: { visible: boolean; isPreview: bool
         color="#ffffff"
         anchorX="center"
         anchorY="middle"
-        font="/fonts/Roboto-Light.ttf"
+        font={FONTS.ROBOTO_LIGHT}
       >
         Art Gallery
       </Text>
@@ -126,7 +127,7 @@ function EnterPrompt({ visible, isPreview }: { visible: boolean; isPreview: bool
         color="#4ecdc4"
         anchorX="center"
         anchorY="middle"
-        font="/fonts/Roboto-Light.ttf"
+        font={FONTS.ROBOTO_LIGHT}
       >
         {isPreview ? 'Cliquez sur le moniteur' : 'Cliquez pour entrer'}
       </Text>
@@ -139,7 +140,7 @@ function EnterPrompt({ visible, isPreview }: { visible: boolean; isPreview: bool
           color="#888888"
           anchorX="center"
           anchorY="middle"
-          font="/fonts/Roboto-Light.ttf"
+          font={FONTS.ROBOTO_LIGHT}
         >
           WASD: Deplacer | Souris: Regarder | ESC: Quitter
         </Text>
@@ -377,7 +378,7 @@ function FPSController({ enabled, isMobile }: { enabled: boolean; isMobile: bool
     <RigidBody
       ref={rigidBodyRef}
       type="dynamic"
-      position={[0, PLAYER_HEIGHT, 5]}
+      position={[0, PLAYER_HEIGHT, 3]}
       enabledRotations={[false, false, false]}
       linearDamping={0.5}
       mass={1}
@@ -437,31 +438,17 @@ export function GalleryFPSScene({ isActive, onExit, isMobile = false }: GalleryF
 
   return (
     <>
-      {/* Eclairage */}
-      <ambientLight intensity={0.4} />
-      <directionalLight
-        position={[5, 10, 5]}
-        intensity={1}
-        castShadow
-        shadow-mapSize={[512, 512]}
-      />
-      <pointLight position={[0, 3, 0]} intensity={0.5} color="#fff5e6" />
-      <pointLight position={[0, 3, -10]} intensity={0.3} color="#e6f0ff" />
-
-      {/* Debug: Axes helper pour voir l'orientation (Rouge=X, Vert=Y, Bleu=Z) */}
-      <axesHelper args={[10]} />
-
-      {/* Modele GLTF de la galerie */}
+      {/* Galerie procedurale (murs, sol, plafond, piedestaux, eclairage) */}
       <GalleryRoom />
 
-      {/* Tableaux interactifs */}
+      {/* Tableaux interactifs (positions depuis galleryConfig) */}
       <Paintings />
 
-      {/* Vases cassables */}
-      <Vases />
+      {/* Textes muraux (titres, descriptions, liens) */}
+      <WallText />
 
-      {/* Porte de sortie - placeholder violet sur MUR GAUCHE (X negatif, entre les tableaux) */}
-      <Door position={[-9, 0, 0]} rotation={[0, Math.PI / 2, 0]} scale={1.5} />
+      {/* Porte de sortie (position depuis galleryConfig) */}
+      <Door />
 
       {/* Animation camera (mode apercu - quand non actif) */}
       <CameraAnimation isActive={isActive} />

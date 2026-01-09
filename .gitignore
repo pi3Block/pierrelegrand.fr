@@ -48,3 +48,6 @@ ecctrl-main
 docs/*
 nul
 others-project-exemple/*
+
+# Fichiers sources PSD (ne pas inclure en production)
+public/assets/psd/

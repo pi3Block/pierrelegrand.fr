@@ -10,6 +10,7 @@ import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { useBakedMaterials } from '../contexts/BakedMaterialContext'
+import { PIERRE } from '@config/assetPaths'
 
 // Position de la chaise (depuis constants.js de Joan)
 const TOP_CHAIR_POSITION: [number, number, number] = [1.4027, 0.496728, -1.21048]
@@ -22,7 +23,7 @@ export function TopChair() {
   const startTimeRef = useRef<number>(Date.now())
 
   // Charger le modèle de la chaise
-  const { scene } = useGLTF('/pierre/assets/models/topChair.glb')
+  const { scene } = useGLTF(PIERRE.MODELS.TOP_CHAIR)
 
   // Récupérer le matériau baked (material2 comme dans Joan's version)
   const { material2 } = useBakedMaterials()
@@ -54,6 +55,6 @@ export function TopChair() {
 }
 
 // Preload
-useGLTF.preload('/pierre/assets/models/topChair.glb')
+useGLTF.preload(PIERRE.MODELS.TOP_CHAIR)
 
 export default TopChair

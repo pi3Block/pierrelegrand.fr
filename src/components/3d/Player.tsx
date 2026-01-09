@@ -5,9 +5,10 @@ import { useGame } from 'ecctrl'
 import { useGameStore } from '@stores/gameStore'
 import { Suspense, useEffect, useRef, useMemo } from 'react'
 import * as THREE from 'three'
+import { HUB } from '@config/assetPaths'
 
-const CHARACTER_URL = '/Floating Character.glb'
-const GRADIENT_TEXTURE_URL = '/textures/3.jpg'
+const CHARACTER_URL = HUB.MODELS.FLOATING_CHARACTER
+const GRADIENT_TEXTURE_URL = HUB.TEXTURES.GRADIENT_3
 
 // Animation set - les noms doivent correspondre aux animations dans le GLB
 const animationSet = {

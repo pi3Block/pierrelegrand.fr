@@ -11,6 +11,7 @@ import { usePierreStore, type PierreStage } from '../stores/pierreStore'
 import { useBakedMaterials } from '../contexts/BakedMaterialContext'
 import { ArcadeMachine } from '../apps/arcade'
 import { useGameStore } from '@stores/gameStore'
+import { PIERRE } from '@config/assetPaths'
 
 // Configuration (depuis constants.js de Joan)
 const ARCADE_SCREEN_SIZE = { width: 1006.986, height: 1210.118 }
@@ -44,7 +45,7 @@ export function ArcadeScreen({ onHover, onSelect }: ArcadeScreenProps) {
   const handleNavigateToHub = () => setCurrentLevel(0)
 
   // Charger le modèle de la machine arcade
-  const { scene } = useGLTF('/pierre/assets/models/arcadeMachine.glb')
+  const { scene } = useGLTF(PIERRE.MODELS.ARCADE_MACHINE)
 
   // Récupérer le matériau baked
   const { material2 } = useBakedMaterials()
@@ -107,6 +108,6 @@ export function ArcadeScreen({ onHover, onSelect }: ArcadeScreenProps) {
 }
 
 // Preload
-useGLTF.preload('/pierre/assets/models/arcadeMachine.glb')
+useGLTF.preload(PIERRE.MODELS.ARCADE_MACHINE)
 
 export default ArcadeScreen

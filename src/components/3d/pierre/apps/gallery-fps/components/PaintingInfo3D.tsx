@@ -10,6 +10,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGalleryFPSStore } from '../stores/galleryFPSStore'
+import { FONTS } from '@config/assetPaths'
 
 /**
  * Panneau d'information 3D pour le tableau regarde.
@@ -59,7 +60,7 @@ export function PaintingInfo3D() {
         color="#4ecdc4"
         anchorX="center"
         anchorY="middle"
-        font="/fonts/Roboto-Light.ttf"
+        font={FONTS.ROBOTO_LIGHT}
         maxWidth={1.4}
       >
         {currentPainting.title}
@@ -72,7 +73,7 @@ export function PaintingInfo3D() {
         color="#cccccc"
         anchorX="center"
         anchorY="middle"
-        font="/fonts/Roboto-Light.ttf"
+        font={FONTS.ROBOTO_LIGHT}
         maxWidth={1.4}
       >
         {currentPainting.description}
@@ -86,7 +87,7 @@ export function PaintingInfo3D() {
           color="#888888"
           anchorX="center"
           anchorY="middle"
-          font="/fonts/Roboto-Light.ttf"
+          font={FONTS.ROBOTO_LIGHT}
         >
           E: Ouvrir le lien
         </Text>

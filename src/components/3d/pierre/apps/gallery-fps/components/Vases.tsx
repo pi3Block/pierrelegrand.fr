@@ -10,9 +10,10 @@ import { useGLTF } from '@react-three/drei'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
+import { GALLERY_FPS } from '@config/assetPaths'
 
 // Chemin vers le modele
-const VASE_MODEL_PATH = '/assets/models/vase.glb'
+const VASE_MODEL_PATH = GALLERY_FPS.MODELS.VASE
 
 /**
  * Configuration d'un vase.

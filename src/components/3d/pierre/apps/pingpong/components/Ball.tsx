@@ -13,6 +13,7 @@ import { RigidBody, BallCollider, CuboidCollider } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
 import { useTexture } from '@react-three/drei'
 import { usePingPongStore } from '../stores/pingpongStore'
+import { PINGPONG } from '@config/assetPaths'
 
 interface BallProps {
   position?: [number, number, number]
@@ -22,7 +23,7 @@ export function Ball({ position = [0, 5, 0] }: BallProps) {
   const apiRef = useRef<RapierRigidBody>(null)
   const { viewport } = useThree()
   const resetScore = usePingPongStore((s) => s.resetScore)
-  const texture = useTexture('/assets/pingpong/crossp.jpg')
+  const texture = useTexture(PINGPONG.TEXTURES.BALL)
 
   /**
    * Reset de la balle quand elle touche les limites.

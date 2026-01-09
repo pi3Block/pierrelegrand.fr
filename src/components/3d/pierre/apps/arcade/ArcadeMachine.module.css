@@ -5,7 +5,7 @@
 
 @font-face {
   font-family: 'ArcadeFont';
-  src: url('/fonts/ARCADE.TTF') format('truetype');
+  src: url('/shared/fonts/ARCADE.TTF') format('truetype');
 }
 
 .container {

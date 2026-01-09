@@ -15,6 +15,7 @@ import { Text, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { easing } from 'maath'
 import { usePingPongStore } from '../stores/pingpongStore'
+import { PINGPONG, FONTS } from '@config/assetPaths'
 
 export function Paddle() {
   const apiRef = useRef<RapierRigidBody>(null)
@@ -22,7 +23,7 @@ export function Paddle() {
   const { pointer } = useThree()
 
   // Charger le modèle GLB
-  const gltf = useGLTF('/assets/pingpong/pingpong.glb')
+  const gltf = useGLTF(PINGPONG.MODELS.PADDLE)
   const nodes = gltf.nodes as {
     Bone: THREE.Bone
     Bone003: THREE.Bone
@@ -122,7 +123,7 @@ export function Paddle() {
           position={[0, 1, 0]}
           fontSize={10}
           color="white"
-          font="/fonts/Roboto-Light.ttf"
+          font={FONTS.ROBOTO_LIGHT}
         >
           {score}
         </Text>
@@ -156,6 +157,6 @@ export function Paddle() {
 }
 
 // Preload du modèle
-useGLTF.preload('/assets/pingpong/pingpong.glb')
+useGLTF.preload(PINGPONG.MODELS.PADDLE)
 
 export default Paddle

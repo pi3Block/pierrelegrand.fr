@@ -71,7 +71,8 @@ export function GalleryFPSApp({ onNavigateToHub: _onNavigateToHub, responsiveCon
           width={TEXTURE_WIDTH}
           height={TEXTURE_HEIGHT}
           // Rendre uniquement quand le moniteur est actif ou visible
-          frames={isActive ? Infinity : 1}
+          // DEBUG: Toujours rendre pour tester
+          frames={Infinity}
         >
           {/* Caméra interne à la RenderTexture */}
           <PerspectiveCamera
@@ -79,7 +80,7 @@ export function GalleryFPSApp({ onNavigateToHub: _onNavigateToHub, responsiveCon
             fov={60}
             near={0.1}
             far={100}
-            position={[0, 1.6, 5]}
+            position={[0, 1.6, 3]}
           />
 
           {/* Couleur de fond */}
@@ -87,7 +88,7 @@ export function GalleryFPSApp({ onNavigateToHub: _onNavigateToHub, responsiveCon
 
           {/* Scène de la galerie */}
           <Suspense fallback={<GalleryLoadingScene />}>
-            <Physics gravity={[0, -20, 0]} timeStep="vary" paused={!isActive} debug>
+            <Physics gravity={[0, -20, 0]} timeStep="vary" paused={!isActive}>
               <GalleryFPSScene isActive={isActive} onExit={handleExit} isMobile={isMobile} />
             </Physics>
           </Suspense>

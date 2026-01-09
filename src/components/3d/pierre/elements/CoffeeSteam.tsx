@@ -9,6 +9,7 @@ import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useTexture } from '@react-three/drei'
 import * as THREE from 'three'
+import { PIERRE } from '@config/assetPaths'
 
 // Shaders (importés comme chaînes grâce à vite-plugin-glsl)
 // @ts-ignore - GLSL importé via vite-plugin-glsl
@@ -28,7 +29,7 @@ export function CoffeeSteam() {
   const materialRef = useRef<THREE.ShaderMaterial>(null)
 
   // Charger la texture de bruit Perlin
-  const perlinTexture = useTexture('/pierre/assets/textures/perlin.png')
+  const perlinTexture = useTexture(PIERRE.TEXTURES.PERLIN)
 
   // Configurer la texture
   useMemo(() => {

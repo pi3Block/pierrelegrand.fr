@@ -8,16 +8,17 @@
 import { createContext, useContext, useMemo, useEffect } from 'react'
 import { useKTX2 } from '@react-three/drei'
 import * as THREE from 'three'
+import { PIERRE, LIBS } from '@config/assetPaths'
 
 // Textures baked en KTX2
 const TEXTURES = {
-  baked1: '/pierre/assets/textures/baked1.ktx2',
-  baked2: '/pierre/assets/textures/baked2.ktx2',
-  baked3: '/pierre/assets/textures/baked3.ktx2',
+  baked1: PIERRE.TEXTURES.BAKED1,
+  baked2: PIERRE.TEXTURES.BAKED2,
+  baked3: PIERRE.TEXTURES.BAKED3,
 }
 
 // Chemin vers le transcoder Basis
-const BASIS_PATH = '/pierre/basis/'
+const BASIS_PATH = LIBS.BASIS
 
 interface BakedMaterialContextValue {
   material1: THREE.MeshBasicMaterial | null

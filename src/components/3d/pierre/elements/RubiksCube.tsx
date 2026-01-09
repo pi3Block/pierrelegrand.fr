@@ -14,6 +14,7 @@ import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import gsap from 'gsap'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
+import { PIERRE } from '@config/assetPaths'
 
 // Configuration - Position originale sur le bureau
 const RUBIK_ORIGINAL_POSITION = new THREE.Vector3(-0.67868, 1.499, -3.92849)
@@ -65,7 +66,7 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
   const setIsRubikShuffling = usePierreStore((s) => s.setIsRubikShuffling)
 
   // Charger le modèle
-  const { scene } = useGLTF('/pierre/assets/models/Rubik.glb')
+  const { scene } = useGLTF(PIERRE.MODELS.RUBIK)
 
   // Refs pour le drag
   const isDragging = useRef(false)
@@ -96,7 +97,7 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
     cubiesLoaded.current = true
 
     console.log('[RubiksCube] 🎲 Fetching cubeInfo.json...')
-    fetch('/pierre/assets/json/cubeInfo.json')
+    fetch(PIERRE.DATA.CUBE_INFO)
       .then((res) => {
         console.log('[RubiksCube] 📥 Response status:', res.status, res.ok)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -716,6 +717,6 @@ function getRealNormal(normal: THREE.Vector3): { layer: string; sign: number } {
 }
 
 // Preload
-useGLTF.preload('/pierre/assets/models/Rubik.glb')
+useGLTF.preload(PIERRE.MODELS.RUBIK)
 
 export default RubiksCube

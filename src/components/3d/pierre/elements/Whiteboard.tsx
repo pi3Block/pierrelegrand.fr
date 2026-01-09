@@ -14,6 +14,7 @@ import { useThree } from '@react-three/fiber'
 import { useGLTF, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
+import { PIERRE } from '@config/assetPaths'
 
 // Configuration
 const WHITEBOARD_POSITION: [number, number, number] = [-3.3927, 3.18774, -4.61366]
@@ -21,7 +22,7 @@ const CANVAS_SIZE = { width: 2048, height: 1024 }
 const PLANE_SIZE = { width: 2.6, height: 1.82 }
 
 // Image initiale du whiteboard (comme Joan's portfolio)
-const TEXTURE_PAINT_URL = '/pierre/assets/textures/texture_paint.png'
+const TEXTURE_PAINT_URL = PIERRE.TEXTURES.TEXTURE_PAINT
 
 // Couleurs des marqueurs
 const MARKER_COLORS: Record<string, { color: string; lineWidth: number }> = {
@@ -69,7 +70,7 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
   const isHidden = currentStage === 'rubikGroup'
 
   // Charger le modèle du tableau
-  const { scene } = useGLTF('/pierre/assets/models/whiteboard.glb')
+  const { scene } = useGLTF(PIERRE.MODELS.WHITEBOARD)
 
   // Nommer la scène
   scene.name = 'whiteboard'
@@ -294,7 +295,7 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
 }
 
 // Preload
-useGLTF.preload('/pierre/assets/models/whiteboard.glb')
+useGLTF.preload(PIERRE.MODELS.WHITEBOARD)
 
 export default Whiteboard
 

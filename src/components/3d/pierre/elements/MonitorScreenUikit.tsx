@@ -16,9 +16,12 @@ import { PierreOSUikit } from '../apps/os'
 import { GalleryFPSApp } from '../apps/gallery-fps'
 import { useGameStore } from '@stores/gameStore'
 import { useMonitorResponsive } from '@hooks/useResponsive'
+import { PIERRE, FONTS } from '@config/assetPaths'
 
-// Font Inter avec support des caractères latins étendus (accents français)
-const INTER_FONT_URL = '/fonts/Inter-Regular.ttf'
+// Fonts avec support des caractères latins étendus (accents français)
+const INTER_FONT_URL = FONTS.INTER_REGULAR
+const ROBOTO_LIGHT_URL = FONTS.ROBOTO_LIGHT
+const ROBOTO_BLACK_URL = FONTS.ROBOTO_BLACK
 
 // Configuration des moniteurs (depuis constants.js de Joan)
 // Taille écran en unités Three.js: calculée depuis les pixels
@@ -29,7 +32,7 @@ const MONITOR_SIZE_Y = 0.78 // Hauteur en unités Three.js
 
 const MONITOR_CONFIG = {
   left: {
-    model: '/pierre/assets/models/leftMonitor.glb',
+    model: PIERRE.MODELS.LEFT_MONITOR,
     // Position de l'écran (depuis constants.js)
     screenPosition: [1.06738, 2.50725, -4.23009] as [number, number, number],
     // Pas de rotation pour le moniteur gauche
@@ -37,7 +40,7 @@ const MONITOR_CONFIG = {
     stage: 'leftMonitor' as PierreStage,
   },
   right: {
-    model: '/pierre/assets/models/rightMonitor.glb',
+    model: PIERRE.MODELS.RIGHT_MONITOR,
     // Position de l'écran (depuis constants.js)
     screenPosition: [2.47898, 2.50716, -4.14566] as [number, number, number],
     // Rotation Y: -7.406° (depuis constants.js)
@@ -167,6 +170,11 @@ export function MonitorScreenUikit({ type, onHover, onSelect }: MonitorScreenUik
             fontFamilies={{
               inter: {
                 normal: INTER_FONT_URL,
+              },
+              roboto: {
+                light: ROBOTO_LIGHT_URL,
+                normal: ROBOTO_LIGHT_URL,
+                bold: ROBOTO_BLACK_URL,
               },
             }}
           >
