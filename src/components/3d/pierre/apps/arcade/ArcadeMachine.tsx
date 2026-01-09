@@ -3,6 +3,7 @@
  *
  * Intègre les jeux Snake, Tetris et Breakout.
  * Adapté du projet joan-arcade-machine pour fonctionner en React.
+ * Inclut des contrôles tactiles pour mobile.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -12,6 +13,11 @@ import { BreakoutGame } from './BreakoutGame'
 import styles from './ArcadeMachine.module.css'
 
 type GameType = 'snake' | 'tetris' | 'breakout' | null
+
+// Détection mobile
+const isTouchDevice = () =>
+  typeof window !== 'undefined' &&
+  ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 
 interface ArcadeMachineProps {
   /** Callback pour naviguer vers le Hub 3D */
@@ -23,6 +29,206 @@ const GAMES = [
   { id: 'tetris' as const, label: 'TETRIS' },
   { id: 'breakout' as const, label: 'BREAK OUT' },
 ]
+
+/**
+ * Simule un événement clavier
+ */
+function simulateKeyEvent(key: string, type: 'keydown' | 'keyup' = 'keydown') {
+  const event = new KeyboardEvent(type, {
+    key,
+    code: key === ' ' ? 'Space' : `Arrow${key.replace('Arrow', '')}`,
+    bubbles: true,
+    cancelable: true,
+  })
+  window.dispatchEvent(event)
+}
+
+/**
+ * Styles inline pour les contrôles tactiles
+ * Positionnés en bas du conteneur de jeu (pas fixed/absolute par rapport au viewport)
+ */
+const touchControlStyles = {
+  container: {
+    width: '100%',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 15px',
+    boxSizing: 'border-box' as const,
+    marginTop: 'auto',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderTop: '1px solid rgba(0, 255, 0, 0.3)',
+  },
+  dpad: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 40px)',
+    gridTemplateRows: 'repeat(3, 40px)',
+    gap: 2,
+  },
+  dpadButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0, 255, 0, 0.4)',
+    border: '2px solid rgba(0, 255, 0, 0.7)',
+    color: '#00ff00',
+    fontSize: 16,
+    fontWeight: 'bold' as const,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    touchAction: 'none' as const,
+    userSelect: 'none' as const,
+    WebkitUserSelect: 'none' as const,
+    cursor: 'pointer',
+  },
+  dpadButtonActive: {
+    backgroundColor: 'rgba(0, 255, 0, 0.7)',
+  },
+  actionButtons: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 8,
+  },
+  actionButton: {
+    width: 50,
+    height: 50,
+    borderRadius: '50%',
+    backgroundColor: 'rgba(255, 100, 100, 0.4)',
+    border: '2px solid rgba(255, 100, 100, 0.7)',
+    color: '#ff6464',
+    fontSize: 10,
+    fontWeight: 'bold' as const,
+    fontFamily: 'ArcadeFont, monospace',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    touchAction: 'none' as const,
+    userSelect: 'none' as const,
+    WebkitUserSelect: 'none' as const,
+    cursor: 'pointer',
+  },
+  backButton: {
+    backgroundColor: 'rgba(100, 100, 255, 0.4)',
+    border: '2px solid rgba(100, 100, 255, 0.7)',
+    color: '#6464ff',
+  },
+}
+
+/**
+ * Contrôles tactiles pour l'arcade (D-pad + boutons)
+ */
+interface TouchControlsProps {
+  currentGame: GameType
+  onBack: () => void
+}
+
+function TouchControls({ currentGame, onBack }: TouchControlsProps) {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    setIsMobile(isTouchDevice())
+  }, [])
+
+  if (!isMobile) return null
+
+  // Pour Breakout, on utilise touchstart/touchend pour maintenir la direction
+  const handleTouchStart = (key: string) => (e: React.TouchEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    simulateKeyEvent(key, 'keydown')
+  }
+
+  const handleTouchEnd = (key: string) => (e: React.TouchEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    simulateKeyEvent(key, 'keyup')
+  }
+
+  // Pour les jeux qui n'ont pas besoin de maintenir (Snake, Tetris menu)
+  const handleTap = (key: string) => (e: React.TouchEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    simulateKeyEvent(key, 'keydown')
+  }
+
+  // Détermine si on a besoin du D-pad complet ou juste gauche/droite
+  const needsFullDpad = currentGame === 'snake' || currentGame === null
+  const needsUpDown = currentGame === 'tetris' || currentGame === null
+
+  return (
+    <div style={touchControlStyles.container}>
+      {/* D-pad gauche */}
+      <div style={touchControlStyles.dpad}>
+        {/* Ligne 1 : Haut */}
+        <div /> {/* vide */}
+        {needsUpDown || needsFullDpad ? (
+          <button
+            style={touchControlStyles.dpadButton}
+            onTouchStart={handleTap('ArrowUp')}
+          >
+            ▲
+          </button>
+        ) : (
+          <div />
+        )}
+        <div /> {/* vide */}
+
+        {/* Ligne 2 : Gauche, Centre, Droite */}
+        <button
+          style={touchControlStyles.dpadButton}
+          onTouchStart={handleTouchStart('ArrowLeft')}
+          onTouchEnd={handleTouchEnd('ArrowLeft')}
+        >
+          ◄
+        </button>
+        <div /> {/* centre vide */}
+        <button
+          style={touchControlStyles.dpadButton}
+          onTouchStart={handleTouchStart('ArrowRight')}
+          onTouchEnd={handleTouchEnd('ArrowRight')}
+        >
+          ►
+        </button>
+
+        {/* Ligne 3 : Bas */}
+        <div /> {/* vide */}
+        {needsUpDown || needsFullDpad ? (
+          <button
+            style={touchControlStyles.dpadButton}
+            onTouchStart={handleTap('ArrowDown')}
+          >
+            ▼
+          </button>
+        ) : (
+          <div />
+        )}
+        <div /> {/* vide */}
+      </div>
+
+      {/* Boutons action droite */}
+      <div style={touchControlStyles.actionButtons}>
+        <button
+          style={{ ...touchControlStyles.actionButton, ...touchControlStyles.backButton }}
+          onTouchStart={(e) => {
+            e.preventDefault()
+            onBack()
+          }}
+        >
+          BACK
+        </button>
+        {currentGame === null && (
+          <button
+            style={touchControlStyles.actionButton}
+            onTouchStart={handleTap(' ')}
+          >
+            START
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -169,6 +375,16 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
     }
   }, [])
 
+  // Handler pour le bouton back (menu ou retour scène Pierre)
+  const handleBack = useCallback(() => {
+    if (currentGame) {
+      backToMenu()
+    } else {
+      // Simuler Escape pour sortir de l'arcade
+      simulateKeyEvent('Escape', 'keydown')
+    }
+  }, [currentGame, backToMenu])
+
   // Rendu du menu
   if (!currentGame) {
     return (
@@ -197,6 +413,9 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
           </button>
 
           <div className={styles.instructions}>USE ARROW KEYS AND SPACEBAR</div>
+
+          {/* Contrôles tactiles pour mobile - à l'intérieur du menuContainer */}
+          <TouchControls currentGame={currentGame} onBack={handleBack} />
         </div>
       </div>
     )
@@ -243,6 +462,9 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
         </div>
 
         <div className={styles.instructions}>PRESS ESCAPE TO EXIT</div>
+
+        {/* Contrôles tactiles pour mobile - à l'intérieur du menuContainer */}
+        <TouchControls currentGame={currentGame} onBack={handleBack} />
       </div>
     </div>
   )

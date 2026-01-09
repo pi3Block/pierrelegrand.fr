@@ -49,9 +49,10 @@ export function useMobileEcctrlInput() {
 
     // Calculer distance et angle pour Ecctrl
     const distance = Math.sqrt(x * x + y * y)
-    // Ecctrl utilise un angle où 0 = droite, PI/2 = avant
-    // Notre joystick: x = droite/gauche, y = avant/arrière
-    const angle = Math.atan2(y, x) - Math.PI / 2 // Ajuster pour que avant = 0
+    // Ecctrl utilise un angle où 0 = avant (direction caméra), sens horaire
+    // Notre joystick: x = droite/gauche (+x = droite), y = avant/arrière (+y = avant)
+    // On utilise -x pour inverser gauche/droite (correction empirique)
+    const angle = Math.atan2(-x, y) + Math.PI / 2
 
     // Normaliser la distance (max 1)
     const normalizedDistance = Math.min(distance, 1)

@@ -4,6 +4,7 @@
  * Utilise le systeme de tir TPS existant
  */
 
+import { useState, useCallback, useRef } from 'react'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { Text } from '@react-three/drei'
 import { AngryBirdsSky, CloudSystem, CartoonSun } from './sky/AngryBirdsSky'
@@ -37,6 +38,14 @@ const GROUND_COLOR = '#7CB342'
  * Accessible depuis le niveau 3 (ProceduralWorld) via portail
  */
 export function World4AngryBirds() {
+  // State pour forcer le remontage des structures (reset)
+  const [resetKey, setResetKey] = useState(0)
+
+  // Handler de reset
+  const handleReset = useCallback(() => {
+    setResetKey((k) => k + 1)
+  }, [])
+
   // Structures generees proceduralement
   const proceduralTower = useStyledStructure('tower', 12345)
   const proceduralFortress = useStyledStructure('fortress', 54321)
@@ -51,8 +60,12 @@ export function World4AngryBirds() {
       {/* ========== SOL ========== */}
       <Ground color={GROUND_COLOR} />
 
+      {/* ========== DALLE DE RESET (à droite du portail de sortie) ========== */}
+      <ResetPlate position={[5, 0, -35]} onPress={handleReset} />
+
       {/* ========== STRUCTURES DESTRUCTIBLES ========== */}
-      <DestructibleBatch>
+      {/* key force le remontage complet lors du reset */}
+      <DestructibleBatch key={`structures-${resetKey}`}>
         {/* ===== NOUVEAUX TEMPLATES COMPLEXES ===== */}
 
         {/* Zone centrale: Structures principales */}
@@ -223,5 +236,86 @@ function Ground({ color }: { color: string }) {
         <meshStandardMaterial color={color} />
       </mesh>
     </RigidBody>
+  )
+}
+
+/**
+ * Dalle poussoir pour reinitialiser les structures
+ * Detecte le joueur via sensor Rapier
+ */
+function ResetPlate({
+  position,
+  onPress,
+}: {
+  position: [number, number, number]
+  onPress: () => void
+}) {
+  const [isPressed, setIsPressed] = useState(false)
+  const cooldownRef = useRef(false)
+
+  const handleEnter = useCallback(() => {
+    if (cooldownRef.current) return
+
+    cooldownRef.current = true
+    setIsPressed(true)
+    onPress()
+
+    // Cooldown 2s pour eviter spam
+    setTimeout(() => {
+      cooldownRef.current = false
+      setIsPressed(false)
+    }, 2000)
+  }, [onPress])
+
+  return (
+    <group position={position}>
+      {/* Sensor invisible pour detecter le joueur */}
+      <RigidBody type="fixed" sensor onIntersectionEnter={handleEnter}>
+        <CuboidCollider args={[1.5, 0.3, 1.5]} />
+      </RigidBody>
+
+      {/* Visuel de la dalle */}
+      <mesh position={[0, 0.05, 0]} receiveShadow>
+        <cylinderGeometry args={[1.5, 1.5, 0.1, 32]} />
+        <meshStandardMaterial
+          color={isPressed ? '#4CAF50' : '#F44336'}
+          emissive={isPressed ? '#4CAF50' : '#F44336'}
+          emissiveIntensity={isPressed ? 0.5 : 0.3}
+          metalness={0.3}
+          roughness={0.7}
+        />
+      </mesh>
+
+      {/* Bordure */}
+      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.5, 0.08, 8, 32]} />
+        <meshStandardMaterial color="#333333" metalness={0.5} roughness={0.5} />
+      </mesh>
+
+      {/* Icone reset (fleche circulaire) */}
+      <Text
+        position={[0, 0.12, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        fontSize={0.6}
+        color="#FFFFFF"
+        anchorX="center"
+        anchorY="middle"
+      >
+        ↻
+      </Text>
+
+      {/* Label flottant */}
+      <Text
+        position={[0, 1.2, 0]}
+        fontSize={0.3}
+        color="#FFFFFF"
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.02}
+        outlineColor="#000000"
+      >
+        RESET
+      </Text>
+    </group>
   )
 }

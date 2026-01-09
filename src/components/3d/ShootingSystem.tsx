@@ -20,6 +20,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { RigidBody, RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 import { useGameStore } from '@stores/gameStore'
+import { useMobileInputStore, selectIsShootPressed, selectIsMobile } from '@stores/mobileInputStore'
 
 interface Projectile {
   id: number
@@ -63,6 +64,11 @@ export function ShootingSystem() {
   const characterPosition = useGameStore((state) => state.characterPosition)
   const setChargeState = useGameStore((state) => state.setChargeState)
 
+  // Mobile input
+  const isMobile = useMobileInputStore(selectIsMobile)
+  const isShootPressed = useMobileInputStore(selectIsShootPressed)
+  const prevShootPressedRef = useRef(false)
+
   // Vecteurs réutilisables pour éviter les allocations
   const raycaster = useMemo(() => new THREE.Raycaster(), [])
   const screenCenter = useMemo(() => new THREE.Vector2(0, 0), [])
@@ -98,10 +104,11 @@ export function ShootingSystem() {
 
   /**
    * Tire un projectile avec la charge actuelle.
-   * Appelé au relâchement du clic.
+   * Appelé au relâchement du clic ou appui sur bouton mobile.
    */
-  const fireProjectile = useCallback((chargeLevel: number) => {
-    if (!document.pointerLockElement) return
+  const fireProjectile = useCallback((chargeLevel: number, fromMobile = false) => {
+    // Sur desktop, exiger le pointer lock. Sur mobile, le bypass.
+    if (!fromMobile && !document.pointerLockElement) return
     if (projectiles.length >= MAX_PROJECTILES) return
 
     // Calcul de la vitesse basée sur la charge
@@ -208,6 +215,13 @@ export function ShootingSystem() {
   const lastCleanupRef = useRef(0)
   useFrame(() => {
     const now = Date.now()
+
+    // Gestion du tir mobile (détection front montant)
+    if (isMobile && isShootPressed && !prevShootPressedRef.current) {
+      // Tir instantané sur mobile (pas de charge)
+      fireProjectile(0, true)
+    }
+    prevShootPressedRef.current = isShootPressed
 
     // Mise à jour de la charge si en cours
     if (isChargingRef.current) {

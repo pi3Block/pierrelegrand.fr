@@ -27,8 +27,12 @@ interface UniversalMobileControlsProps {
   showJump?: boolean
   /** Affiche le bouton de sprint */
   showSprint?: boolean
+  /** Affiche le bouton de tir */
+  showShoot?: boolean
   /** Callback personnalisé pour le saut */
   onJump?: () => void
+  /** Callback personnalisé pour le tir */
+  onShoot?: () => void
 }
 
 /**
@@ -125,15 +129,18 @@ function useJoystick() {
  */
 export function UniversalMobileControls({
   showJump = true,
-  showSprint = false,
+  showSprint = true,
+  showShoot = true,
   onJump,
+  onShoot,
 }: UniversalMobileControlsProps) {
-  const { isTouchDevice, isMobile } = useResponsive()
+  const { isTouchDevice } = useResponsive()
   const joystick = useJoystick()
 
   const setMobile = useMobileInputStore((s) => s.setMobile)
   const setJumpPressed = useMobileInputStore((s) => s.setJumpPressed)
   const setSprintPressed = useMobileInputStore((s) => s.setSprintPressed)
+  const setShootPressed = useMobileInputStore((s) => s.setShootPressed)
 
   // Détection mobile au montage
   useEffect(() => {
@@ -164,6 +171,17 @@ export function UniversalMobileControls({
   const handleSprintEnd = (e: React.TouchEvent) => {
     e.preventDefault()
     setSprintPressed(false)
+  }
+
+  const handleShootStart = (e: React.TouchEvent) => {
+    e.preventDefault()
+    setShootPressed(true)
+    onShoot?.()
+  }
+
+  const handleShootEnd = (e: React.TouchEvent) => {
+    e.preventDefault()
+    setShootPressed(false)
   }
 
   return (
@@ -238,18 +256,47 @@ export function UniversalMobileControls({
         />
       </div>
 
-      {/* Boutons d'action côté droit */}
+      {/* Boutons d'action côté droit - disposition en 2 colonnes */}
       <div
         style={{
           position: 'absolute',
-          right: 30,
+          right: 20,
           bottom: 30,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 15,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateRows: 'repeat(2, 1fr)',
+          gap: 12,
         }}
       >
-        {/* Bouton de saut */}
+        {/* Bouton de tir (haut gauche) - gros bouton orange */}
+        {showShoot && (
+          <button
+            onTouchStart={handleShootStart}
+            onTouchEnd={handleShootEnd}
+            style={{
+              width: BUTTON_SIZE + 10,
+              height: BUTTON_SIZE + 10,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(249, 115, 22, 0.8)',
+              border: '3px solid rgba(255, 255, 255, 0.4)',
+              color: '#fff',
+              fontSize: 11,
+              fontWeight: 'bold',
+              pointerEvents: 'auto',
+              touchAction: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 15px rgba(249, 115, 22, 0.5)',
+              gridColumn: '1',
+              gridRow: '1',
+            }}
+          >
+            SHOOT
+          </button>
+        )}
+
+        {/* Bouton de saut (haut droite) - bleu */}
         {showJump && (
           <button
             onTouchStart={handleJumpStart}
@@ -258,10 +305,10 @@ export function UniversalMobileControls({
               width: BUTTON_SIZE,
               height: BUTTON_SIZE,
               borderRadius: '50%',
-              backgroundColor: 'rgba(99, 102, 241, 0.7)',
+              backgroundColor: 'rgba(99, 102, 241, 0.8)',
               border: '2px solid rgba(255, 255, 255, 0.3)',
               color: '#fff',
-              fontSize: 14,
+              fontSize: 11,
               fontWeight: 'bold',
               pointerEvents: 'auto',
               touchAction: 'none',
@@ -269,25 +316,29 @@ export function UniversalMobileControls({
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
+              gridColumn: '2',
+              gridRow: '1',
+              alignSelf: 'center',
+              justifySelf: 'center',
             }}
           >
-            ↑
+            JUMP
           </button>
         )}
 
-        {/* Bouton de sprint */}
+        {/* Bouton de sprint (bas, centré sur 2 colonnes) - rouge */}
         {showSprint && (
           <button
             onTouchStart={handleSprintStart}
             onTouchEnd={handleSprintEnd}
             style={{
-              width: BUTTON_SIZE,
-              height: BUTTON_SIZE,
-              borderRadius: '50%',
-              backgroundColor: 'rgba(239, 68, 68, 0.7)',
+              width: BUTTON_SIZE + 20,
+              height: BUTTON_SIZE - 10,
+              borderRadius: 30,
+              backgroundColor: 'rgba(239, 68, 68, 0.8)',
               border: '2px solid rgba(255, 255, 255, 0.3)',
               color: '#fff',
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: 'bold',
               pointerEvents: 'auto',
               touchAction: 'none',
@@ -295,31 +346,15 @@ export function UniversalMobileControls({
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
+              gridColumn: '1 / 3',
+              gridRow: '2',
+              justifySelf: 'center',
             }}
           >
-            RUN
+            SPRINT
           </button>
         )}
       </div>
-
-      {/* Instructions (petit texte en haut) */}
-      {isMobile && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 10,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            color: 'rgba(255, 255, 255, 0.5)',
-            fontSize: 11,
-            textAlign: 'center',
-            pointerEvents: 'none',
-            textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
-          }}
-        >
-          Joystick: Déplacer{showJump && ' | ↑: Sauter'}
-        </div>
-      )}
     </div>
   )
 }

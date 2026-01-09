@@ -25,6 +25,8 @@ export interface MobileInputState {
   isJumpPressed: boolean
   /** Bouton de sprint pressé */
   isSprintPressed: boolean
+  /** Bouton de tir pressé */
+  isShootPressed: boolean
 }
 
 export interface MobileInputActions {
@@ -38,6 +40,8 @@ export interface MobileInputActions {
   setJumpPressed: (pressed: boolean) => void
   /** Active/désactive le sprint */
   setSprintPressed: (pressed: boolean) => void
+  /** Active/désactive le tir */
+  setShootPressed: (pressed: boolean) => void
   /** Reset tous les inputs */
   resetInputs: () => void
 }
@@ -48,6 +52,7 @@ const initialState: MobileInputState = {
   isMobile: false,
   isJumpPressed: false,
   isSprintPressed: false,
+  isShootPressed: false,
 }
 
 export const useMobileInputStore = create<MobileInputState & MobileInputActions>((set) => ({
@@ -63,11 +68,14 @@ export const useMobileInputStore = create<MobileInputState & MobileInputActions>
 
   setSprintPressed: (pressed) => set({ isSprintPressed: pressed }),
 
+  setShootPressed: (pressed) => set({ isShootPressed: pressed }),
+
   resetInputs: () => set({
     joystickInput: { x: 0, y: 0 },
     isJoystickActive: false,
     isJumpPressed: false,
     isSprintPressed: false,
+    isShootPressed: false,
   }),
 }))
 
@@ -79,3 +87,4 @@ export const selectIsJoystickActive = (state: MobileInputState) => state.isJoyst
 export const selectIsMobile = (state: MobileInputState) => state.isMobile
 export const selectIsJumpPressed = (state: MobileInputState) => state.isJumpPressed
 export const selectIsSprintPressed = (state: MobileInputState) => state.isSprintPressed
+export const selectIsShootPressed = (state: MobileInputState) => state.isShootPressed
