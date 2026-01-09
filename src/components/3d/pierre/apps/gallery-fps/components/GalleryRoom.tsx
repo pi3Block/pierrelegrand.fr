@@ -8,7 +8,6 @@
 import { useMemo, useEffect, useRef } from 'react'
 import { useGLTF, useKTX2 } from '@react-three/drei'
 import { RigidBody } from '@react-three/rapier'
-import { useHelper } from '@react-three/drei'
 import * as THREE from 'three'
 
 // Chemins vers les assets

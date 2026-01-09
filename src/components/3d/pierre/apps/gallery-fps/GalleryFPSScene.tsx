@@ -460,8 +460,8 @@ export function GalleryFPSScene({ isActive, onExit, isMobile = false }: GalleryF
       {/* Vases cassables */}
       <Vases />
 
-      {/* Porte de sortie - positionnee dans le placeholder bleu/violet du mur du fond (Z negatif) */}
-      <Door position={[-2, 0, 0]} rotation={[0, 0, 0]} scale={1.2} />
+      {/* Porte de sortie - placeholder violet sur MUR GAUCHE (X negatif, entre les tableaux) */}
+      <Door position={[-9, 0, 0]} rotation={[0, Math.PI / 2, 0]} scale={1.5} />
 
       {/* Animation camera (mode apercu - quand non actif) */}
       <CameraAnimation isActive={isActive} />
