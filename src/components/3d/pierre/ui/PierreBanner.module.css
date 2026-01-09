@@ -22,9 +22,23 @@
   transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
 }
 
-/* État collapsed : bannière réduite, réapparait au hover */
+/* État collapsed : bannière réduite, laisse une petite bande visible */
 .banner.collapsed {
-  transform: translateY(-100%);
+  transform: translateY(calc(-100% + 8px));
+}
+
+/* Petite bande visible en bas de la bannière repliée */
+.banner.collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background-color: #0a3362;
+  border-bottom: 2px solid #eda72d;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
 }
 
 /* Zone de hover étendue pour faciliter l'apparition */

@@ -158,6 +158,10 @@ export interface GPGPUHeightmapConfig {
  */
 export function useGPGPUHeightmap(config: GPGPUHeightmapConfig): THREE.DataTexture | null {
   const { gl } = useThree()
+  // Stocker gl dans une ref pour éviter de l'avoir dans les deps du useEffect
+  const glRef = useRef(gl)
+  glRef.current = gl
+
   const textureRef = useRef<THREE.DataTexture | null>(null)
 
   const {
@@ -173,6 +177,9 @@ export function useGPGPUHeightmap(config: GPGPUHeightmapConfig): THREE.DataTextu
   } = config
 
   useEffect(() => {
+    // Utiliser glRef.current pour éviter les re-renders
+    const renderer = glRef.current
+
     // Créer un render target pour le GPU
     const renderTarget = new THREE.WebGLRenderTarget(resolution, resolution, {
       minFilter: THREE.LinearFilter,
@@ -207,13 +214,13 @@ export function useGPGPUHeightmap(config: GPGPUHeightmapConfig): THREE.DataTextu
     scene.add(mesh)
 
     // Rendre dans le render target
-    gl.setRenderTarget(renderTarget)
-    gl.render(scene, camera)
-    gl.setRenderTarget(null)
+    renderer.setRenderTarget(renderTarget)
+    renderer.render(scene, camera)
+    renderer.setRenderTarget(null)
 
     // Lire les pixels du render target
     const pixels = new Float32Array(resolution * resolution * 4)
-    gl.readRenderTargetPixels(renderTarget, 0, 0, resolution, resolution, pixels)
+    renderer.readRenderTargetPixels(renderTarget, 0, 0, resolution, resolution, pixels)
 
     // Créer une DataTexture à partir des pixels
     const data = new Float32Array(resolution * resolution)
@@ -237,7 +244,7 @@ export function useGPGPUHeightmap(config: GPGPUHeightmapConfig): THREE.DataTextu
       geometry.dispose()
       material.dispose()
     }
-  }, [gl, resolution, seed, scale, octaves, persistence, lacunarity, offset, erosionStrength, ridgeWeight])
+  }, [resolution, seed, scale, octaves, persistence, lacunarity, offset, erosionStrength, ridgeWeight]) // Supprimé gl des deps
 
   return textureRef.current
 }

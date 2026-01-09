@@ -4,13 +4,19 @@
  * Charge les 3 parties de la pièce (room, room2, room3) avec leurs
  * textures pré-calculées (baked1, baked2, baked3) en format KTX2.
  * Inclut également les icônes sociales (LinkedIn, GitHub, itch.io).
+ *
+ * Architecture R3F v1.1.0:
+ * - Support InteractiveMesh si useEventSystem est activé
+ * - Rétro-compatible avec l'ancien système onHover/onSelect
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { type PierreStage, usePierreStore } from '../stores/pierreStore'
 import { useBakedMaterials } from '../contexts/BakedMaterialContext'
+import { isFeatureEnabled } from '@config/featureFlags'
+import { InteractiveMesh } from '../core'
 
 // Chemins vers les assets
 const MODELS = {
@@ -88,48 +94,80 @@ export function BakedRoom({ onHover }: BakedRoomProps) {
   /**
    * Gère le clic sur les icônes sociales.
    */
-  const handleSocialClick = (network: keyof typeof SOCIAL_URLS) => {
+  const handleSocialClick = useCallback((network: keyof typeof SOCIAL_URLS) => {
     window.open(SOCIAL_URLS[network], '_blank')
-  }
+  }, [])
+
+  // Détermine si on utilise le nouveau système d'événements
+  const useNewEventSystem = isFeatureEnabled('useEventSystem')
 
   return (
     <group name="baked-room">
       {/* Pièce partie 1 */}
       <primitive object={room1.scene} />
-      
+
       {/* Pièce partie 2 */}
       <primitive object={room2.scene} />
-      
+
       {/* Pièce partie 3 */}
       <primitive object={room3.scene} />
 
       {/* Icônes sociales interactives */}
-      <group
-        ref={linkedinRef}
-        onPointerOver={() => isInDefaultView && linkedinRef.current && onHover([linkedinRef.current])}
-        onPointerOut={() => isInDefaultView && onHover([])}
-        onClick={() => handleSocialClick('linkedin')}
-      >
-        <primitive object={linkedin.scene} />
-      </group>
+      {useNewEventSystem ? (
+        // Nouveau système avec InteractiveMesh
+        <>
+          <InteractiveMesh
+            name="linkedin"
+            onClick={() => handleSocialClick('linkedin')}
+          >
+            <primitive object={linkedin.scene} />
+          </InteractiveMesh>
 
-      <group
-        ref={githubRef}
-        onPointerOver={() => isInDefaultView && githubRef.current && onHover([githubRef.current])}
-        onPointerOut={() => isInDefaultView && onHover([])}
-        onClick={() => handleSocialClick('github')}
-      >
-        <primitive object={github.scene} />
-      </group>
+          <InteractiveMesh
+            name="github"
+            onClick={() => handleSocialClick('github')}
+          >
+            <primitive object={github.scene} />
+          </InteractiveMesh>
 
-      <group
-        ref={itchioRef}
-        onPointerOver={() => isInDefaultView && itchioRef.current && onHover([itchioRef.current])}
-        onPointerOut={() => isInDefaultView && onHover([])}
-        onClick={() => handleSocialClick('itchio')}
-      >
-        <primitive object={itchio.scene} />
-      </group>
+          <InteractiveMesh
+            name="itchio"
+            onClick={() => handleSocialClick('itchio')}
+          >
+            <primitive object={itchio.scene} />
+          </InteractiveMesh>
+        </>
+      ) : (
+        // Legacy: système onHover/onSelect
+        <>
+          <group
+            ref={linkedinRef}
+            onPointerOver={() => isInDefaultView && linkedinRef.current && onHover([linkedinRef.current])}
+            onPointerOut={() => isInDefaultView && onHover([])}
+            onClick={() => handleSocialClick('linkedin')}
+          >
+            <primitive object={linkedin.scene} />
+          </group>
+
+          <group
+            ref={githubRef}
+            onPointerOver={() => isInDefaultView && githubRef.current && onHover([githubRef.current])}
+            onPointerOut={() => isInDefaultView && onHover([])}
+            onClick={() => handleSocialClick('github')}
+          >
+            <primitive object={github.scene} />
+          </group>
+
+          <group
+            ref={itchioRef}
+            onPointerOver={() => isInDefaultView && itchioRef.current && onHover([itchioRef.current])}
+            onPointerOut={() => isInDefaultView && onHover([])}
+            onClick={() => handleSocialClick('itchio')}
+          >
+            <primitive object={itchio.scene} />
+          </group>
+        </>
+      )}
     </group>
   )
 }

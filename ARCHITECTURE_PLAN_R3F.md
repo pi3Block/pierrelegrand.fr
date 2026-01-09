@@ -1,10 +1,11 @@
 # Plan d'Architecture Enterprise - Optimisation R3F
 ## Pierre Legrand Portfolio 3.0
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Date:** 2026-01-08
 **Statut:** Draft - En attente d'approbation
 **Auteur:** Architecture Team
+**Révisé par:** Claude Code Analysis
 
 ---
 
@@ -16,24 +17,33 @@ Ce document définit le plan d'implémentation enterprise-grade pour l'optimisat
 
 | Objectif | KPI Cible | Priorité |
 |----------|-----------|----------|
+| Performance CPU | -40% raycasting overhead | P0 |
 | Performance GPU | -30% draw calls | P0 |
 | Maintenabilité | -40% LOC dupliqué | P0 |
 | UX Transitions | <500ms latence | P1 |
 | Bundle Size | -15% JS initial | P1 |
 | DX (Developer Experience) | +50% réutilisabilité | P2 |
 
+### Changements v1.1.0
+- **Réorganisation des phases** : Ordre optimisé pour maximiser l'impact (0 → 1 → 2 → 3 → 4 → 5 → 6)
+- **Phase 2 reprioritisée** : Event System (ancienne Phase 6) devient Phase 2 - impact CPU critique
+- **Diagramme de dépendances** ajouté
+- **Feature flags simplifiés** : Un flag principal + flags granulaires optionnels
+- **MVP défini** : Phases 0-1-2-3 pour gains majeurs
+
 ---
 
 ## Table des Matières
 
 1. [Architecture Cible](#1-architecture-cible)
-2. [Phases d'Implémentation](#2-phases-dimplémentation)
-3. [Spécifications Techniques](#3-spécifications-techniques)
-4. [Patterns & Standards](#4-patterns--standards)
-5. [Migration Strategy](#5-migration-strategy)
-6. [Testing Strategy](#6-testing-strategy)
-7. [Rollback Plan](#7-rollback-plan)
-8. [Monitoring & Observability](#8-monitoring--observability)
+2. [Diagramme de Dépendances](#2-diagramme-de-dépendances)
+3. [Phases d'Implémentation](#3-phases-dimplémentation)
+4. [Spécifications Techniques](#4-spécifications-techniques)
+5. [Patterns & Standards](#5-patterns--standards)
+6. [Migration Strategy](#6-migration-strategy)
+7. [Testing Strategy](#7-testing-strategy)
+8. [Rollback Plan](#8-rollback-plan)
+9. [Monitoring & Observability](#9-monitoring--observability)
 
 ---
 
@@ -122,7 +132,102 @@ User Interaction
 
 ---
 
-## 2. Phases d'Implémentation
+## 2. Diagramme de Dépendances
+
+### 2.1 Ordre d'Exécution Optimisé
+
+```
+                    ┌─────────────────────────────────────────────────────────────┐
+                    │                    PHASES D'IMPLÉMENTATION                   │
+                    │                  (Ordre optimisé v1.1.0)                     │
+                    └─────────────────────────────────────────────────────────────┘
+
+    ┌──────────────┐
+    │   PHASE 0    │  Foundation
+    │  (Prérequis) │  • Structure dossiers
+    │              │  • Aliases TypeScript
+    │   Risque: ◯  │  • Stores Zustand base
+    └──────┬───────┘
+           │
+           ▼
+    ┌──────────────┐
+    │   PHASE 1    │  Camera System
+    │   (Camera)   │  • CameraControls drei
+    │              │  • cameraSlice.ts
+    │   Risque: ◐  │  • Remplacement GSAP
+    └──────┬───────┘
+           │
+           ▼
+    ┌──────────────┐     ┌─────────────────────────────────────────────────────┐
+    │   PHASE 2    │     │  CRITIQUE: Impact CPU -40%                          │
+    │   (Events)   │◀────│  Ancienne Phase 6, promue pour impact maximal       │
+    │              │     │  Prérequis de Phase 4 (PostProcessing)              │
+    │   Risque: ◐  │     └─────────────────────────────────────────────────────┘
+    └──────┬───────┘
+           │
+           ├─────────────────────────────┐
+           │                             │
+           ▼                             ▼
+    ┌──────────────┐              ┌──────────────┐
+    │   PHASE 3    │              │   PHASE 4    │
+    │(Interactions)│              │    (LOD)     │  ← Peuvent être parallélisées
+    │              │              │              │
+    │   Risque: ◐  │              │   Risque: ◐  │
+    └──────┬───────┘              └──────┬───────┘
+           │                             │
+           └─────────────┬───────────────┘
+                         │
+                         ▼
+                  ┌──────────────┐
+                  │   PHASE 5    │  Post-Processing
+                  │   (Effects)  │  • Dépend de interactionSlice (Phase 3)
+                  │              │  • Dépend de cameraSlice (Phase 1)
+                  │   Risque: ◯  │
+                  └──────┬───────┘
+                         │
+                         ▼
+                  ┌──────────────┐
+                  │   PHASE 6    │  Suspense + Cleanup
+                  │  (Suspense)  │  • Consolidation finale
+                  │              │  • Suppression code legacy
+                  │   Risque: ◯  │
+                  └──────────────┘
+
+    ═══════════════════════════════════════════════════════════════════════════
+                                    MVP BOUNDARY
+    ═══════════════════════════════════════════════════════════════════════════
+    │  Phases 0-1-2-3 = MVP (gains majeurs: -40% CPU, -30% GPU, UX amélioré)   │
+    │  Phases 4-5-6 = Polish (LOD, effets visuels, optimisation finale)        │
+    ═══════════════════════════════════════════════════════════════════════════
+
+    Légende Risque: ◯ Faible  ◐ Moyen  ● Élevé
+```
+
+### 2.2 Matrice de Dépendances
+
+| Phase | Dépend de | Bloque | Fichiers Créés |
+|-------|-----------|--------|----------------|
+| **0** | - | 1, 2, 3, 4, 5, 6 | `stores/slices/`, `core/`, aliases |
+| **1** | 0 | 5 | `cameraSlice.ts`, `CameraSystem.tsx` |
+| **2** | 0 | 3 | `InteractiveMesh.tsx`, `EventGate.tsx`, `PointerEventsLayer.tsx` |
+| **3** | 0, 2 | 5 | `interactionSlice.ts`, `InteractionSystem.tsx` |
+| **4** | 0 | 6 | `LODWrapper.tsx`, `MonitorScreenLOD.tsx` |
+| **5** | 1, 3 | 6 | `PostProcessing.tsx` |
+| **6** | 4, 5 | - | `SuspenseGroup.tsx`, cleanup files |
+
+### 2.3 Risques et Mitigations
+
+| Phase | Risque Principal | Mitigation |
+|-------|------------------|------------|
+| 1 | Régression UX transitions | Feature flag + A/B test |
+| 2 | Breaking changes events | `InteractiveMesh` wrapper graduel |
+| 3 | Outline cassé | Tests visuels automatisés |
+| 4 | Textures LOD manquantes | Screenshots générés au build |
+| 5 | Performance DOF | Désactivation conditionnelle mobile |
+
+---
+
+## 3. Phases d'Implémentation
 
 ### Phase 0: Foundation (Pre-requisites)
 **Durée estimée:** Sprint 0
@@ -348,15 +453,473 @@ Step 7: Supprimer globalFlyToStage
 
 ---
 
-### Phase 2: LOD System Implementation
+### Phase 2: Event System Optimization (CRITIQUE - ancienne Phase 6)
+**Durée estimée:** Sprint 1-2
+**Risque:** Moyen
+**Impact:** Performance CPU critique (-40% raycasting overhead)
+**Priorité:** P0 - Gains CPU majeurs, prérequis de Phase 3
+
+> **Note v1.1.0:** Cette phase était initialement Phase 6. Elle a été promue en Phase 2 car elle représente le gain de performance le plus significatif (-75% raycasts/frame) et est un prérequis pour la Phase 3 (Interaction System).
+
+#### 2.1 Problèmes Identifiés dans le Code Actuel
+
+```typescript
+// ❌ PROBLÈME 1: Raycasting sur TOUS les objets
+// Actuellement: chaque mesh avec onPointerOver déclenche un raycast à chaque frame
+<group
+  onPointerOver={() => onHover([ref.current])}  // Raycast coûteux
+  onPointerOut={() => onHover([])}
+>
+  <primitive object={scene} />  // Scène entière testée
+</group>
+
+// ❌ PROBLÈME 2: Fonctions inline recréées à chaque render
+onPointerOver={() => linkedinRef.current && onHover([linkedinRef.current])}
+
+// ❌ PROBLÈME 3: Pas de filter sur les événements (meshes non-interactifs testés)
+// Les 3 parties room (room1, room2, room3) n'ont pas d'événements mais sont
+// quand même traversées par le raycaster
+
+// ❌ PROBLÈME 4: Pas de stopPropagation (événements bubblent)
+onClick={() => handleSocialClick('linkedin')}  // Peut trigger parent aussi
+
+// ❌ PROBLÈME 5: Événements actifs même en mode interactif
+// Quand currentStage !== 'default', les événements hover sont inutiles
+// mais toujours traités
+```
+
+#### 2.2 Solutions R3F Enterprise
+
+##### 2.2.1 Canvas Event Optimization
+
+```typescript
+// src/components/3d/pierre/PierreExperience.tsx
+
+<Canvas
+  // ✅ Filtrer les objets raycastables
+  raycaster={{
+    filter: (intersects) => {
+      // Ne garder que les objets avec userData.interactive
+      return intersects.filter(
+        (hit) => hit.object.userData.interactive === true
+      )
+    },
+  }}
+  // ✅ Réduire la fréquence des événements pointer
+  events={(state) => ({
+    ...state.events,
+    // Throttle les événements move (pas besoin de 60fps pour hover)
+    onPointerMove: throttle(state.events.onPointerMove, 50),
+  })}
+>
+```
+
+##### 2.2.2 Mesh Interactive Marker Pattern
+
+**Fichier: `src/components/3d/pierre/core/InteractiveMesh.tsx`**
+```typescript
+import { useEffect, useRef, useCallback, memo } from 'react'
+import * as THREE from 'three'
+import { ThreeEvent } from '@react-three/fiber'
+import { useInteractionStore } from '@stores/interactionStore'
+
+interface InteractiveMeshProps {
+  children: React.ReactNode
+  name: string
+  onSelect?: () => void
+  disabled?: boolean
+}
+
+/**
+ * Wrapper qui marque un mesh comme interactif pour le raycaster filter.
+ * Gère hover/click de manière optimisée.
+ */
+export const InteractiveMesh = memo(function InteractiveMesh({
+  children,
+  name,
+  onSelect,
+  disabled = false,
+}: InteractiveMeshProps) {
+  const groupRef = useRef<THREE.Group>(null)
+  const setHovered = useInteractionStore((s) => s.setHovered)
+  const clearHover = useInteractionStore((s) => s.clearHover)
+
+  // Marquer tous les meshes enfants comme interactifs
+  useEffect(() => {
+    if (!groupRef.current) return
+
+    groupRef.current.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        child.userData.interactive = !disabled
+        child.userData.interactiveName = name
+      }
+    })
+
+    return () => {
+      groupRef.current?.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          child.userData.interactive = false
+        }
+      })
+    }
+  }, [name, disabled])
+
+  // Handlers mémorisés (jamais recréés)
+  const handlePointerOver = useCallback(
+    (e: ThreeEvent<PointerEvent>) => {
+      if (disabled) return
+      e.stopPropagation()  // ✅ Empêche bubble
+      setHovered([e.object])
+    },
+    [disabled, setHovered]
+  )
+
+  const handlePointerOut = useCallback(
+    (e: ThreeEvent<PointerEvent>) => {
+      e.stopPropagation()
+      clearHover()
+    },
+    [clearHover]
+  )
+
+  const handleClick = useCallback(
+    (e: ThreeEvent<MouseEvent>) => {
+      if (disabled || !onSelect) return
+      e.stopPropagation()
+      onSelect()
+    },
+    [disabled, onSelect]
+  )
+
+  return (
+    <group
+      ref={groupRef}
+      name={name}
+      onPointerOver={disabled ? undefined : handlePointerOver}
+      onPointerOut={disabled ? undefined : handlePointerOut}
+      onClick={disabled ? undefined : handleClick}
+    >
+      {children}
+    </group>
+  )
+})
+```
+
+##### 2.2.3 Désactivation Conditionnelle des Événements
+
+**Fichier: `src/components/3d/pierre/core/EventGate.tsx`**
+```typescript
+import { createContext, useContext, useMemo } from 'react'
+import { useCameraStore } from '@stores/cameraStore'
+
+interface EventGateContextValue {
+  eventsEnabled: boolean
+}
+
+const EventGateContext = createContext<EventGateContextValue>({
+  eventsEnabled: true,
+})
+
+export const useEventGate = () => useContext(EventGateContext)
+
+/**
+ * Gate qui désactive tous les événements enfants quand on est en mode focus.
+ * Évite les raycasts inutiles quand on interagit avec un élément spécifique.
+ */
+export function EventGate({ children }: { children: React.ReactNode }) {
+  const currentStage = useCameraStore((s) => s.currentStage)
+
+  const value = useMemo(
+    () => ({
+      // Événements actifs seulement en mode default
+      eventsEnabled: currentStage === 'default',
+    }),
+    [currentStage]
+  )
+
+  return (
+    <EventGateContext.Provider value={value}>
+      {children}
+    </EventGateContext.Provider>
+  )
+}
+
+// Usage dans InteractiveMesh
+export const InteractiveMesh = memo(function InteractiveMesh(props) {
+  const { eventsEnabled } = useEventGate()
+  const effectivelyDisabled = props.disabled || !eventsEnabled
+
+  // ... rest du composant avec effectivelyDisabled
+})
+```
+
+##### 2.2.4 Bounding Volume Hierarchy (BVH)
+
+```typescript
+// src/components/3d/pierre/PierreWorld.tsx
+
+import { Bvh } from '@react-three/drei'
+
+export function PierreWorld({ onHover, onSelect }: PierreWorldProps) {
+  return (
+    <BakedMaterialProvider>
+      {/* BVH accélère le raycasting sur les modèles complexes */}
+      <Bvh firstHitOnly>
+        <group name="pierre-world">
+          <EventGate>
+            {/* Éléments interactifs uniquement */}
+            <InteractiveMesh name="linkedin" onSelect={() => openLink('linkedin')}>
+              <primitive object={linkedin.scene} />
+            </InteractiveMesh>
+
+            <InteractiveMesh name="github" onSelect={() => openLink('github')}>
+              <primitive object={github.scene} />
+            </InteractiveMesh>
+
+            {/* ... autres éléments interactifs */}
+          </EventGate>
+
+          {/* Éléments NON interactifs - en dehors de Bvh pour éviter overhead */}
+          <primitive object={room1.scene} />
+          <primitive object={room2.scene} />
+          <primitive object={room3.scene} />
+        </group>
+      </Bvh>
+    </BakedMaterialProvider>
+  )
+}
+```
+
+##### 2.2.5 Pointer Events Filter Layer
+
+**Fichier: `src/components/3d/pierre/core/PointerEventsLayer.tsx`**
+```typescript
+import { useThree } from '@react-three/fiber'
+import { useEffect } from 'react'
+
+/**
+ * Composant qui configure le système d'événements R3F.
+ * À placer une seule fois dans le Canvas.
+ */
+export function PointerEventsLayer() {
+  const { raycaster, gl } = useThree()
+
+  useEffect(() => {
+    // Configuration du raycaster
+    raycaster.params.Line = { threshold: 0.1 }
+    raycaster.params.Points = { threshold: 0.1 }
+
+    // Filtrer uniquement les objets marqués interactifs
+    const originalFilter = raycaster.filter
+    raycaster.filter = (items) => {
+      const filtered = items.filter(
+        (item) => item.object.userData.interactive === true
+      )
+      return originalFilter ? originalFilter(filtered) : filtered
+    }
+
+    return () => {
+      raycaster.filter = originalFilter
+    }
+  }, [raycaster])
+
+  useEffect(() => {
+    // Optimiser le canvas pour les événements
+    const canvas = gl.domElement
+
+    // Passive listeners pour scroll performance
+    canvas.style.touchAction = 'none'
+
+    return () => {
+      canvas.style.touchAction = ''
+    }
+  }, [gl])
+
+  return null
+}
+```
+
+#### 2.3 Métriques de Performance Événements
+
+| Métrique | Avant | Après | Gain |
+|----------|-------|-------|------|
+| Raycasts/frame | ~15-20 | ~3-5 | -75% |
+| Event handlers | ~40 | ~12 | -70% |
+| GC pressure (closures) | Haute | Basse | -80% |
+| Hover latency | ~16ms | ~16ms | = |
+| CPU idle time | 60% | 75% | +15% |
+
+#### 2.4 Checklist Implémentation Phase 2
+
+- [ ] Créer `InteractiveMesh.tsx` wrapper
+- [ ] Créer `EventGate.tsx` context
+- [ ] Créer `PointerEventsLayer.tsx` configuration
+- [ ] Ajouter `userData.interactive` à tous les meshes interactifs
+- [ ] Implémenter `Bvh` wrapper sur PierreWorld
+- [ ] Refactorer BakedRoom avec `InteractiveMesh`
+- [ ] Refactorer tous les éléments interactifs
+- [ ] Mesurer avant/après avec Chrome DevTools Performance
+
+---
+
+### Phase 3: Interaction System Centralization (ancienne Phase 4)
 **Durée estimée:** Sprint 2
 **Risque:** Moyen
-**Impact:** Performance GPU
+**Impact:** Code maintenabilité + Prérequis PostProcessing
+**Dépend de:** Phase 2 (Event System)
 
-#### 2.1 Objectif
+#### 3.1 Objectif
+Centraliser la logique hover/selection dans un store dédié avec debouncing.
+
+#### 3.2 Implementation
+
+**Fichier: `src/stores/slices/interactionSlice.ts`**
+```typescript
+import { StateCreator } from 'zustand'
+import * as THREE from 'three'
+import { debounce } from 'lodash-es'
+
+export interface InteractionState {
+  // State
+  hoveredObjects: THREE.Object3D[]
+  hoveredMeshes: THREE.Mesh[]  // Pour OutlinePass (doit être Mesh, pas Group)
+  selectedObject: THREE.Object3D | null
+  cursorStyle: 'default' | 'pointer' | 'grab'
+
+  // Actions
+  setHovered: (objects: THREE.Object3D[]) => void
+  setSelected: (object: THREE.Object3D | null) => void
+  clearHover: () => void
+  clearAll: () => void
+}
+
+/**
+ * Extrait tous les Mesh d'une liste d'Object3D (pour OutlinePass).
+ */
+function collectMeshes(objects: THREE.Object3D[]): THREE.Mesh[] {
+  const meshes: THREE.Mesh[] = []
+  objects.forEach((obj) => {
+    obj.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        meshes.push(child as THREE.Mesh)
+      }
+    })
+  })
+  return meshes
+}
+
+// Version débounced pour éviter les updates trop fréquentes
+const debouncedSetHovered = debounce((set, objects, meshes) => {
+  set({
+    hoveredObjects: objects,
+    hoveredMeshes: meshes,
+    cursorStyle: objects.length > 0 ? 'pointer' : 'default',
+  })
+}, 16) // ~60fps max
+
+export const createInteractionSlice: StateCreator<InteractionState> = (set, get) => ({
+  hoveredObjects: [],
+  hoveredMeshes: [],
+  selectedObject: null,
+  cursorStyle: 'default',
+
+  setHovered: (objects) => {
+    // Skip si identique (comparaison par référence)
+    const current = get().hoveredObjects
+    if (
+      objects.length === current.length &&
+      objects.every((obj, i) => obj === current[i])
+    ) {
+      return
+    }
+
+    const meshes = collectMeshes(objects)
+    debouncedSetHovered(set, objects, meshes)
+  },
+
+  setSelected: (object) => set({ selectedObject: object }),
+
+  // Version immédiate pour clear (pas de délai perçu)
+  clearHover: () => {
+    debouncedSetHovered.cancel()
+    set({
+      hoveredObjects: [],
+      hoveredMeshes: [],
+      cursorStyle: 'default',
+    })
+  },
+
+  clearAll: () => {
+    debouncedSetHovered.cancel()
+    set({
+      hoveredObjects: [],
+      hoveredMeshes: [],
+      selectedObject: null,
+      cursorStyle: 'default',
+    })
+  },
+})
+```
+
+**Fichier: `src/components/3d/pierre/core/InteractionSystem.tsx`**
+```typescript
+import { useEffect } from 'react'
+import { useInteractionStore } from '@stores/interactionStore'
+
+/**
+ * Composant de gestion du curseur basé sur l'état d'interaction.
+ */
+export function InteractionSystem() {
+  const cursorStyle = useInteractionStore((s) => s.cursorStyle)
+
+  useEffect(() => {
+    document.body.style.cursor = cursorStyle
+    return () => {
+      document.body.style.cursor = 'default'
+    }
+  }, [cursorStyle])
+
+  return null
+}
+
+/**
+ * Hook pour rendre un mesh interactif.
+ */
+export function useInteractive(name: string) {
+  const setHovered = useInteractionStore((s) => s.setHovered)
+  const clearHover = useInteractionStore((s) => s.clearHover)
+
+  return {
+    onPointerOver: (e: THREE.Event) => {
+      e.stopPropagation()
+      setHovered([e.object])
+    },
+    onPointerOut: () => clearHover(),
+  }
+}
+```
+
+#### 3.3 Checklist Implémentation Phase 3
+
+- [ ] Créer `interactionSlice.ts` avec debouncing
+- [ ] Créer `InteractionSystem.tsx`
+- [ ] Créer `useInteractive` hook
+- [ ] Intégrer avec `InteractiveMesh` de Phase 2
+- [ ] Tests unitaires pour le debouncing
+- [ ] Vérifier que l'outline fonctionne toujours
+
+---
+
+### Phase 4: LOD System Implementation (ancienne Phase 2)
+**Durée estimée:** Sprint 2-3
+**Risque:** Moyen
+**Impact:** Performance GPU
+**Peut être parallélisée avec:** Phase 3
+
+#### 4.1 Objectif
 Implémenter LOD (Level of Detail) pour les moniteurs uikit et éléments lointains.
 
-#### 2.2 Implementation
+#### 4.2 Implementation
 
 **Fichier: `src/components/3d/pierre/core/LODWrapper.tsx`**
 ```typescript
@@ -507,24 +1070,133 @@ function MonitorPlaceholder() {
 }
 ```
 
-#### 2.3 Assets Required
+#### 4.3 Assets Required
 ```
 public/pierre/assets/textures/
 ├── monitor-left-preview.webp   # Screenshot JoanOS (1370x765px)
 └── monitor-right-preview.webp  # Screenshot ArtGallery (1370x765px)
 ```
 
+#### 4.4 Checklist Implémentation Phase 4
+
+- [ ] Créer `LODWrapper.tsx`
+- [ ] Créer `MonitorScreenLOD.tsx`
+- [ ] Générer screenshots des moniteurs (1370x765px)
+- [ ] Intégrer dans PierreWorld
+- [ ] Tester transitions LOD visuellement
+- [ ] Mesurer draw calls avant/après
+
 ---
 
-### Phase 3: Suspense Consolidation
-**Durée estimée:** Sprint 2
+### Phase 5: Post-Processing Optimization (ancienne Phase 5)
+**Durée estimée:** Sprint 3
 **Risque:** Faible
-**Impact:** Perceived performance
+**Impact:** Visual polish + Performance
+**Dépend de:** Phase 1 (cameraSlice), Phase 3 (interactionSlice)
 
-#### 3.1 Objectif
-Réduire de 12 à 3 groupes Suspense stratégiques.
+#### 5.1 Objectif
+Optimiser EffectComposer et ajouter DepthOfField conditionnel.
 
-#### 3.2 Implementation
+#### 5.2 Implementation
+
+**Fichier: `src/components/3d/pierre/core/PostProcessing.tsx`**
+```typescript
+import { useMemo } from 'react'
+import { EffectComposer, Outline, SMAA, DepthOfField, Vignette } from '@react-three/postprocessing'
+import { BlendFunction } from 'postprocessing'
+import { useInteractionStore } from '@stores/interactionStore'
+import { useCameraStore } from '@stores/cameraStore'
+
+interface PostProcessingProps {
+  enableDOF?: boolean
+  enableVignette?: boolean
+}
+
+/**
+ * Post-processing centralisé avec effets conditionnels.
+ */
+export function PostProcessing({
+  enableDOF = true,
+  enableVignette = true
+}: PostProcessingProps) {
+  // Récupérer les meshes survolés depuis le store
+  const hoveredMeshes = useInteractionStore((s) => s.hoveredMeshes)
+  const currentStage = useCameraStore((s) => s.currentStage)
+
+  // DOF seulement quand focalisé sur un élément
+  const shouldShowDOF = enableDOF && currentStage !== 'default'
+
+  // Configuration DOF basée sur le stage
+  const dofConfig = useMemo(() => {
+    switch (currentStage) {
+      case 'leftMonitor':
+      case 'rightMonitor':
+        return { focusDistance: 0.02, focalLength: 0.05, bokehScale: 3 }
+      case 'arcadeMachine':
+        return { focusDistance: 0.03, focalLength: 0.04, bokehScale: 2 }
+      default:
+        return { focusDistance: 0, focalLength: 0.02, bokehScale: 2 }
+    }
+  }, [currentStage])
+
+  return (
+    <EffectComposer autoClear={false} multisampling={0}>
+      {/* Outline sur hover */}
+      <Outline
+        selection={hoveredMeshes}
+        visibleEdgeColor={0xffffff}
+        hiddenEdgeColor={0xffffff}
+        edgeStrength={10}
+        blendFunction={BlendFunction.SCREEN}
+        xRay={true}
+      />
+
+      {/* Depth of Field conditionnel */}
+      {shouldShowDOF && (
+        <DepthOfField
+          focusDistance={dofConfig.focusDistance}
+          focalLength={dofConfig.focalLength}
+          bokehScale={dofConfig.bokehScale}
+        />
+      )}
+
+      {/* Vignette subtile */}
+      {enableVignette && (
+        <Vignette
+          eskil={false}
+          offset={0.1}
+          darkness={0.5}
+        />
+      )}
+
+      {/* Anti-aliasing */}
+      <SMAA />
+    </EffectComposer>
+  )
+}
+```
+
+#### 5.3 Checklist Implémentation Phase 5
+
+- [ ] Créer `PostProcessing.tsx`
+- [ ] Intégrer avec `interactionSlice` (Phase 3)
+- [ ] Intégrer avec `cameraSlice` (Phase 1)
+- [ ] Tester DOF sur chaque stage
+- [ ] Désactiver DOF sur mobile si performance insuffisante
+- [ ] Vérifier outline fonctionne avec nouveaux meshes
+
+---
+
+### Phase 6: Suspense Consolidation + Cleanup (ancienne Phase 3 + Phase 7)
+**Durée estimée:** Sprint 3-4
+**Risque:** Faible
+**Impact:** Perceived performance + Maintenabilité long-terme
+**Dépend de:** Phases 4, 5
+
+#### 6.1 Objectif
+Réduire de 12 à 3 groupes Suspense stratégiques et nettoyer le code legacy.
+
+#### 6.2 Implementation Suspense
 
 **Fichier: `src/components/3d/pierre/core/SuspenseGroup.tsx`**
 ```typescript
@@ -626,661 +1298,38 @@ export function PierreWorld({ onHover, onSelect }: PierreWorldProps) {
 }
 ```
 
----
+#### 6.3 Code Cleanup
 
-### Phase 4: Interaction System Centralization
-**Durée estimée:** Sprint 3
-**Risque:** Moyen
-**Impact:** Code maintenabilité
-
-#### 4.1 Objectif
-Centraliser la logique hover/selection dans un store dédié.
-
-#### 4.2 Implementation
-
-**Fichier: `src/stores/slices/interactionSlice.ts`**
-```typescript
-import { StateCreator } from 'zustand'
-import * as THREE from 'three'
-
-export interface InteractionState {
-  // State
-  hoveredObjects: THREE.Object3D[]
-  hoveredMeshes: THREE.Mesh[]  // Pour OutlinePass (doit être Mesh, pas Group)
-  selectedObject: THREE.Object3D | null
-  cursorStyle: 'default' | 'pointer' | 'grab'
-
-  // Actions
-  setHovered: (objects: THREE.Object3D[]) => void
-  setSelected: (object: THREE.Object3D | null) => void
-  clearHover: () => void
-  clearAll: () => void
-}
-
-/**
- * Extrait tous les Mesh d'une liste d'Object3D (pour OutlinePass).
- */
-function collectMeshes(objects: THREE.Object3D[]): THREE.Mesh[] {
-  const meshes: THREE.Mesh[] = []
-  objects.forEach((obj) => {
-    obj.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        meshes.push(child as THREE.Mesh)
-      }
-    })
-  })
-  return meshes
-}
-
-export const createInteractionSlice: StateCreator<InteractionState> = (set) => ({
-  hoveredObjects: [],
-  hoveredMeshes: [],
-  selectedObject: null,
-  cursorStyle: 'default',
-
-  setHovered: (objects) => {
-    const meshes = collectMeshes(objects)
-    set({
-      hoveredObjects: objects,
-      hoveredMeshes: meshes,
-      cursorStyle: objects.length > 0 ? 'pointer' : 'default',
-    })
-  },
-
-  setSelected: (object) => set({ selectedObject: object }),
-
-  clearHover: () => set({
-    hoveredObjects: [],
-    hoveredMeshes: [],
-    cursorStyle: 'default',
-  }),
-
-  clearAll: () => set({
-    hoveredObjects: [],
-    hoveredMeshes: [],
-    selectedObject: null,
-    cursorStyle: 'default',
-  }),
-})
-```
-
-**Fichier: `src/components/3d/pierre/core/InteractionSystem.tsx`**
-```typescript
-import { useEffect } from 'react'
-import { useInteractionStore } from '@stores/interactionStore'
-
-/**
- * Composant de gestion du curseur basé sur l'état d'interaction.
- */
-export function InteractionSystem() {
-  const cursorStyle = useInteractionStore((s) => s.cursorStyle)
-
-  useEffect(() => {
-    document.body.style.cursor = cursorStyle
-    return () => {
-      document.body.style.cursor = 'default'
-    }
-  }, [cursorStyle])
-
-  return null
-}
-
-/**
- * Hook pour rendre un mesh interactif.
- */
-export function useInteractive(name: string) {
-  const setHovered = useInteractionStore((s) => s.setHovered)
-  const clearHover = useInteractionStore((s) => s.clearHover)
-
-  return {
-    onPointerOver: (e: THREE.Event) => {
-      e.stopPropagation()
-      setHovered([e.object])
-    },
-    onPointerOut: () => clearHover(),
-  }
-}
-```
-
----
-
-### Phase 5: Post-Processing Optimization
-**Durée estimée:** Sprint 3
-**Risque:** Faible
-**Impact:** Visual polish + Performance
-
-#### 5.1 Objectif
-Optimiser EffectComposer et ajouter DepthOfField conditionnel.
-
-#### 5.2 Implementation
-
-**Fichier: `src/components/3d/pierre/core/PostProcessing.tsx`**
-```typescript
-import { useMemo } from 'react'
-import { EffectComposer, Outline, SMAA, DepthOfField, Vignette } from '@react-three/postprocessing'
-import { BlendFunction } from 'postprocessing'
-import { useInteractionStore } from '@stores/interactionStore'
-import { useCameraStore } from '@stores/cameraStore'
-
-interface PostProcessingProps {
-  enableDOF?: boolean
-  enableVignette?: boolean
-}
-
-/**
- * Post-processing centralisé avec effets conditionnels.
- */
-export function PostProcessing({
-  enableDOF = true,
-  enableVignette = true
-}: PostProcessingProps) {
-  // Récupérer les meshes survolés depuis le store
-  const hoveredMeshes = useInteractionStore((s) => s.hoveredMeshes)
-  const currentStage = useCameraStore((s) => s.currentStage)
-
-  // DOF seulement quand focalisé sur un élément
-  const shouldShowDOF = enableDOF && currentStage !== 'default'
-
-  // Configuration DOF basée sur le stage
-  const dofConfig = useMemo(() => {
-    switch (currentStage) {
-      case 'leftMonitor':
-      case 'rightMonitor':
-        return { focusDistance: 0.02, focalLength: 0.05, bokehScale: 3 }
-      case 'arcadeMachine':
-        return { focusDistance: 0.03, focalLength: 0.04, bokehScale: 2 }
-      default:
-        return { focusDistance: 0, focalLength: 0.02, bokehScale: 2 }
-    }
-  }, [currentStage])
-
-  return (
-    <EffectComposer autoClear={false} multisampling={0}>
-      {/* Outline sur hover */}
-      <Outline
-        selection={hoveredMeshes}
-        visibleEdgeColor={0xffffff}
-        hiddenEdgeColor={0xffffff}
-        edgeStrength={10}
-        blendFunction={BlendFunction.SCREEN}
-        xRay={true}
-      />
-
-      {/* Depth of Field conditionnel */}
-      {shouldShowDOF && (
-        <DepthOfField
-          focusDistance={dofConfig.focusDistance}
-          focalLength={dofConfig.focalLength}
-          bokehScale={dofConfig.bokehScale}
-        />
-      )}
-
-      {/* Vignette subtile */}
-      {enableVignette && (
-        <Vignette
-          eskil={false}
-          offset={0.1}
-          darkness={0.5}
-        />
-      )}
-
-      {/* Anti-aliasing */}
-      <SMAA />
-    </EffectComposer>
-  )
-}
-```
-
----
-
-### Phase 6: Event System Optimization (CRITIQUE)
-**Durée estimée:** Sprint 3-4
-**Risque:** Moyen
-**Impact:** Performance CPU critique (-40% raycasting overhead)
-
-#### 6.1 Problèmes Identifiés dans le Code Actuel
-
-```typescript
-// ❌ PROBLÈME 1: Raycasting sur TOUS les objets
-// Actuellement: chaque mesh avec onPointerOver déclenche un raycast à chaque frame
-<group
-  onPointerOver={() => onHover([ref.current])}  // Raycast coûteux
-  onPointerOut={() => onHover([])}
->
-  <primitive object={scene} />  // Scène entière testée
-</group>
-
-// ❌ PROBLÈME 2: Fonctions inline recréées à chaque render
-onPointerOver={() => linkedinRef.current && onHover([linkedinRef.current])}
-
-// ❌ PROBLÈME 3: Pas de filter sur les événements (meshes non-interactifs testés)
-// Les 3 parties room (room1, room2, room3) n'ont pas d'événements mais sont
-// quand même traversées par le raycaster
-
-// ❌ PROBLÈME 4: Pas de stopPropagation (événements bubblent)
-onClick={() => handleSocialClick('linkedin')}  // Peut trigger parent aussi
-
-// ❌ PROBLÈME 5: Événements actifs même en mode interactif
-// Quand currentStage !== 'default', les événements hover sont inutiles
-// mais toujours traités
-```
-
-#### 6.2 Solutions R3F Enterprise
-
-##### 6.2.1 Canvas Event Optimization
-
-```typescript
-// src/components/3d/pierre/PierreExperience.tsx
-
-<Canvas
-  // ✅ Filtrer les objets raycastables
-  raycaster={{
-    filter: (intersects) => {
-      // Ne garder que les objets avec userData.interactive
-      return intersects.filter(
-        (hit) => hit.object.userData.interactive === true
-      )
-    },
-  }}
-  // ✅ Réduire la fréquence des événements pointer
-  events={(state) => ({
-    ...state.events,
-    // Throttle les événements move (pas besoin de 60fps pour hover)
-    onPointerMove: throttle(state.events.onPointerMove, 50),
-  })}
->
-```
-
-##### 6.2.2 Mesh Interactive Marker Pattern
-
-```typescript
-// src/components/3d/pierre/core/InteractiveMesh.tsx
-
-import { useEffect, useRef, useCallback, memo } from 'react'
-import * as THREE from 'three'
-import { ThreeEvent } from '@react-three/fiber'
-import { useInteractionStore } from '@stores/interactionStore'
-
-interface InteractiveMeshProps {
-  children: React.ReactNode
-  name: string
-  onSelect?: () => void
-  disabled?: boolean
-}
-
-/**
- * Wrapper qui marque un mesh comme interactif pour le raycaster filter.
- * Gère hover/click de manière optimisée.
- */
-export const InteractiveMesh = memo(function InteractiveMesh({
-  children,
-  name,
-  onSelect,
-  disabled = false,
-}: InteractiveMeshProps) {
-  const groupRef = useRef<THREE.Group>(null)
-  const setHovered = useInteractionStore((s) => s.setHovered)
-  const clearHover = useInteractionStore((s) => s.clearHover)
-
-  // Marquer tous les meshes enfants comme interactifs
-  useEffect(() => {
-    if (!groupRef.current) return
-
-    groupRef.current.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        child.userData.interactive = !disabled
-        child.userData.interactiveName = name
-      }
-    })
-
-    return () => {
-      groupRef.current?.traverse((child) => {
-        if ((child as THREE.Mesh).isMesh) {
-          child.userData.interactive = false
-        }
-      })
-    }
-  }, [name, disabled])
-
-  // Handlers mémorisés (jamais recréés)
-  const handlePointerOver = useCallback(
-    (e: ThreeEvent<PointerEvent>) => {
-      if (disabled) return
-      e.stopPropagation()  // ✅ Empêche bubble
-      setHovered([e.object])
-    },
-    [disabled, setHovered]
-  )
-
-  const handlePointerOut = useCallback(
-    (e: ThreeEvent<PointerEvent>) => {
-      e.stopPropagation()
-      clearHover()
-    },
-    [clearHover]
-  )
-
-  const handleClick = useCallback(
-    (e: ThreeEvent<MouseEvent>) => {
-      if (disabled || !onSelect) return
-      e.stopPropagation()
-      onSelect()
-    },
-    [disabled, onSelect]
-  )
-
-  return (
-    <group
-      ref={groupRef}
-      name={name}
-      onPointerOver={disabled ? undefined : handlePointerOver}
-      onPointerOut={disabled ? undefined : handlePointerOut}
-      onClick={disabled ? undefined : handleClick}
-    >
-      {children}
-    </group>
-  )
-})
-```
-
-##### 6.2.3 Désactivation Conditionnelle des Événements
-
-```typescript
-// src/components/3d/pierre/core/EventGate.tsx
-
-import { createContext, useContext, useMemo } from 'react'
-import { useCameraStore } from '@stores/cameraStore'
-
-interface EventGateContextValue {
-  eventsEnabled: boolean
-}
-
-const EventGateContext = createContext<EventGateContextValue>({
-  eventsEnabled: true,
-})
-
-export const useEventGate = () => useContext(EventGateContext)
-
-/**
- * Gate qui désactive tous les événements enfants quand on est en mode focus.
- * Évite les raycasts inutiles quand on interagit avec un élément spécifique.
- */
-export function EventGate({ children }: { children: React.ReactNode }) {
-  const currentStage = useCameraStore((s) => s.currentStage)
-
-  const value = useMemo(
-    () => ({
-      // Événements actifs seulement en mode default
-      eventsEnabled: currentStage === 'default',
-    }),
-    [currentStage]
-  )
-
-  return (
-    <EventGateContext.Provider value={value}>
-      {children}
-    </EventGateContext.Provider>
-  )
-}
-
-// Usage dans InteractiveMesh
-export const InteractiveMesh = memo(function InteractiveMesh(props) {
-  const { eventsEnabled } = useEventGate()
-  const effectivelyDisabled = props.disabled || !eventsEnabled
-
-  // ... rest du composant avec effectivelyDisabled
-})
-```
-
-##### 6.2.4 Bounding Volume Hierarchy (BVH)
-
-```typescript
-// src/components/3d/pierre/PierreWorld.tsx
-
-import { Bvh } from '@react-three/drei'
-
-export function PierreWorld({ onHover, onSelect }: PierreWorldProps) {
-  return (
-    <BakedMaterialProvider>
-      {/* BVH accélère le raycasting sur les modèles complexes */}
-      <Bvh firstHitOnly>
-        <group name="pierre-world">
-          <EventGate>
-            {/* Éléments interactifs uniquement */}
-            <InteractiveMesh name="linkedin" onSelect={() => openLink('linkedin')}>
-              <primitive object={linkedin.scene} />
-            </InteractiveMesh>
-
-            <InteractiveMesh name="github" onSelect={() => openLink('github')}>
-              <primitive object={github.scene} />
-            </InteractiveMesh>
-
-            {/* ... autres éléments interactifs */}
-          </EventGate>
-
-          {/* Éléments NON interactifs - en dehors de Bvh pour éviter overhead */}
-          <primitive object={room1.scene} />
-          <primitive object={room2.scene} />
-          <primitive object={room3.scene} />
-        </group>
-      </Bvh>
-    </BakedMaterialProvider>
-  )
-}
-```
-
-##### 6.2.5 Event Debouncing pour Outline
-
-```typescript
-// src/stores/slices/interactionSlice.ts
-
-import { debounce } from 'lodash-es'
-
-// Version débounced pour éviter les updates trop fréquentes
-const debouncedSetHovered = debounce((set, objects, meshes) => {
-  set({
-    hoveredObjects: objects,
-    hoveredMeshes: meshes,
-    cursorStyle: objects.length > 0 ? 'pointer' : 'default',
-  })
-}, 16) // ~60fps max
-
-export const createInteractionSlice: StateCreator<InteractionState> = (set, get) => ({
-  // ...state
-
-  setHovered: (objects) => {
-    // Skip si identique (comparaison par référence)
-    const current = get().hoveredObjects
-    if (
-      objects.length === current.length &&
-      objects.every((obj, i) => obj === current[i])
-    ) {
-      return
-    }
-
-    const meshes = collectMeshes(objects)
-    debouncedSetHovered(set, objects, meshes)
-  },
-
-  // Version immédiate pour clear (pas de délai perçu)
-  clearHover: () => {
-    debouncedSetHovered.cancel()
-    set({
-      hoveredObjects: [],
-      hoveredMeshes: [],
-      cursorStyle: 'default',
-    })
-  },
-})
-```
-
-##### 6.2.6 Pointer Events Filter Layer
-
-```typescript
-// src/components/3d/pierre/core/PointerEventsLayer.tsx
-
-import { useThree } from '@react-three/fiber'
-import { useEffect } from 'react'
-
-/**
- * Composant qui configure le système d'événements R3F.
- * À placer une seule fois dans le Canvas.
- */
-export function PointerEventsLayer() {
-  const { raycaster, gl } = useThree()
-
-  useEffect(() => {
-    // Configuration du raycaster
-    raycaster.params.Line = { threshold: 0.1 }
-    raycaster.params.Points = { threshold: 0.1 }
-
-    // Filtrer uniquement les objets marqués interactifs
-    const originalFilter = raycaster.filter
-    raycaster.filter = (items) => {
-      const filtered = items.filter(
-        (item) => item.object.userData.interactive === true
-      )
-      return originalFilter ? originalFilter(filtered) : filtered
-    }
-
-    return () => {
-      raycaster.filter = originalFilter
-    }
-  }, [raycaster])
-
-  useEffect(() => {
-    // Optimiser le canvas pour les événements
-    const canvas = gl.domElement
-
-    // Passive listeners pour scroll performance
-    canvas.style.touchAction = 'none'
-
-    return () => {
-      canvas.style.touchAction = ''
-    }
-  }, [gl])
-
-  return null
-}
-```
-
-#### 6.3 Refactoring BakedRoom avec Optimisations
-
-```typescript
-// src/components/3d/pierre/elements/BakedRoom.tsx (REFACTORED)
-
-import { useEffect, useMemo } from 'react'
-import { useGLTF } from '@react-three/drei'
-import * as THREE from 'three'
-import { InteractiveMesh } from '../core/InteractiveMesh'
-import { useBakedMaterials } from '../contexts/BakedMaterialContext'
-
-const MODELS = { /* ... */ }
-const SOCIAL_URLS = { /* ... */ }
-
-export function BakedRoom() {
-  // Chargement des modèles
-  const room1 = useGLTF(MODELS.room1)
-  const room2 = useGLTF(MODELS.room2)
-  const room3 = useGLTF(MODELS.room3)
-  const linkedin = useGLTF(MODELS.linkedin)
-  const github = useGLTF(MODELS.github)
-  const itchio = useGLTF(MODELS.itchio)
-
-  const { material1, material2, material3 } = useBakedMaterials()
-
-  // Appliquer matériaux une seule fois
-  useEffect(() => {
-    applyMaterial(room1.scene, material1)
-    applyMaterial(room2.scene, material2)
-    applyMaterial(room3.scene, material3)
-    applyMaterial(linkedin.scene, material3)
-    applyMaterial(github.scene, material3)
-    applyMaterial(itchio.scene, material3)
-  }, [room1, room2, room3, linkedin, github, itchio, material1, material2, material3])
-
-  // Handlers mémorisés
-  const handlers = useMemo(() => ({
-    linkedin: () => window.open(SOCIAL_URLS.linkedin, '_blank'),
-    github: () => window.open(SOCIAL_URLS.github, '_blank'),
-    itchio: () => window.open(SOCIAL_URLS.itchio, '_blank'),
-  }), [])
-
-  return (
-    <group name="baked-room">
-      {/* ✅ Éléments NON interactifs - pas d'événements, pas de raycast */}
-      <primitive object={room1.scene} />
-      <primitive object={room2.scene} />
-      <primitive object={room3.scene} />
-
-      {/* ✅ Éléments interactifs avec wrapper optimisé */}
-      <InteractiveMesh name="linkedin" onSelect={handlers.linkedin}>
-        <primitive object={linkedin.scene} />
-      </InteractiveMesh>
-
-      <InteractiveMesh name="github" onSelect={handlers.github}>
-        <primitive object={github.scene} />
-      </InteractiveMesh>
-
-      <InteractiveMesh name="itchio" onSelect={handlers.itchio}>
-        <primitive object={itchio.scene} />
-      </InteractiveMesh>
-    </group>
-  )
-}
-```
-
-#### 6.4 Métriques de Performance Événements
-
-| Métrique | Avant | Après | Gain |
-|----------|-------|-------|------|
-| Raycasts/frame | ~15-20 | ~3-5 | -75% |
-| Event handlers | ~40 | ~12 | -70% |
-| GC pressure (closures) | Haute | Basse | -80% |
-| Hover latency | ~16ms | ~16ms | = |
-| CPU idle time | 60% | 75% | +15% |
-
-#### 6.5 Checklist Implémentation
-
-- [ ] Créer `InteractiveMesh.tsx` wrapper
-- [ ] Créer `EventGate.tsx` context
-- [ ] Créer `PointerEventsLayer.tsx` configuration
-- [ ] Ajouter `userData.interactive` à tous les meshes interactifs
-- [ ] Implémenter `Bvh` wrapper sur PierreWorld
-- [ ] Ajouter debounce sur `setHovered`
-- [ ] Refactorer BakedRoom avec `InteractiveMesh`
-- [ ] Refactorer MonitorScreenUikit avec `InteractiveMesh`
-- [ ] Refactorer tous les éléments interactifs
-- [ ] Mesurer avant/après avec Chrome DevTools Performance
-
----
-
-### Phase 7: Code Cleanup & Documentation
-**Durée estimée:** Sprint 4
-**Risque:** Faible
-**Impact:** Maintenabilité long-terme
-
-#### 7.1 Fichiers à Supprimer
+##### 6.3.1 Fichiers à Supprimer
 ```
 src/components/3d/pierre/apps/os/JoanOS.tsx        # Remplacé par JoanOSUikit
 src/components/3d/pierre/apps/os/JoanOS.module.css # Associé
 ```
 
-#### 6.2 Dépendances à Retirer
+##### 6.3.2 Dépendances à Retirer
 ```bash
 npm uninstall gsap  # Si plus utilisé ailleurs
 ```
 
-#### 6.3 Documentation à Mettre à Jour
+##### 6.3.3 Documentation à Mettre à Jour
 - `.claude` - Ajouter nouveaux patterns
 - `README.md` - Architecture mise à jour
 - Storybook - Composants core documentés
 
+#### 6.4 Checklist Implémentation Phase 6
+
+- [ ] Créer `SuspenseGroup.tsx`
+- [ ] Refactorer PierreWorld avec 3 groupes Suspense
+- [ ] Supprimer fichiers legacy (JoanOS.tsx, etc.)
+- [ ] Retirer dépendances inutilisées
+- [ ] Mettre à jour documentation
+- [ ] Feature flag cleanup (supprimer flags obsolètes)
+
 ---
 
-## 3. Spécifications Techniques
+## 4. Spécifications Techniques
 
-### 3.1 Dependencies Requises
+### 4.1 Dependencies Requises
 
 ```json
 {
@@ -1295,7 +1344,7 @@ npm uninstall gsap  # Si plus utilisé ailleurs
 }
 ```
 
-### 3.2 TypeScript Strict
+### 4.2 TypeScript Strict
 
 ```typescript
 // tsconfig.json additions
@@ -1310,7 +1359,7 @@ npm uninstall gsap  # Si plus utilisé ailleurs
 }
 ```
 
-### 3.3 Performance Budgets
+### 4.3 Performance Budgets
 
 | Métrique | Budget | Alerte | Critique |
 |----------|--------|--------|----------|
@@ -1323,9 +1372,9 @@ npm uninstall gsap  # Si plus utilisé ailleurs
 
 ---
 
-## 4. Patterns & Standards
+## 5. Patterns & Standards
 
-### 4.1 Naming Conventions
+### 5.1 Naming Conventions
 
 ```typescript
 // Composants R3F
@@ -1344,7 +1393,7 @@ type ComponentProps = {}   // Suffixe Props
 interface ServiceConfig = {} // Suffixe Config
 ```
 
-### 4.2 Import Order
+### 5.2 Import Order
 
 ```typescript
 // 1. React
@@ -1367,7 +1416,7 @@ import { CameraSystem } from '../core/CameraSystem'
 import type { PierreStage } from '../stores/pierreStore'
 ```
 
-### 4.3 Component Template
+### 5.3 Component Template
 
 ```typescript
 /**
@@ -1402,18 +1451,27 @@ export default ComponentName
 
 ---
 
-## 5. Migration Strategy
+## 6. Migration Strategy
 
-### 5.1 Feature Flags
+### 6.1 Feature Flags (Simplifié v1.1.0)
 
 ```typescript
 // src/config/featureFlags.ts
+
+// Flag principal - active toute la nouvelle architecture
+export const USE_NEW_R3F_ARCHITECTURE = false
+
+// Flags granulaires (optionnels, pour rollout progressif)
 export const FEATURES = {
-  USE_CAMERA_CONTROLS: true,      // Phase 1
-  USE_LOD_MONITORS: false,        // Phase 2
-  USE_SUSPENSE_GROUPS: false,     // Phase 3
-  USE_CENTRALIZED_INTERACTIONS: false, // Phase 4
-  USE_ADVANCED_POST_PROCESSING: false, // Phase 5
+  // MVP (Phases 0-3)
+  USE_CAMERA_CONTROLS: true,           // Phase 1 - Camera System
+  USE_EVENT_OPTIMIZATION: false,       // Phase 2 - Event System (CRITIQUE)
+  USE_CENTRALIZED_INTERACTIONS: false, // Phase 3 - Interaction Store
+
+  // Polish (Phases 4-6)
+  USE_LOD_MONITORS: false,             // Phase 4 - LOD System
+  USE_ADVANCED_POST_PROCESSING: false, // Phase 5 - PostProcessing
+  USE_SUSPENSE_GROUPS: false,          // Phase 6 - Suspense + Cleanup
 } as const
 
 // Usage
@@ -1426,7 +1484,7 @@ import { FEATURES } from '@config/featureFlags'
 )}
 ```
 
-### 5.2 Gradual Rollout
+### 6.2 Gradual Rollout
 
 ```
 Week 1: 10% users (beta testers)
@@ -1435,7 +1493,7 @@ Week 3: 50% users (A/B test)
 Week 4: 100% users (full rollout)
 ```
 
-### 5.3 Metrics to Monitor
+### 6.3 Metrics to Monitor
 
 ```typescript
 // Performance tracking
@@ -1454,9 +1512,9 @@ const trackPerformance = () => {
 
 ---
 
-## 6. Testing Strategy
+## 7. Testing Strategy
 
-### 6.1 Unit Tests
+### 7.1 Unit Tests
 
 ```typescript
 // src/stores/__tests__/cameraSlice.test.ts
@@ -1484,7 +1542,7 @@ describe('cameraSlice', () => {
 })
 ```
 
-### 6.2 Visual Regression Tests
+### 7.2 Visual Regression Tests
 
 ```typescript
 // Using Playwright + Percy
@@ -1506,7 +1564,7 @@ test('Camera transition to monitor', async ({ page }) => {
 })
 ```
 
-### 6.3 Performance Tests
+### 7.3 Performance Tests
 
 ```typescript
 // Lighthouse CI config
@@ -1529,9 +1587,9 @@ module.exports = {
 
 ---
 
-## 7. Rollback Plan
+## 8. Rollback Plan
 
-### 7.1 Trigger Conditions
+### 8.1 Trigger Conditions
 
 | Condition | Seuil | Action |
 |-----------|-------|--------|
@@ -1540,7 +1598,7 @@ module.exports = {
 | FPS drop | >20% | Rollback phase concernée |
 | User complaints | >5 | Investigation immédiate |
 
-### 7.2 Rollback Procedure
+### 8.2 Rollback Procedure
 
 ```bash
 # 1. Désactiver feature flag
@@ -1556,7 +1614,7 @@ git push origin hotfix/rollback-camera-controls
 gh pr create --title "Hotfix: Rollback CameraControls" --body "Rollback due to [reason]"
 ```
 
-### 7.3 Post-Mortem Template
+### 8.3 Post-Mortem Template
 
 ```markdown
 ## Incident Report: [Feature] Rollback
@@ -1584,9 +1642,9 @@ gh pr create --title "Hotfix: Rollback CameraControls" --body "Rollback due to [
 
 ---
 
-## 8. Monitoring & Observability
+## 9. Monitoring & Observability
 
-### 8.1 Dashboards
+### 9.1 Dashboards
 
 ```typescript
 // Performance dashboard metrics
@@ -1610,7 +1668,7 @@ const metrics = {
 }
 ```
 
-### 8.2 Alerts
+### 9.2 Alerts
 
 ```yaml
 # alerts.yaml
@@ -1631,7 +1689,7 @@ alerts:
     severity: critical
 ```
 
-### 8.3 Logging
+### 9.3 Logging
 
 ```typescript
 // Structured logging for R3F events
@@ -1656,7 +1714,7 @@ const logger = {
 
 ---
 
-## Appendix A: File Structure Final
+## Appendix A: File Structure Final (v1.1.0)
 
 ```
 src/
@@ -1664,18 +1722,21 @@ src/
 │   └── 3d/
 │       └── pierre/
 │           ├── core/                         # NEW
-│           │   ├── CameraSystem.tsx
-│           │   ├── InteractionSystem.tsx
-│           │   ├── LODWrapper.tsx
-│           │   ├── PostProcessing.tsx
-│           │   └── SuspenseGroup.tsx
+│           │   ├── CameraSystem.tsx          # Phase 1
+│           │   ├── InteractiveMesh.tsx       # Phase 2
+│           │   ├── EventGate.tsx             # Phase 2
+│           │   ├── PointerEventsLayer.tsx    # Phase 2
+│           │   ├── InteractionSystem.tsx     # Phase 3
+│           │   ├── LODWrapper.tsx            # Phase 4
+│           │   ├── PostProcessing.tsx        # Phase 5
+│           │   └── SuspenseGroup.tsx         # Phase 6
 │           ├── elements/
-│           │   ├── BakedRoom.tsx
-│           │   ├── MonitorScreenLOD.tsx      # NEW (replaces MonitorScreenUikit)
+│           │   ├── BakedRoom.tsx             # REFACTORED (Phase 2)
+│           │   ├── MonitorScreenLOD.tsx      # NEW (Phase 4)
 │           │   └── ...
 │           ├── apps/
 │           │   ├── os/
-│           │   │   └── JoanOSUikit.tsx       # KEPT (JoanOS.tsx deleted)
+│           │   │   └── JoanOSUikit.tsx       # KEPT (JoanOS.tsx deleted Phase 6)
 │           │   └── gallery/
 │           │       └── ArtGalleryUikit.tsx
 │           ├── stores/
@@ -1687,39 +1748,65 @@ src/
 │           ├── PierreExperience.tsx          # REFACTORED
 │           └── PierreWorld.tsx               # REFACTORED
 ├── stores/
-│   ├── slices/                               # NEW
-│   │   ├── cameraSlice.ts
-│   │   ├── interactionSlice.ts
-│   │   └── performanceSlice.ts
+│   ├── slices/                               # NEW (Phase 0)
+│   │   ├── cameraSlice.ts                    # Phase 1
+│   │   ├── interactionSlice.ts               # Phase 3
+│   │   └── performanceSlice.ts               # Phase 0
 │   ├── cameraStore.ts                        # NEW
 │   ├── interactionStore.ts                   # NEW
 │   ├── gameStore.ts
 │   └── uiStore.ts
-├── services/                                 # NEW
+├── services/                                 # NEW (Phase 0)
 │   ├── AssetService.ts
 │   └── TransitionService.ts
 └── config/
-    └── featureFlags.ts                       # NEW
+    └── featureFlags.ts                       # NEW (Phase 0)
 ```
 
 ---
 
-## Appendix B: Checklist Validation
+## Appendix B: Checklist Validation (v1.1.0)
 
-### Phase 1 Checklist
+### Phase 0 - Foundation
+- [ ] Structure dossiers créée
+- [ ] Aliases TypeScript configurés
+- [ ] Store slices base créés
+
+### Phase 1 - Camera System
 - [ ] `cameraSlice.ts` créé et testé
 - [ ] `CameraSystem.tsx` implémenté
-- [ ] Feature flag configuré
+- [ ] Feature flag `USE_CAMERA_CONTROLS` configuré
 - [ ] Tests unitaires passent
 - [ ] Visual regression OK
-- [ ] Performance metrics stables
-- [ ] Documentation mise à jour
-- [ ] Code review approuvé
-- [ ] Rollout graduel complété
 - [ ] Ancien code GSAP supprimé
 
-### Phase 2-5 Checklist
-[Répéter le même pattern pour chaque phase]
+### Phase 2 - Event System (CRITIQUE)
+- [ ] `InteractiveMesh.tsx` créé
+- [ ] `EventGate.tsx` créé
+- [ ] `PointerEventsLayer.tsx` créé
+- [ ] BakedRoom refactoré
+- [ ] Métriques CPU validées (-40%)
+
+### Phase 3 - Interaction System
+- [ ] `interactionSlice.ts` avec debouncing
+- [ ] `InteractionSystem.tsx` créé
+- [ ] Outline fonctionne toujours
+
+### Phase 4 - LOD System
+- [ ] `LODWrapper.tsx` créé
+- [ ] `MonitorScreenLOD.tsx` créé
+- [ ] Screenshots générés
+- [ ] Draw calls réduits
+
+### Phase 5 - Post-Processing
+- [ ] `PostProcessing.tsx` créé
+- [ ] DOF conditionnel testé
+- [ ] Mobile performance OK
+
+### Phase 6 - Suspense + Cleanup
+- [ ] `SuspenseGroup.tsx` créé
+- [ ] Code legacy supprimé
+- [ ] Documentation mise à jour
 
 ---
 

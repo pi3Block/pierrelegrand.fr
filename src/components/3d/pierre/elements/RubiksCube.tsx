@@ -95,9 +95,15 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
 
     cubiesLoaded.current = true
 
+    console.log('[RubiksCube] 🎲 Fetching cubeInfo.json...')
     fetch('/pierre/assets/json/cubeInfo.json')
-      .then((res) => res.json())
+      .then((res) => {
+        console.log('[RubiksCube] 📥 Response status:', res.status, res.ok)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
+      })
       .then((cubeInfo: Record<string, CubeInfo>) => {
+        console.log('[RubiksCube] ✅ cubeInfo loaded, entries:', Object.keys(cubeInfo).length)
         const newCubies: THREE.Object3D[] = []
 
         // Clone les enfants car on va les déplacer
@@ -125,7 +131,7 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
 
         setCubies(newCubies)
       })
-      .catch((err) => console.warn('Erreur chargement cubeInfo.json:', err))
+      .catch((err) => console.error('[RubiksCube] ❌ Erreur chargement cubeInfo.json:', err))
   }, [scene])
 
   /**
@@ -230,17 +236,23 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
     })
   }, [])
 
-  // Désactiver le mode jeu quand on quitte le stage rubikGroup
+  // Réagir aux changements de stage (entrée/sortie du mode rubikGroup)
   useEffect(() => {
-    // Si on n'est plus en mode rubikGroup mais qu'on est encore actif, désactiver
-    if (currentStage !== 'rubikGroup' && isActive) {
+    // Si on entre en mode rubikGroup depuis la bannière (pas encore actif)
+    if (currentStage === 'rubikGroup' && !isActive && isPlaced && !isAnimating.current) {
+      console.log('[RubiksCube] 📍 Entering rubikGroup from banner - reubicating cube')
+      isAnimating.current = true
+      reubicateCube()
+    }
+    // Si on quitte le mode rubikGroup mais qu'on est encore actif
+    else if (currentStage !== 'rubikGroup' && isActive) {
       setIsActive(false)
       // Remettre le cube sur le bureau seulement s'il n'est pas déjà placé
       if (!isPlaced) {
         resetOriginalConfig()
       }
     }
-  }, [currentStage, isActive, isPlaced, resetOriginalConfig])
+  }, [currentStage, isActive, isPlaced, resetOriginalConfig, reubicateCube])
 
   // Gestion du pointeur
   const handlePointerMove = useCallback((e: PointerEvent) => {

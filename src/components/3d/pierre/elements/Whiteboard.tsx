@@ -49,6 +49,11 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
   const textureRef = useRef<THREE.CanvasTexture | null>(null)
 
   const { camera, raycaster } = useThree()
+  // Stocker camera et raycaster dans des refs pour éviter de les avoir dans les deps des callbacks
+  const cameraRef = useRef(camera)
+  const raycasterRef = useRef(raycaster)
+  cameraRef.current = camera
+  raycasterRef.current = raycaster
 
   // États
   const [isActive, setIsActive] = useState(false)
@@ -167,41 +172,43 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
   }
 
   // Gestion des événements
+  // IMPORTANT: Utiliser cameraRef et raycasterRef pour éviter les re-renders
   const handlePointerMove = useCallback((e: PointerEvent) => {
     pointer.current.x = (e.clientX / window.innerWidth) * 2 - 1
     pointer.current.y = -(e.clientY / window.innerHeight) * 2 + 1
-    
+
     if (!isActive || !meshRef.current) return
-    
-    // Raycast pour trouver la position sur le whiteboard
-    raycaster.setFromCamera(pointer.current, camera)
-    const intersects = raycaster.intersectObject(meshRef.current)
-    
+
+    // Raycast pour trouver la position sur le whiteboard - utiliser les refs
+    raycasterRef.current.setFromCamera(pointer.current, cameraRef.current)
+    const intersects = raycasterRef.current.intersectObject(meshRef.current)
+
     if (intersects.length > 0 && intersects[0]?.uv) {
       const canvasPos = uvToCanvas(intersects[0].uv)
-      
+
       if (isDrawing) {
         draw(canvasPos.x, canvasPos.y)
       }
     }
-  }, [isActive, isDrawing, camera, raycaster, draw])
+  }, [isActive, isDrawing, draw]) // Supprimé camera et raycaster des deps
 
   const handlePointerDown = useCallback(() => {
     if (!isActive || !meshRef.current) return
-    
-    raycaster.setFromCamera(pointer.current, camera)
-    const intersects = raycaster.intersectObject(meshRef.current)
-    
+
+    // Utiliser les refs au lieu des valeurs directes
+    raycasterRef.current.setFromCamera(pointer.current, cameraRef.current)
+    const intersects = raycasterRef.current.intersectObject(meshRef.current)
+
     if (intersects.length > 0 && intersects[0]?.uv) {
       const canvasPos = uvToCanvas(intersects[0].uv)
       drawStartPos.current.copy(canvasPos)
       setIsDrawing(true)
-      
+
       if (contextRef.current) {
         contextRef.current.beginPath()
       }
     }
-  }, [isActive, camera, raycaster])
+  }, [isActive]) // Supprimé camera et raycaster des deps
 
   const handlePointerUp = useCallback(() => {
     setIsDrawing(false)

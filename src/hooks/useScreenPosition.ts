@@ -4,7 +4,7 @@
  */
 
 import { useThree } from '@react-three/fiber'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 
 interface ScreenPosition {
@@ -21,12 +21,19 @@ interface ScreenPosition {
  */
 export function useScreenPosition() {
   const { camera, size } = useThree()
+  // Stocker camera et size dans des refs pour éviter les re-renders
+  const cameraRef = useRef(camera)
+  const sizeRef = useRef(size)
+  cameraRef.current = camera
+  sizeRef.current = size
+
   const tempVector = useMemo(() => new THREE.Vector3(), [])
 
   /**
    * Convertit la position monde d'un Object3D en coordonnées écran.
    * @param object - L'objet 3D dont on veut la position écran
    * @returns Position en pixels {x, y} depuis le coin supérieur gauche
+   * IMPORTANT: Utilise des refs pour éviter les re-renders causés par camera/size.
    */
   const getScreenPosition = useCallback(
     (object: THREE.Object3D): ScreenPosition => {
@@ -34,15 +41,15 @@ export function useScreenPosition() {
       object.getWorldPosition(tempVector)
 
       // Projeter sur l'écran (coordonnées normalisées -1 à 1)
-      tempVector.project(camera)
+      tempVector.project(cameraRef.current)
 
-      // Convertir en pixels
-      const x = (tempVector.x * 0.5 + 0.5) * size.width
-      const y = (-tempVector.y * 0.5 + 0.5) * size.height
+      // Convertir en pixels - utiliser sizeRef.current
+      const x = (tempVector.x * 0.5 + 0.5) * sizeRef.current.width
+      const y = (-tempVector.y * 0.5 + 0.5) * sizeRef.current.height
 
       return { x, y }
     },
-    [camera, size, tempVector]
+    [tempVector] // Supprimé camera et size des deps
   )
 
   return getScreenPosition
@@ -54,6 +61,12 @@ export function useScreenPosition() {
  */
 export function useWorldToScreen() {
   const { camera, size } = useThree()
+  // Stocker camera et size dans des refs pour éviter les re-renders
+  const cameraRef = useRef(camera)
+  const sizeRef = useRef(size)
+  cameraRef.current = camera
+  sizeRef.current = size
+
   const tempVector = useMemo(() => new THREE.Vector3(), [])
 
   const worldToScreen = useCallback(
@@ -64,16 +77,16 @@ export function useWorldToScreen() {
         tempVector.copy(position)
       }
 
-      // Projeter sur l'écran
-      tempVector.project(camera)
+      // Projeter sur l'écran - utiliser cameraRef.current
+      tempVector.project(cameraRef.current)
 
-      // Convertir en pixels
-      const x = (tempVector.x * 0.5 + 0.5) * size.width
-      const y = (-tempVector.y * 0.5 + 0.5) * size.height
+      // Convertir en pixels - utiliser sizeRef.current
+      const x = (tempVector.x * 0.5 + 0.5) * sizeRef.current.width
+      const y = (-tempVector.y * 0.5 + 0.5) * sizeRef.current.height
 
       return { x, y }
     },
-    [camera, size, tempVector]
+    [tempVector] // Supprimé camera et size des deps
   )
 
   return worldToScreen

@@ -7,9 +7,9 @@
  */
 
 import { Environment, Grid, KeyboardControls } from '@react-three/drei'
-import { useThree } from '@react-three/fiber'
+import { useThree, useFrame } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
-import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, lazy, useRef } from 'react'
 import * as THREE from 'three'
 import { useGameStore, type Level } from '@stores/gameStore'
 import { DebugPanel } from '@components/ui/DebugOverlay'
@@ -54,17 +54,30 @@ const DEFAULT_FOV = 60
  *
  * Le key sur Physics force le remontage, donc ce composant est remonté
  * à chaque changement de niveau et remet le FOV à 60.
+ *
+ * Pattern R3F: useFrame avec ref pour éviter useEffect avec camera dans les deps.
  */
 function CameraReset({ level }: { level: Level }) {
   const { camera } = useThree()
+  const hasResetRef = useRef(false)
+  const lastLevelRef = useRef(level)
 
-  useEffect(() => {
-    // Reset le FOV à chaque changement de niveau (level 0-4)
+  // Reset la ref si le level change
+  if (lastLevelRef.current !== level) {
+    lastLevelRef.current = level
+    hasResetRef.current = false
+  }
+
+  // Utiliser useFrame pour le reset (une seule fois par changement de niveau)
+  useFrame(() => {
+    if (hasResetRef.current) return
+
     if (camera instanceof THREE.PerspectiveCamera && camera.fov !== DEFAULT_FOV) {
       camera.fov = DEFAULT_FOV
       camera.updateProjectionMatrix()
     }
-  }, [camera, level])
+    hasResetRef.current = true
+  })
 
   return null
 }

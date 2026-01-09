@@ -5,7 +5,10 @@
  * d'un Canvas partagé avec les autres niveaux. Elle gère:
  * - OrbitControls (activés uniquement quand level === 5)
  * - Post-processing (Outline, SMAA)
- * - Transitions caméra GSAP
+ * - Transitions caméra (GSAP legacy ou CameraControls R3F)
+ *
+ * Architecture R3F v1.1.0:
+ * - Feature flag `useCameraControls` pour basculer entre GSAP et CameraControls
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react'
@@ -17,6 +20,9 @@ import * as THREE from 'three'
 import gsap from 'gsap'
 import { usePierreStore, type PierreStage } from './stores/pierreStore'
 import { PierreWorld } from './PierreWorld'
+import { isFeatureEnabled } from '@config/featureFlags'
+import { CameraSystem, getGlobalFlyToStageR3F } from './core/CameraSystem'
+import { InteractionProvider, useInteractionContext, useHoveredObjects, BvhProvider, PostProcessingSystem } from './core'
 
 // Configuration de la caméra et des positions
 const CAMERA_CONFIG = {
@@ -35,8 +41,8 @@ const ORBIT_CONFIG = {
   maxDistance: 35,
   minPolarAngle: Math.PI / 6,
   maxPolarAngle: Math.PI / 2,
-  minAzimuthAngle: -Math.PI / 2,
-  maxAzimuthAngle: Math.PI * 2,
+  minAzimuthAngle: -Math.PI / 4,     // -45° - moins de rotation vers la droite (arcade)
+  maxAzimuthAngle: Math.PI / 4,      // 45° - moins de rotation vers la gauche (whiteboard)
 }
 
 // Positions des zones interactives (caméra)
@@ -89,10 +95,19 @@ const STAGE_POSITIONS_MOBILE: Partial<Record<PierreStage, { position: THREE.Vect
 }
 
 // Store global pour exposer flyToStage depuis le bandeau
-let globalFlyToStage: ((stage: PierreStage) => void) | null = null
+let globalFlyToStageLegacy: ((stage: PierreStage) => void) | null = null
 
+/**
+ * Retourne la fonction flyToStage appropriée selon le feature flag.
+ * Compatible avec l'ancienne API.
+ */
 export function getGlobalFlyToStage() {
-  return globalFlyToStage
+  // Si CameraControls R3F est activé, utiliser la nouvelle implémentation
+  if (isFeatureEnabled('useCameraControls')) {
+    return getGlobalFlyToStageR3F()
+  }
+  // Sinon, utiliser l'implémentation GSAP legacy
+  return globalFlyToStageLegacy
 }
 
 interface PierreSceneProps {
@@ -116,7 +131,7 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
   // Désactiver l'outline quand on est focalisé sur un élément (pas en default)
   const isInInteractiveZone = currentStage !== 'default'
 
-  // Vider les outlines quand on entre dans une zone interactive
+  // Vider les outlines quand on entre dans une zone interactive - OK car pas d'objet R3F
   useEffect(() => {
     if (isInInteractiveZone) {
       setHoveredObjects([])
@@ -124,23 +139,30 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
   }, [isInInteractiveZone])
 
   const { camera } = useThree()
+  // Stocker camera dans une ref pour éviter de l'avoir dans les deps des callbacks
+  const cameraRef = useRef(camera)
+  cameraRef.current = camera
 
-  // Setup caméra au montage (une seule fois)
-  useEffect(() => {
-    if (setupCamera) {
-      camera.position.copy(CAMERA_CONFIG.position)
-      if (camera instanceof THREE.PerspectiveCamera) {
-        camera.fov = CAMERA_CONFIG.fov
-        camera.updateProjectionMatrix()
-      }
+  // Ref pour s'assurer que le setup n'est fait qu'une fois
+  const isCameraSetupRef = useRef(false)
+
+  // Setup caméra initial via useFrame (premier frame seulement)
+  // Pattern R3F: pas de useEffect avec camera!
+  useFrame(() => {
+    if (isCameraSetupRef.current) return
+    if (!setupCamera) {
+      isCameraSetupRef.current = true
+      return
     }
 
-    // Reset au démontage
-    return () => {
-      setCurrentStage('default')
-      setIsCameraMoving(false)
+    isCameraSetupRef.current = true
+    console.log('[PierreScene] 📷 Camera setup (once)')
+    camera.position.copy(CAMERA_CONFIG.position)
+    if (camera instanceof THREE.PerspectiveCamera) {
+      camera.fov = CAMERA_CONFIG.fov
+      camera.updateProjectionMatrix()
     }
-  }, [camera, setupCamera, setCurrentStage, setIsCameraMoving])
+  })
 
   /**
    * Collecte tous les meshes d'un groupe pour l'OutlinePass.
@@ -182,6 +204,7 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
   /**
    * Transition de la caméra vers une zone spécifique.
    * Utilise les positions mobile si disponibles sur mobile.
+   * IMPORTANT: Utilise cameraRef au lieu de camera pour éviter les re-renders.
    */
   const flyToStage = useCallback(
     (stage: PierreStage) => {
@@ -215,8 +238,8 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
         controlsRef.current.enabled = false
       }
 
-      // Animation de la position
-      gsap.to(camera.position, {
+      // Animation de la position - utiliser cameraRef.current (pas camera direct)
+      gsap.to(cameraRef.current.position, {
         x: stageConfig.position.x,
         y: stageConfig.position.y,
         z: stageConfig.position.z,
@@ -244,14 +267,14 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
         })
       }
     },
-    [camera, isCameraMoving, setCurrentStage, setIsCameraMoving]
+    [isCameraMoving, setCurrentStage, setIsCameraMoving] // Supprimé camera des deps
   )
 
-  // Exposer flyToStage globalement pour le bandeau
+  // Exposer flyToStage globalement pour le bandeau (legacy GSAP)
   useEffect(() => {
-    globalFlyToStage = flyToStage
+    globalFlyToStageLegacy = flyToStage
     return () => {
-      globalFlyToStage = null
+      globalFlyToStageLegacy = null
     }
   }, [flyToStage])
 
@@ -262,28 +285,62 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
     }
   })
 
+  // Détermine quel système utiliser
+  const useCameraControlsR3F = isFeatureEnabled('useCameraControls')
+  const useEventSystem = isFeatureEnabled('useEventSystem')
+
+  // Fonction de sélection à passer au PierreWorld
+  // Utilise le système R3F si activé, sinon GSAP legacy
+  const handleSelect = useCameraControlsR3F ? getGlobalFlyToStageR3F() ?? flyToStage : flyToStage
+
+  // Si le nouveau système d'événements est activé, utiliser le wrapper
+  if (useEventSystem) {
+    return (
+      <InteractionProvider>
+        <PierreSceneContent
+          useCameraControlsR3F={useCameraControlsR3F}
+          controlsRef={controlsRef}
+          isInInteractiveZone={isInInteractiveZone}
+          handleHover={handleHover}
+          handleSelect={handleSelect}
+        />
+      </InteractionProvider>
+    )
+  }
+
+  // Legacy: sans InteractionProvider
   return (
     <>
       {/* Éclairage spécifique Pierre */}
       <ambientLight intensity={1} />
       <directionalLight position={[40, 40, 40]} intensity={1} castShadow />
 
-      {/* OrbitControls */}
-      <OrbitControls
-        ref={controlsRef}
-        makeDefault
-        enableDamping={ORBIT_CONFIG.enableDamping}
-        dampingFactor={ORBIT_CONFIG.dampingFactor}
-        rotateSpeed={ORBIT_CONFIG.rotateSpeed}
-        zoomSpeed={ORBIT_CONFIG.zoomSpeed}
-        minDistance={ORBIT_CONFIG.minDistance}
-        maxDistance={ORBIT_CONFIG.maxDistance}
-        minPolarAngle={ORBIT_CONFIG.minPolarAngle}
-        maxPolarAngle={ORBIT_CONFIG.maxPolarAngle}
-        minAzimuthAngle={ORBIT_CONFIG.minAzimuthAngle}
-        maxAzimuthAngle={ORBIT_CONFIG.maxAzimuthAngle}
-        target={CAMERA_CONFIG.target}
-      />
+      {/* Système de caméra - R3F CameraControls ou OrbitControls legacy */}
+      {useCameraControlsR3F ? (
+        <CameraSystem
+          initialPreset={{
+            position: [-23, 17, 23],
+            target: [0, 2.5, 0],
+            fov: 20,
+          }}
+        />
+      ) : (
+        <OrbitControls
+          ref={controlsRef}
+          makeDefault
+          enableDamping={ORBIT_CONFIG.enableDamping}
+          dampingFactor={ORBIT_CONFIG.dampingFactor}
+          rotateSpeed={ORBIT_CONFIG.rotateSpeed}
+          zoomSpeed={ORBIT_CONFIG.zoomSpeed}
+          minDistance={ORBIT_CONFIG.minDistance}
+          maxDistance={ORBIT_CONFIG.maxDistance}
+          minPolarAngle={ORBIT_CONFIG.minPolarAngle}
+          maxPolarAngle={ORBIT_CONFIG.maxPolarAngle}
+          minAzimuthAngle={ORBIT_CONFIG.minAzimuthAngle}
+          maxAzimuthAngle={ORBIT_CONFIG.maxAzimuthAngle}
+          target={CAMERA_CONFIG.target}
+        />
+      )}
 
       {/* Post-processing - outline désactivé en mode interactif */}
       <EffectComposer autoClear={false}>
@@ -299,7 +356,117 @@ export function PierreScene({ setupCamera = true }: PierreSceneProps) {
       </EffectComposer>
 
       {/* Monde Pierre */}
-      <PierreWorld onHover={handleHover} onSelect={flyToStage} />
+      <PierreWorld onHover={handleHover} onSelect={handleSelect} />
+    </>
+  )
+}
+
+/**
+ * PierreSceneContent - Contenu de la scène avec le nouveau système d'événements.
+ * Utilise le contexte d'interaction pour l'outline.
+ */
+interface PierreSceneContentProps {
+  useCameraControlsR3F: boolean
+  controlsRef: React.RefObject<any>
+  isInInteractiveZone: boolean
+  handleHover: (objects: THREE.Object3D[]) => void
+  handleSelect: (stage: PierreStage) => void
+}
+
+function PierreSceneContent({
+  useCameraControlsR3F,
+  controlsRef,
+  isInInteractiveZone,
+  handleHover,
+  handleSelect,
+}: PierreSceneContentProps) {
+  // Utilise le hook du contexte pour les objets survolés
+  const contextHoveredObjects = useHoveredObjects()
+  const { setHoveredObjects: setContextHoveredObjects } = useInteractionContext()
+
+  // Collecte les meshes d'un groupe (pour outline qui nécessite des Mesh, pas des Group)
+  const collectMeshes = useCallback((objects: THREE.Object3D[]): THREE.Object3D[] => {
+    const meshes: THREE.Object3D[] = []
+    objects.forEach((obj) => {
+      obj.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          meshes.push(child)
+        }
+      })
+    })
+    return meshes
+  }, [])
+
+  // Handler qui synchronise le contexte avec le state local
+  const handleHoverWithContext = useCallback(
+    (objects: THREE.Object3D[]) => {
+      // Appeler le handler legacy pour maintenir la compatibilité
+      handleHover(objects)
+      // Synchroniser avec le contexte pour le nouveau PostProcessingSystem
+      // IMPORTANT: Collecter les meshes car Outline nécessite des Mesh, pas des Group
+      const meshes = collectMeshes(objects)
+      setContextHoveredObjects(meshes)
+    },
+    [handleHover, setContextHoveredObjects, collectMeshes]
+  )
+
+  // Détermine si on utilise le nouveau système de post-processing
+  const useNewPostProcessing = isFeatureEnabled('usePostProcessing')
+
+  return (
+    <>
+      {/* Éclairage spécifique Pierre */}
+      <ambientLight intensity={1} />
+      <directionalLight position={[40, 40, 40]} intensity={1} castShadow />
+
+      {/* Système de caméra - R3F CameraControls ou OrbitControls legacy */}
+      {useCameraControlsR3F ? (
+        <CameraSystem
+          initialPreset={{
+            position: [-23, 17, 23],
+            target: [0, 2.5, 0],
+            fov: 20,
+          }}
+        />
+      ) : (
+        <OrbitControls
+          ref={controlsRef}
+          makeDefault
+          enableDamping={ORBIT_CONFIG.enableDamping}
+          dampingFactor={ORBIT_CONFIG.dampingFactor}
+          rotateSpeed={ORBIT_CONFIG.rotateSpeed}
+          zoomSpeed={ORBIT_CONFIG.zoomSpeed}
+          minDistance={ORBIT_CONFIG.minDistance}
+          maxDistance={ORBIT_CONFIG.maxDistance}
+          minPolarAngle={ORBIT_CONFIG.minPolarAngle}
+          maxPolarAngle={ORBIT_CONFIG.maxPolarAngle}
+          minAzimuthAngle={ORBIT_CONFIG.minAzimuthAngle}
+          maxAzimuthAngle={ORBIT_CONFIG.maxAzimuthAngle}
+          target={CAMERA_CONFIG.target}
+        />
+      )}
+
+      {/* Post-processing - nouveau système ou legacy */}
+      {useNewPostProcessing ? (
+        <PostProcessingSystem />
+      ) : (
+        <EffectComposer autoClear={false}>
+          <Outline
+            selection={!isInInteractiveZone && contextHoveredObjects.length > 0 ? contextHoveredObjects : []}
+            visibleEdgeColor={0xffffff}
+            hiddenEdgeColor={0xffffff}
+            edgeStrength={10}
+            blendFunction={BlendFunction.SCREEN}
+            xRay={true}
+          />
+          <SMAA />
+        </EffectComposer>
+      )}
+
+      {/* Monde Pierre avec BVH pour raycasting optimisé */}
+      <BvhProvider>
+        <PierreWorld onHover={handleHoverWithContext} onSelect={handleSelect} />
+      </BvhProvider>
     </>
   )
 }
