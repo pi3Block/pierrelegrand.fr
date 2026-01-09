@@ -1,17 +1,39 @@
 /**
- * Hub - Hub central de téléportation avec 4 portails vers les différents mondes.
+ * Hub - Hub central de téléportation avec 5 portails disposés en cercle.
  * Point de départ du jeu (Level 0).
  */
 
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { RigidBody, CuboidCollider, CylinderCollider } from '@react-three/rapier'
 import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore, type Level } from '@stores/gameStore'
 import { AngryBirdsSky, CloudSystem, CartoonSun } from './sky/AngryBirdsSky'
 
-// Configuration des portails
+// Note: useRef et useFrame sont utilisés dans WorldPortal pour l'animation
+
+// Distance des portails par rapport au centre
+const PORTAL_RADIUS = 15
+
+// Calcul des positions en cercle (5 portails, 72° d'écart)
+const getPortalPosition = (index: number): [number, number, number] => {
+  const angle = (index * 2 * Math.PI) / 5 - Math.PI / 2 // Commence en haut (Nord)
+  return [
+    Math.cos(angle) * PORTAL_RADIUS,
+    0,
+    Math.sin(angle) * PORTAL_RADIUS,
+  ]
+}
+
+// Rotation pour que le portail fasse face au centre
+const getPortalRotation = (index: number): number => {
+  const [x, , z] = getPortalPosition(index)
+  // Angle pour regarder vers le centre (0,0,0)
+  return Math.atan2(-x, -z)
+}
+
+// Configuration des 5 portails
 const PORTAL_CONFIG: {
   position: [number, number, number]
   rotation: number
@@ -22,8 +44,8 @@ const PORTAL_CONFIG: {
   description: string
 }[] = [
   {
-    position: [0, 0, -15],
-    rotation: 0,
+    position: getPortalPosition(0),
+    rotation: getPortalRotation(0),
     level: 1,
     name: 'CLASSIC',
     color: '#3b82f6',
@@ -31,8 +53,8 @@ const PORTAL_CONFIG: {
     description: 'Monde Classique',
   },
   {
-    position: [0, 0, 15],
-    rotation: Math.PI,
+    position: getPortalPosition(1),
+    rotation: getPortalRotation(1),
     level: 2,
     name: 'PLAYGROUND',
     color: '#ef4444',
@@ -40,8 +62,8 @@ const PORTAL_CONFIG: {
     description: 'Terrain de Jeu',
   },
   {
-    position: [15, 0, 0],
-    rotation: -Math.PI / 2,
+    position: getPortalPosition(2),
+    rotation: getPortalRotation(2),
     level: 3,
     name: 'PROCEDURAL',
     color: '#8b5cf6',
@@ -49,13 +71,22 @@ const PORTAL_CONFIG: {
     description: 'Monde Procédural',
   },
   {
-    position: [-15, 0, 0],
-    rotation: Math.PI / 2,
+    position: getPortalPosition(3),
+    rotation: getPortalRotation(3),
     level: 4,
     name: 'ANGRY BIRDS',
     color: '#4CAF50',
     colorSecondary: '#81C784',
     description: 'Zone de Destruction',
+  },
+  {
+    position: getPortalPosition(4),
+    rotation: getPortalRotation(4),
+    level: 5,
+    name: 'BUREAU PIERRE',
+    color: '#f59e0b',
+    colorSecondary: '#fcd34d',
+    description: 'Portfolio 3D Interactif',
   },
 ]
 
@@ -81,10 +112,10 @@ export function Hub() {
       {/* Sol principal du hub */}
       <HubGround />
 
-      {/* Plateforme centrale */}
+      {/* Plateforme centrale décorative */}
       <CentralPlatform />
 
-      {/* Les 4 portails */}
+      {/* Les 5 portails en cercle */}
       {PORTAL_CONFIG.map((config, index) => (
         <WorldPortal key={index} {...config} />
       ))}
@@ -103,12 +134,19 @@ export function Hub() {
 
 /**
  * Sol principal du Hub
- * Position à 0 pour être au même niveau que les plateformes
+ * Utilise un CylinderCollider explicite pour un sol plat et performant.
+ * Le collider auto sur circleGeometry cause des problèmes de collision avec Ecctrl.
  */
 function HubGround() {
   return (
-    <RigidBody type="fixed" friction={1} position={[0, 0, 0]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+    <group>
+      {/* Collider physique explicite - cylindre très plat */}
+      <RigidBody type="fixed" friction={1} position={[0, -0.1, 0]} colliders={false}>
+        <CylinderCollider args={[0.1, 40]} />
+      </RigidBody>
+
+      {/* Mesh visuel séparé (pas de physique) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
         <circleGeometry args={[40, 64]} />
         <meshStandardMaterial
           color={HUB_COLORS.primary}
@@ -116,51 +154,21 @@ function HubGround() {
           metalness={0.1}
         />
       </mesh>
-    </RigidBody>
+    </group>
   )
 }
 
-// Couleurs du portail Pierre (centre)
-const PIERRE_PORTAL_COLORS = {
-  primary: '#f59e0b',
-  secondary: '#fcd34d',
-  glow: '#fef3c7',
-}
-
 /**
- * Plateforme centrale surélevée avec portail vers Pierre
+ * Plateforme centrale décorative (point de spawn)
+ * Simple plateforme sans totem central pour laisser le joueur au centre
  */
 function CentralPlatform() {
-  const pillarRef = useRef<THREE.Mesh>(null)
-  const orbeRef = useRef<THREE.Mesh>(null)
-  const setCurrentLevel = useGameStore((s) => s.setCurrentLevel)
-
-  useFrame((state) => {
-    const time = state.clock.elapsedTime
-
-    if (pillarRef.current) {
-      const material = pillarRef.current.material as THREE.MeshStandardMaterial
-      material.emissiveIntensity = 0.4 + Math.sin(time * 2) * 0.2
-    }
-
-    // Animation de l'orbe (flottement + rotation)
-    if (orbeRef.current) {
-      orbeRef.current.position.y = 8 + Math.sin(time * 1.5) * 0.3
-      orbeRef.current.rotation.y = time * 0.5
-    }
-  })
-
-  // Téléportation vers Pierre (Level 5)
-  const handleEnterPierre = () => {
-    setTimeout(() => setCurrentLevel(5), 0)
-  }
-
   return (
     <group position={[0, 0, 0]}>
       {/* Plateforme de spawn - légèrement surélevée au-dessus du sol */}
       <RigidBody type="fixed" friction={1} position={[0, 0.15, 0]}>
         <mesh receiveShadow>
-          <cylinderGeometry args={[8, 10, 0.3, 32]} />
+          <cylinderGeometry args={[6, 7, 0.3, 32]} />
           <meshStandardMaterial
             color={HUB_COLORS.secondary}
             metalness={0.3}
@@ -171,7 +179,7 @@ function CentralPlatform() {
 
       {/* Anneau lumineux autour de la plateforme */}
       <mesh position={[0, 0.32, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[9, 0.15, 16, 64]} />
+        <torusGeometry args={[7, 0.15, 16, 64]} />
         <meshStandardMaterial
           color={HUB_COLORS.accent}
           emissive={HUB_COLORS.accent}
@@ -179,108 +187,8 @@ function CentralPlatform() {
         />
       </mesh>
 
-      {/* Pilier central lumineux */}
-      <mesh ref={pillarRef} position={[0, 4, 0]} castShadow>
-        <cylinderGeometry args={[0.6, 1, 7, 8]} />
-        <meshStandardMaterial
-          color={PIERRE_PORTAL_COLORS.primary}
-          emissive={PIERRE_PORTAL_COLORS.primary}
-          emissiveIntensity={0.5}
-          transparent
-          opacity={0.9}
-        />
-      </mesh>
-
-      {/* Zone de trigger autour du pilier (invisible) */}
-      <RigidBody type="fixed" position={[0, 2, 0]} sensor onIntersectionEnter={handleEnterPierre}>
-        <CuboidCollider args={[1.5, 4, 1.5]} />
-      </RigidBody>
-
-      {/* Orbe au sommet - portail vers Pierre */}
-      <mesh ref={orbeRef} position={[0, 8, 0]}>
-        <sphereGeometry args={[1.2, 32, 32]} />
-        <meshStandardMaterial
-          color={PIERRE_PORTAL_COLORS.secondary}
-          emissive={PIERRE_PORTAL_COLORS.primary}
-          emissiveIntensity={1}
-        />
-      </mesh>
-
-      {/* Anneaux autour de l'orbe */}
-      <mesh position={[0, 8, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.8, 0.08, 16, 48]} />
-        <meshStandardMaterial
-          color={PIERRE_PORTAL_COLORS.primary}
-          emissive={PIERRE_PORTAL_COLORS.primary}
-          emissiveIntensity={0.8}
-        />
-      </mesh>
-      <mesh position={[0, 8, 0]} rotation={[0, 0, Math.PI / 4]}>
-        <torusGeometry args={[2, 0.06, 16, 48]} />
-        <meshStandardMaterial
-          color={PIERRE_PORTAL_COLORS.secondary}
-          emissive={PIERRE_PORTAL_COLORS.secondary}
-          emissiveIntensity={0.6}
-        />
-      </mesh>
-
-      {/* Texte de bienvenue */}
-      <Text
-        position={[0, 10.5, 0]}
-        fontSize={0.8}
-        color="#ffffff"
-        anchorX="center"
-        anchorY="bottom"
-        outlineWidth={0.04}
-        outlineColor="#000000"
-      >
-        HUB CENTRAL
-      </Text>
-
-      <Text
-        position={[0, 9.7, 0]}
-        fontSize={0.35}
-        color={HUB_COLORS.glow}
-        anchorX="center"
-        anchorY="bottom"
-      >
-        Choisissez votre destination
-      </Text>
-
-      {/* Label du portail Pierre */}
-      <Text
-        position={[0, 6.5, 0]}
-        fontSize={0.4}
-        color={PIERRE_PORTAL_COLORS.secondary}
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.02}
-        outlineColor="#000000"
-      >
-        BUREAU PIERRE
-      </Text>
-      <Text
-        position={[0, 6, 0]}
-        fontSize={0.22}
-        color={PIERRE_PORTAL_COLORS.glow}
-        anchorX="center"
-        anchorY="middle"
-      >
-        Portfolio 3D Interactif
-      </Text>
-      <Text
-        position={[0, 0.35, 3]}
-        fontSize={0.25}
-        color={PIERRE_PORTAL_COLORS.secondary}
-        anchorX="center"
-        anchorY="bottom"
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
-        ◄ APPROCHEZ ►
-      </Text>
-
-      {/* Lumière du portail Pierre */}
-      <pointLight position={[0, 8, 0]} intensity={1.5} color={PIERRE_PORTAL_COLORS.primary} distance={15} />
+      {/* Lumière centrale */}
+      <pointLight position={[0, 3, 0]} intensity={1} color={HUB_COLORS.accent} distance={12} />
     </group>
   )
 }
@@ -449,38 +357,53 @@ function WorldPortal({
 
 /**
  * Chemins lumineux vers les portails
+ * Utilise des planes 2D pour éviter les interférences avec le joueur
  */
 function HubPaths() {
   return (
     <group>
       {PORTAL_CONFIG.map((config, index) => {
         const [px, , pz] = config.position
-        const length = Math.sqrt(px * px + pz * pz) - 12
+        const length = Math.sqrt(px * px + pz * pz) - 10
         const angle = Math.atan2(px, pz)
 
         return (
-          <group key={index} position={[0, 0.02, 0]} rotation={[0, angle, 0]}>
-            {/* Chemin principal - juste au-dessus du sol */}
-            <mesh position={[0, 0, length / 2 + 5]}>
-              <boxGeometry args={[1.5, 0.04, length]} />
+          <group key={index} position={[0, 0.03, 0]} rotation={[0, angle, 0]}>
+            {/* Chemin principal - plane 2D horizontal */}
+            <mesh
+              position={[0, 0, length / 2 + 4]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              raycast={() => null}
+            >
+              <planeGeometry args={[1.2, length]} />
               <meshStandardMaterial
                 color={config.color}
                 emissive={config.color}
-                emissiveIntensity={0.3}
+                emissiveIntensity={0.4}
                 transparent
-                opacity={0.7}
+                opacity={0.6}
+                side={2}
               />
             </mesh>
 
-            {/* Flèche directionnelle */}
-            <mesh position={[0, 0.02, length + 4]} rotation={[-Math.PI / 2, 0, 0]}>
-              <coneGeometry args={[0.8, 1.5, 3]} />
-              <meshStandardMaterial
-                color={config.color}
-                emissive={config.color}
-                emissiveIntensity={0.5}
-              />
-            </mesh>
+            {/* Flèches directionnelles intégrées au sol (3 petites flèches) */}
+            {[0.3, 0.5, 0.7].map((t, i) => (
+              <mesh
+                key={i}
+                position={[0, 0.01, length * t + 4]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                raycast={() => null}
+              >
+                <circleGeometry args={[0.4, 3]} />
+                <meshStandardMaterial
+                  color={config.color}
+                  emissive={config.color}
+                  emissiveIntensity={0.6 + i * 0.15}
+                  transparent
+                  opacity={0.5 + i * 0.15}
+                />
+              </mesh>
+            ))}
           </group>
         )
       })}

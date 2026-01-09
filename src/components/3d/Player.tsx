@@ -3,6 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import Ecctrl from 'ecctrl'
 import { useGame } from 'ecctrl'
 import { useGameStore } from '@stores/gameStore'
+import { useMobileInputStore } from '@stores/mobileInputStore'
+import { useMobileEcctrlInput } from '@hooks/useMobileEcctrlInput'
 import { Suspense, useEffect, useRef, useMemo } from 'react'
 import * as THREE from 'three'
 import { HUB } from '@config/assetPaths'
@@ -31,6 +33,27 @@ interface PlayerProps {
 
 export function Player({ position = [0, 2, 0] }: PlayerProps) {
   const hasDebug = useGameStore((s) => s.hasFeature('debug_mode'))
+  const isMobile = useMobileInputStore((s) => s.isMobile)
+
+  // Configuration caméra adaptée mobile/desktop
+  const cameraConfig = useMemo(() => {
+    if (isMobile) {
+      return {
+        // Caméra centrée et plus proche sur mobile
+        camInitDis: -3,
+        camMaxDis: -6,
+        camMinDis: -2,
+        camTargetPos: { x: 0, y: 0.3, z: 0 }, // Centré (pas d'offset droite)
+      }
+    }
+    return {
+      // Configuration desktop over-the-shoulder droite
+      camInitDis: -4,
+      camMaxDis: -8,
+      camMinDis: -2,
+      camTargetPos: { x: -1.2, y: 0.3, z: 0 },
+    }
+  }, [isMobile])
 
   return (
     <Ecctrl
@@ -44,13 +67,13 @@ export function Player({ position = [0, 2, 0] }: PlayerProps) {
       turnSpeed={15}
       sprintMult={2}
       jumpVel={5}
-      // Caméra - Vue over-the-shoulder droite (TPS)
-      camInitDis={-4}
-      camMaxDis={-8}
-      camMinDis={-2}
+      // Caméra - Adaptée mobile/desktop
+      camInitDis={cameraConfig.camInitDis}
+      camMaxDis={cameraConfig.camMaxDis}
+      camMinDis={cameraConfig.camMinDis}
       camUpLimit={1.2}
       camLowLimit={-0.5}
-      camTargetPos={{ x: -1.2, y: 0.3, z: 0 }}
+      camTargetPos={cameraConfig.camTargetPos}
       camCollision
       camCollisionOffset={0.5}
       // Mode
@@ -61,8 +84,19 @@ export function Player({ position = [0, 2, 0] }: PlayerProps) {
       debug={hasDebug}
     >
       <CharacterModel />
+      {/* Hook pour connecter les inputs mobiles à Ecctrl */}
+      <MobileInputBridge />
     </Ecctrl>
   )
+}
+
+/**
+ * Composant bridge pour connecter les inputs mobiles au store Ecctrl.
+ * Doit être enfant d'Ecctrl pour avoir accès au contexte.
+ */
+function MobileInputBridge() {
+  useMobileEcctrlInput()
+  return null
 }
 
 // Couleurs du personnage

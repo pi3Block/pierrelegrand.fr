@@ -83,15 +83,44 @@ const STAGE_PRESETS: Record<PierreStage, CameraPreset> = {
 
 /**
  * Positions ajustées pour mobile.
+ * Caméra généralement plus proche pour meilleure visibilité sur petits écrans.
  */
 const MOBILE_PRESETS: Partial<Record<PierreStage, CameraPreset>> = {
+  default: {
+    // Vue globale plus proche sur mobile
+    position: [-18, 14, 18],
+    target: [0, 2.5, 0],
+    fov: 25, // FOV légèrement plus large
+  },
   leftMonitor: {
+    // Plus proche pour voir le contenu
     position: [1.06738, 2.60725, 2.5],
     target: [1.06738, 2.50725, -4.23009],
   },
   rightMonitor: {
+    // Plus proche pour voir le contenu
     position: [2.13997, 2.60716, 2.6],
     target: [2.47898, 2.50716, -4.14566],
+  },
+  arcadeMachine: {
+    // Plus proche de l'arcade
+    position: [-1.5, 4.2, 2.3009],
+    target: [3.25776, 2.74209, 2.3009],
+  },
+  whiteboard: {
+    // Plus proche du tableau
+    position: [-3.3927, 4.5, 2.5],
+    target: [-3.3927, 3.18774, -4.61366],
+  },
+  rubikGroup: {
+    // Plus proche du Rubik's cube
+    position: [-18, 14, 18],
+    target: [-16, 12.5, 16],
+  },
+  pingpong: {
+    // Plus proche de la table de ping-pong
+    position: [-18, 14, 18],
+    target: [-10, 10, 10],
   },
 }
 

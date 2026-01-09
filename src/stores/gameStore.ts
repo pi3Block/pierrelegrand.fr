@@ -76,7 +76,14 @@ export const useGameStore = create<GameState>()(
       // Actions
       setCurrentBiome: (biome) => set({ currentBiome: biome }),
 
-      setCurrentLevel: (level) => set({ currentLevel: level }),
+      setCurrentLevel: (level) => {
+        // Libérer le pointer lock quand on entre dans PierreScene (Level 5)
+        // car cette scène utilise OrbitControls au lieu du mode FPS
+        if (level === 5 && document.pointerLockElement) {
+          document.exitPointerLock()
+        }
+        set({ currentLevel: level })
+      },
 
       setTransitioning: (transitioning) => set({ isTransitioning: transitioning }),
 

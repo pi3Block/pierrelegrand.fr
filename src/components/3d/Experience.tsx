@@ -12,6 +12,9 @@ import { Physics } from '@react-three/rapier'
 import { Suspense, lazy, useRef } from 'react'
 import * as THREE from 'three'
 import { useGameStore, type Level } from '@stores/gameStore'
+import { useMobileInputStore } from '@stores/mobileInputStore'
+import { useResponsive } from '@hooks/useResponsive'
+import { isFeatureEnabled } from '@config/featureFlags'
 import { DebugPanel } from '@components/ui/DebugOverlay'
 import { Player } from './Player'
 import { ShootingSystem } from './ShootingSystem'
@@ -37,7 +40,7 @@ const keyboardMap = [
 
 // Configuration des positions de spawn par niveau (pour mondes avec personnage)
 const SPAWN_POSITIONS: Record<Level, [number, number, number]> = {
-  0: [0, 2, 8],    // Hub - devant le portail central (pas dedans!)
+  0: [0, 2, 0],    // Hub - au centre de la plateforme
   1: [0, 5, 5],    // WorldClassic - classique
   2: [0, 5, 5],    // WorldPlayground - playground
   3: [0, 5, 0],    // ProceduralWorld
@@ -47,6 +50,20 @@ const SPAWN_POSITIONS: Record<Level, [number, number, number]> = {
 
 // FOV par défaut pour les niveaux avec personnage (0-4)
 const DEFAULT_FOV = 60
+
+// Configuration shadows mobile vs desktop
+const SHADOW_CONFIG = {
+  desktop: {
+    mapSize: [2048, 2048] as [number, number],
+    cameraFar: 100,
+    cameraBounds: 30,
+  },
+  mobile: {
+    mapSize: [1024, 1024] as [number, number],
+    cameraFar: 50,
+    cameraBounds: 20,
+  },
+}
 
 /**
  * Composant qui réinitialise la caméra au FOV par défaut.
@@ -89,6 +106,19 @@ function CameraReset({ level }: { level: Level }) {
 export function Experience() {
   const hasDebug = useGameStore((s) => s.hasFeature('debug_mode'))
   const currentLevel = useGameStore((s) => s.currentLevel)
+  const { isTouchDevice } = useResponsive()
+  const setMobile = useMobileInputStore((s) => s.setMobile)
+
+  // Détecter mobile et mettre à jour le store
+  // Note: On le fait ici car Experience est le composant racine pour les niveaux 0-4
+  if (isTouchDevice !== useMobileInputStore.getState().isMobile) {
+    setMobile(isTouchDevice)
+  }
+
+  // Configuration shadows adaptée mobile/desktop
+  const shadowConfig = isTouchDevice && isFeatureEnabled('useMobileQuality')
+    ? SHADOW_CONFIG.mobile
+    : SHADOW_CONFIG.desktop
 
   // Level 5 = PierreScene (OrbitControls, pas de physique, pas de Player)
   const isPierreLevel = currentLevel === 5
@@ -117,18 +147,18 @@ export function Experience() {
       {/* Reset la caméra au FOV par défaut (60) après avoir quitté Pierre (FOV 20) */}
       <CameraReset level={currentLevel} />
 
-      {/* Lighting */}
+      {/* Lighting - Configuration adaptée mobile/desktop */}
       <ambientLight intensity={0.4} />
       <directionalLight
         position={[20, 30, 10]}
         intensity={1.5}
         castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-far={100}
-        shadow-camera-left={-30}
-        shadow-camera-right={30}
-        shadow-camera-top={30}
-        shadow-camera-bottom={-30}
+        shadow-mapSize={shadowConfig.mapSize}
+        shadow-camera-far={shadowConfig.cameraFar}
+        shadow-camera-left={-shadowConfig.cameraBounds}
+        shadow-camera-right={shadowConfig.cameraBounds}
+        shadow-camera-top={shadowConfig.cameraBounds}
+        shadow-camera-bottom={-shadowConfig.cameraBounds}
       />
       <pointLight position={[-10, 10, -10]} intensity={0.3} color="#6366f1" />
 

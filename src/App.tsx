@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Preload } from '@react-three/drei'
 import { Experience } from '@components/3d/Experience'
@@ -7,6 +7,7 @@ import { CheatCodeTerminal } from '@components/ui/CheatCodeTerminal'
 import { DebugOverlay } from '@components/ui/DebugOverlay'
 import { BiomeIndicator } from '@components/ui/BiomeIndicator'
 import { Crosshair } from '@components/ui/Crosshair'
+import { UniversalMobileControls } from '@components/ui/UniversalMobileControls'
 import { PierreBanner } from '@components/3d/pierre/ui/PierreBanner'
 import { GalleryFPSOverlay } from '@components/3d/pierre/apps/gallery-fps'
 import { getGlobalFlyToStage } from '@components/3d/pierre/PierreScene'
@@ -15,6 +16,8 @@ import { useGameStore } from '@stores/gameStore'
 import { useUIStore } from '@stores/uiStore'
 import { useCheatCode } from '@hooks/useCheatCode'
 import { usePointerLock } from '@hooks/usePointerLock'
+import { useResponsive } from '@hooks/useResponsive'
+import { isFeatureEnabled } from '@config/featureFlags'
 
 export default function App() {
   const unlockedFeatures = useGameStore((s) => s.unlockedFeatures)
@@ -23,6 +26,7 @@ export default function App() {
   const isVideo3DPlaying = useUIStore((s) => s.isVideo3DPlaying)
   const { isOpen, setIsOpen, isLoading, error, success, submitCode } = useCheatCode()
   const { isLocked, requestLock } = usePointerLock()
+  const { isTouchDevice, isMobile } = useResponsive()
 
   const showDebug = unlockedFeatures.includes('debug_mode')
 
@@ -31,6 +35,19 @@ export default function App() {
 
   // Level 5 = PierreScene (OrbitControls, pas de pointer lock)
   const isPierreLevel = currentLevel === 5
+
+  // Niveaux avec personnage Ecctrl (afficher les contrôles mobiles)
+  const isCharacterLevel = currentLevel >= 0 && currentLevel <= 4
+
+  // Configuration Canvas adaptée mobile/desktop
+  const canvasConfig = useMemo(() => {
+    const useMobileQuality = isTouchDevice && isFeatureEnabled('useMobileQuality')
+    return {
+      dpr: useMobileQuality ? [1, 1.5] as [number, number] : [1, 2] as [number, number],
+      antialias: !useMobileQuality,
+      powerPreference: useMobileQuality ? 'low-power' as const : 'high-performance' as const,
+    }
+  }, [isTouchDevice])
 
   // Handlers pour le bandeau Pierre
   const handlePierreNavigate = (stage: PierreStage) => {
@@ -73,17 +90,22 @@ export default function App() {
       {/* Controles mobiles pour la galerie FPS (visible uniquement sur mobile dans la galerie) */}
       {isPierreLevel && <GalleryFPSOverlay />}
 
+      {/* Contrôles mobiles universels pour les niveaux avec personnage (Levels 0-4) */}
+      {isCharacterLevel && isTouchDevice && (
+        <UniversalMobileControls showJump showSprint={false} />
+      )}
+
       {/* Canvas 3D unique pour tous les niveaux */}
       <div className="canvas-container">
         <Canvas
-          camera={{ position: [0, 2, 10], fov: 60 }}
+          camera={{ position: [0, 2, 10], fov: isMobile ? 65 : 60 }}
           gl={{
-            antialias: true,
+            antialias: canvasConfig.antialias,
             alpha: false,
-            powerPreference: 'high-performance',
+            powerPreference: canvasConfig.powerPreference,
             localClippingEnabled: true, // Requis pour @pmndrs/uikit (scroll/clipping)
           }}
-          dpr={[1, 2]}
+          dpr={canvasConfig.dpr}
         >
           <Suspense fallback={null}>
             <Experience />
@@ -98,8 +120,8 @@ export default function App() {
       {/* Crosshair - Visible uniquement quand pointer locké (pas sur Pierre) */}
       {isLocked && !isPierreLevel && <Crosshair />}
 
-      {/* Overlay "Cliquez pour jouer" - masqué si vidéo 3D en lecture ou sur Pierre */}
-      {showPointerLockOverlay && !isPierreLevel && (
+      {/* Overlay "Cliquez pour jouer" - masqué si vidéo 3D en lecture, sur Pierre, ou sur mobile */}
+      {showPointerLockOverlay && !isPierreLevel && !isTouchDevice && (
         <div className="pointer-lock-overlay" onClick={requestLock}>
           <div className="pointer-lock-message">
             <h2>Cliquez pour jouer</h2>

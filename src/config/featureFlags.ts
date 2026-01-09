@@ -16,6 +16,12 @@ export interface FeatureFlags {
   usePostProcessing: boolean      // Phase 4: EffectComposer
   useSuspenseStrategy: boolean    // Phase 5: Suspense grouping
   usePerformanceMonitor: boolean  // Phase 6: Perf + PerformanceMonitor
+
+  // Mobile-specific flags
+  useMobileControls: boolean           // Joystick tactile pour Levels 0-4
+  useMobileQuality: boolean            // DPR réduit, shadows 1024, no antialias
+  useMobileLOD: boolean                // Distances LOD réduites (50%)
+  disablePostProcessingMobile: boolean // Désactive effects sur mobile faible
 }
 
 /**
@@ -35,6 +41,12 @@ const defaultFlags: FeatureFlags = {
   usePostProcessing: true,      // Phase 4 - Outline natif
   useSuspenseStrategy: true,    // Phase 5 - Chargement optimisé
   usePerformanceMonitor: false, // Phase 6 - Debug only
+
+  // Mobile-specific flags - Activés par défaut
+  useMobileControls: true,           // Joystick tactile actif
+  useMobileQuality: true,            // Qualité adaptative
+  useMobileLOD: true,                // LOD mobile actif
+  disablePostProcessingMobile: true, // Post-processing désactivé sur mobile
 }
 
 /**

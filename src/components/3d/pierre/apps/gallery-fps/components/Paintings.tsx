@@ -121,26 +121,20 @@ const PAINTINGS_CONFIG = buildPaintingsConfig()
 
 /**
  * Composant pour un seul tableau avec texture.
- * Utilise useTexture de drei pour charger les textures.
+ * Utilise useTexture avec meshBasicMaterial pour compatibilité RenderTexture.
  */
 function PaintingFrame({ config }: { config: PaintingConfig }) {
-  const meshRef = useRef<THREE.Mesh>(null)
+  // Charger la texture avec useTexture de drei
+  const texture = useTexture(config.texture)
 
-  // useTexture de drei avec configuration de colorSpace
-  const texture = useTexture(config.texture, (tex) => {
-    // Callback appelé quand la texture est chargée
-    if (tex instanceof THREE.Texture) {
-      tex.colorSpace = THREE.SRGBColorSpace
-      tex.needsUpdate = true
-    }
-  })
-
-  // Configuration supplémentaire de la texture
+  // Configurer la texture pour un rendu correct
   useMemo(() => {
     if (texture) {
       texture.colorSpace = THREE.SRGBColorSpace
+      texture.needsUpdate = true
+      console.log(`[Paintings] Texture chargée: ${config.id}`, texture)
     }
-  }, [texture])
+  }, [texture, config.id])
 
   return (
     <group
@@ -148,14 +142,14 @@ function PaintingFrame({ config }: { config: PaintingConfig }) {
       rotation={config.rotation}
       name={`painting-${config.id}`}
     >
-      {/* Cadre dore */}
+      {/* Cadre doré */}
       <mesh castShadow position={[0, 0, -0.03]}>
         <boxGeometry args={[config.size[0] + 0.15, config.size[1] + 0.15, 0.08]} />
         <meshStandardMaterial color="#8B6914" roughness={0.3} metalness={0.7} />
       </mesh>
 
       {/* Toile avec texture */}
-      <mesh ref={meshRef} userData={{ paintingId: config.id }}>
+      <mesh userData={{ paintingId: config.id }}>
         <planeGeometry args={config.size} />
         <meshBasicMaterial map={texture} toneMapped={false} />
       </mesh>
@@ -246,3 +240,9 @@ export function Paintings() {
 }
 
 export default Paintings
+
+// Précharger toutes les textures au chargement du module
+// Cela permet d'éviter les textures noires dans RenderTexture
+PAINTINGS_DATA.forEach((data) => {
+  useTexture.preload(data.texture)
+})
