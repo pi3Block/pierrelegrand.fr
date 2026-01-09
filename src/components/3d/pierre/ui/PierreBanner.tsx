@@ -44,6 +44,7 @@ const NAV_ITEMS: { id: PierreStage; label: string }[] = [
   { id: 'arcadeMachine', label: 'ARCADE MACHINE' },
   { id: 'whiteboard', label: 'TABLEAU BLANC' },
   { id: 'rubikGroup', label: "RUBIK'S CUBE" },
+  { id: 'pingpong', label: 'PING-PONG' },
 ]
 
 interface PierreBannerProps {

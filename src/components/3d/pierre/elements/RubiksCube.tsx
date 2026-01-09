@@ -678,16 +678,20 @@ export function RubiksCube({ onHover, onSelect }: RubiksCubeProps) {
     }
   }, [isActive, isInDefaultView, onHover])
 
+  // Cacher le Rubik's Cube en mode pingpong (visible=false au lieu de null pour préserver les refs)
+  const shouldHideRubik = currentStage === 'pingpong'
+
   return (
     <group
       ref={groupRef}
       name="rubikGroup"
+      visible={!shouldHideRubik}
       position={RUBIK_ORIGINAL_POSITION.toArray()}
       scale={RUBIK_ORIGINAL_SCALE}
       rotation={[RUBIK_ORIGINAL_ROTATION.x, RUBIK_ORIGINAL_ROTATION.y, RUBIK_ORIGINAL_ROTATION.z]}
-      onPointerOver={handlePointerOver}
-      onPointerOut={handlePointerOut}
-      onClick={!isActive ? handleCubeClick : undefined}
+      onPointerOver={!shouldHideRubik ? handlePointerOver : undefined}
+      onPointerOut={!shouldHideRubik ? handlePointerOut : undefined}
+      onClick={!isActive && !shouldHideRubik ? handleCubeClick : undefined}
       onPointerDown={isActive ? handleR3FPointerDown : undefined}
     >
       {/* Les cubies sont ajoutés directement au groupe via groupRef.current.add() dans useEffect */}

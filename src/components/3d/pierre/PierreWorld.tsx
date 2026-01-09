@@ -6,8 +6,9 @@
  * - Éléments interactifs (Rubik, Whiteboard, Arcade, Monitors)
  * - Effets visuels (Skybox, CoffeeSteam, Carpet, Confetti)
  *
- * Quand le Rubik's Cube est actif, tous les autres éléments sont cachés
- * (shrinkScene comme dans le portfolio Joan).
+ * Modes de jeu:
+ * - Rubik's Cube: Cache la scène, affiche fond bleu
+ * - Ping-Pong: Garde la scène visible mais désactive les interactions
  */
 
 import { Suspense, useRef, useEffect } from 'react'
@@ -19,6 +20,8 @@ import { Skybox } from './elements/Skybox'
 import { CoffeeSteam } from './elements/CoffeeSteam'
 import { Carpet } from './elements/Carpet'
 import { RubiksCube } from './elements/RubiksCube'
+import { PingPongPaddle } from './elements/PingPongPaddle'
+import { PingPongApp } from './apps/pingpong'
 import { Whiteboard } from './elements/Whiteboard'
 import { ArcadeScreen } from './elements/ArcadeScreen'
 import { MonitorScreenUikit } from './elements/MonitorScreenUikit'
@@ -46,29 +49,44 @@ export function PierreWorld({ onHover, onSelect }: PierreWorldProps) {
   const isSceneShrunk = useRef(false)
 
   /**
-   * shrinkScene/expandScene - Cache ou affiche la scène quand on joue au Rubik.
-   * Le hide est retardé pour laisser le cube arriver au centre (1s d'animation).
+   * shrinkScene/expandScene - Cache ou affiche la scène quand on joue au Rubik ou Ping-Pong.
    */
   useEffect(() => {
     if (!sceneGroupRef.current) return
 
     const isRubikMode = currentStage === 'rubikGroup'
+    const isPingPongMode = currentStage === 'pingpong'
+    const shouldHideScene = isRubikMode || isPingPongMode
 
-    if (isRubikMode && !isSceneShrunk.current) {
-      // Attendre que l'animation du cube soit terminée (1s) avant de cacher la scène
+    if (shouldHideScene && !isSceneShrunk.current) {
       isSceneShrunk.current = true
-      const timeout = setTimeout(() => {
-        if (sceneGroupRef.current) {
-          sceneGroupRef.current.visible = false
-        }
-      }, 1000)
-      return () => clearTimeout(timeout)
-    } else if (!isRubikMode && isSceneShrunk.current) {
-      // Réafficher la scène instantanément AVANT le retour du cube
+      if (isRubikMode) {
+        // Rubik: attendre que l'animation du cube soit terminée (1s) avant de cacher
+        const timeout = setTimeout(() => {
+          if (sceneGroupRef.current) {
+            sceneGroupRef.current.visible = false
+          }
+        }, 1000)
+        return () => clearTimeout(timeout)
+      } else {
+        // Ping-pong: cacher immédiatement
+        sceneGroupRef.current.visible = false
+      }
+    } else if (!shouldHideScene && isSceneShrunk.current) {
+      // Réafficher la scène instantanément AVANT le retour
       isSceneShrunk.current = false
       sceneGroupRef.current.visible = true
     }
   }, [currentStage])
+
+  // Désactiver les interactions en mode pingpong ou rubik
+  const isPingPongMode = currentStage === 'pingpong'
+  const isRubikMode = currentStage === 'rubikGroup'
+  const interactionsDisabled = isPingPongMode || isRubikMode
+
+  // Callbacks noop quand les interactions sont désactivées
+  const safeOnHover = interactionsDisabled ? () => {} : onHover
+  const safeOnSelect = interactionsDisabled ? () => {} : onSelect
 
   return (
     <BakedMaterialProvider>
@@ -77,7 +95,7 @@ export function PierreWorld({ onHover, onSelect }: PierreWorldProps) {
         <group ref={sceneGroupRef} name="scene-group">
           {/* Pièce avec textures baked */}
           <Suspense fallback={<LoadingPlaceholder text="Chargement de la pièce..." />}>
-            <BakedRoom onHover={onHover} onSelect={onSelect} />
+            <BakedRoom onHover={safeOnHover} onSelect={safeOnSelect} />
           </Suspense>
 
           {/* Ciel stylisé */}
@@ -102,20 +120,20 @@ export function PierreWorld({ onHover, onSelect }: PierreWorldProps) {
 
           {/* Tableau blanc de dessin */}
           <Suspense fallback={null}>
-            <Whiteboard onHover={onHover} onSelect={onSelect} />
+            <Whiteboard onHover={safeOnHover} onSelect={safeOnSelect} />
           </Suspense>
 
           {/* Machine arcade avec jeu */}
           <Suspense fallback={null}>
-            <ArcadeScreen onHover={onHover} onSelect={onSelect} />
+            <ArcadeScreen onHover={safeOnHover} onSelect={safeOnSelect} />
           </Suspense>
 
           {/* Moniteur gauche - PierreOS (uikit) */}
           <Suspense fallback={null}>
             <MonitorScreenUikit
               type="left"
-              onHover={onHover}
-              onSelect={onSelect}
+              onHover={safeOnHover}
+              onSelect={safeOnSelect}
             />
           </Suspense>
 
@@ -123,8 +141,8 @@ export function PierreWorld({ onHover, onSelect }: PierreWorldProps) {
           <Suspense fallback={null}>
             <MonitorScreenUikit
               type="right"
-              onHover={onHover}
-              onSelect={onSelect}
+              onHover={safeOnHover}
+              onSelect={safeOnSelect}
             />
           </Suspense>
         </group>
@@ -137,10 +155,26 @@ export function PierreWorld({ onHover, onSelect }: PierreWorldProps) {
           </mesh>
         )}
 
+        {/* Fond pour le mode Ping-Pong */}
+        {currentStage === 'pingpong' && (
+          <mesh position={[-8, 8, 8]} renderOrder={-1}>
+            <sphereGeometry args={[50, 32, 32]} />
+            <meshBasicMaterial color={0x1a1a2e} side={THREE.BackSide} />
+          </mesh>
+        )}
+
         {/* Rubik's Cube interactif - EN DEHORS du groupe scène pour rester visible */}
         <Suspense fallback={null}>
-          <RubiksCube onHover={onHover} onSelect={onSelect} />
+          <RubiksCube onHover={safeOnHover} onSelect={safeOnSelect} />
         </Suspense>
+
+{/* Raquette de Ping-Pong - EN DEHORS du groupe scène pour rester visible */}
+        <Suspense fallback={null}>
+          <PingPongPaddle onHover={safeOnHover} onSelect={safeOnSelect} />
+        </Suspense>
+
+        {/* Jeu Ping-Pong avec physique Rapier */}
+        <PingPongApp isActive={currentStage === 'pingpong'} />
 
         {/* Confetti quand le Rubik's cube est résolu */}
         {rubikSolved && (

@@ -20,6 +20,7 @@ import { useHeadBob } from './hooks/useHeadBob'
 import { GalleryRoom } from './components/GalleryRoom'
 import { Paintings } from './components/Paintings'
 import { Vases } from './components/Vases'
+import { Door } from './components/Door'
 import { PaintingInfo3D } from './components/PaintingInfo3D'
 import { PauseMenu3D } from './ui/PauseMenu3D'
 
@@ -447,6 +448,9 @@ export function GalleryFPSScene({ isActive, onExit, isMobile = false }: GalleryF
       <pointLight position={[0, 3, 0]} intensity={0.5} color="#fff5e6" />
       <pointLight position={[0, 3, -10]} intensity={0.3} color="#e6f0ff" />
 
+      {/* Debug: Axes helper pour voir l'orientation (Rouge=X, Vert=Y, Bleu=Z) */}
+      <axesHelper args={[10]} />
+
       {/* Modele GLTF de la galerie */}
       <GalleryRoom />
 
@@ -455,6 +459,9 @@ export function GalleryFPSScene({ isActive, onExit, isMobile = false }: GalleryF
 
       {/* Vases cassables */}
       <Vases />
+
+      {/* Porte de sortie - positionnee dans le placeholder bleu/violet du mur du fond (Z negatif) */}
+      <Door position={[-2, 0, 0]} rotation={[0, 0, 0]} scale={1.2} />
 
       {/* Animation camera (mode apercu - quand non actif) */}
       <CameraAnimation isActive={isActive} />

@@ -5,16 +5,14 @@
  * Les vases peuvent etre casses par le joueur (collision).
  */
 
-import { useRef, useState, useMemo, useEffect } from 'react'
-import { useGLTF, useKTX2 } from '@react-three/drei'
+import { useRef, useState, useMemo } from 'react'
+import { useGLTF } from '@react-three/drei'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import type { RapierRigidBody } from '@react-three/rapier'
 import * as THREE from 'three'
 
-// Chemins vers les assets
+// Chemin vers le modele
 const VASE_MODEL_PATH = '/assets/models/vase.glb'
-const VASE_TEXTURE_PATH = '/assets/vase/vaseTexture.ktx2'
-const BASIS_PATH = '/basis/'
 
 /**
  * Configuration d'un vase.
@@ -28,16 +26,16 @@ interface VaseConfig {
 
 /**
  * Liste des vases dans la galerie.
- * Places pres des murs pour decoration.
+ * Places sur des piedestaux le long des murs pour decoration.
+ * Positions ajustees pour le modele scene.glb (~10x12 unites).
  */
 const VASES_CONFIG: VaseConfig[] = [
-  // Coins de la galerie
-  { id: 'vase-1', position: [-4, 0, -4], rotation: [0, 0.5, 0], scale: 0.8 },
-  { id: 'vase-2', position: [4, 0, -4], rotation: [0, -0.3, 0], scale: 0.7 },
-  { id: 'vase-3', position: [-4, 0, 4], rotation: [0, 1.2, 0], scale: 0.9 },
-  { id: 'vase-4', position: [4, 0, 4], rotation: [0, 2.1, 0], scale: 0.75 },
-  // Centre
-  { id: 'vase-5', position: [0, 0, 0], rotation: [0, 0, 0], scale: 1.0 },
+  // Cote gauche (entre les tableaux)
+  { id: 'vase-1', position: [-2.5, 0.6, 0.5], rotation: [0, 0.5, 0], scale: 1.5 },
+  { id: 'vase-2', position: [-2.5, 0.6, -2.5], rotation: [0, 1.2, 0], scale: 1.3 },
+  // Cote droit (entre les tableaux)
+  { id: 'vase-3', position: [2.5, 0.6, 0.5], rotation: [0, -0.3, 0], scale: 1.4 },
+  { id: 'vase-4', position: [2.5, 0.6, -2.5], rotation: [0, 2.1, 0], scale: 1.2 },
 ]
 
 /**
@@ -48,25 +46,15 @@ function Vase({ config, onBreak }: { config: VaseConfig; onBreak: (id: string) =
   const [isBroken, setIsBroken] = useState(false)
 
   const { scene } = useGLTF(VASE_MODEL_PATH)
-  const vaseTexture = useKTX2(VASE_TEXTURE_PATH, BASIS_PATH)
 
-  // Configurer la texture
-  useEffect(() => {
-    if (vaseTexture) {
-      vaseTexture.flipY = false
-      vaseTexture.colorSpace = THREE.SRGBColorSpace
-    }
-  }, [vaseTexture])
-
-  // Creer le materiau avec texture
+  // Creer le materiau ceramique
   const vaseMaterial = useMemo(() => {
-    if (!vaseTexture) return null
     return new THREE.MeshStandardMaterial({
-      map: vaseTexture,
-      roughness: 0.4,
+      color: '#C4A77D', // Couleur ceramique/terre cuite
+      roughness: 0.6,
       metalness: 0.1,
     })
-  }, [vaseTexture])
+  }, [])
 
   // Cloner la scene et appliquer le materiau
   const clonedScene = useMemo(() => {
@@ -74,9 +62,7 @@ function Vase({ config, onBreak }: { config: VaseConfig; onBreak: (id: string) =
     clone.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh
-        if (vaseMaterial) {
-          mesh.material = vaseMaterial
-        }
+        mesh.material = vaseMaterial
         mesh.castShadow = true
         mesh.receiveShadow = true
       }

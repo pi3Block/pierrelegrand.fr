@@ -67,6 +67,10 @@ const STAGE_PRESETS: Record<PierreStage, CameraPreset> = {
     position: [-23, 17, 23],
     target: [-16, 12.5, 16],
   },
+  pingpong: {
+    position: [-23, 17, 23],
+    target: [-10, 10, 10],
+  },
   hubPortal: {
     position: [-23, 17, 23],
     target: [0, 2.5, 0],

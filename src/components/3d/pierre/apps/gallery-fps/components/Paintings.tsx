@@ -1,18 +1,18 @@
 /**
  * Paintings - Systeme de tableaux interactifs pour la galerie FPS.
  *
- * Affiche des tableaux avec textures KTX2 reelles.
+ * Affiche des tableaux avec textures PNG/JPG.
  * Detecte quand le joueur regarde un tableau via raycasting.
+ *
+ * Note: Utilise useLoader de R3F pour charger les textures de maniere
+ * compatible avec le contexte RenderTexture.
  */
 
-import { useRef, useMemo, useEffect, Suspense } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
-import { useKTX2 } from '@react-three/drei'
+import { useRef, useMemo } from 'react'
+import { useFrame, useThree, useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
+import { TextureLoader } from 'three'
 import { useGalleryFPSStore, type PaintingInfo } from '../stores/galleryFPSStore'
-
-// Chemin vers le transcoder Basis
-const BASIS_PATH = '/basis/'
 
 /**
  * Configuration d'un tableau.
@@ -21,7 +21,7 @@ interface PaintingConfig {
   id: string
   title: string
   description: string
-  texture: string // Chemin vers la texture KTX2
+  texture: string // Chemin vers la texture PNG/JPG
   position: [number, number, number]
   rotation: [number, number, number]
   size: [number, number]
@@ -33,109 +33,99 @@ interface PaintingConfig {
 
 /**
  * Liste des tableaux de la galerie.
- * Positions adaptees pour la galerie (taille reduite).
- * Mur gauche: X negatif, Mur droit: X positif, Mur fond: Z negatif
+ * Le modele scene.glb est une piece d'environ 10x10 unites.
+ * Positions ajustees pour correspondre aux murs du modele.
  */
 const PAINTINGS_CONFIG: PaintingConfig[] = [
-  // Mur gauche (3 tableaux)
+  // Mur gauche (X = -3.8, face vers +X) - 3 tableaux espaces sur Z
   {
     id: 'portfolio',
-    title: 'Portfolio 3D',
+    title: 'Portfolio Pierre Legrand',
     description: 'Mon portfolio interactif en 3D avec React Three Fiber',
-    texture: '/assets/paintings/portfolio.ktx2',
-    position: [-4.9, 1.8, -2],
-    rotation: [0, Math.PI / 2, 0],
-    size: [1.2, 0.9],
+    texture: '/images/pages/RougeFutur1.png',
+    position: [-3.8, 2, 2],
+    rotation: [0, Math.PI / 2, 0], // Face vers +X
+    size: [1.5, 1.1],
     links: { demo: 'https://pierrelegrand.fr' },
   },
   {
-    id: 'joan-art-gallery',
-    title: 'Joan Art Gallery',
-    description: 'Galerie d\'art 3D immersive en premiere personne',
-    texture: '/assets/paintings/joan-art-gallery.ktx2',
-    position: [-4.9, 1.8, 0],
+    id: 'foudafrique',
+    title: 'FouDafrique',
+    description: 'Site e-commerce de produits africains',
+    texture: '/images/pages/Foudafrique-acceuil.png',
+    position: [-3.8, 2, -1],
     rotation: [0, Math.PI / 2, 0],
-    size: [1.2, 0.9],
-    links: { demo: 'https://joan-art-gallery.vercel.app', source: 'https://github.com/jrefusta/joan-art-gallery' },
+    size: [1.5, 1.1],
+    links: { demo: 'https://foudafrique.fr' },
   },
   {
-    id: 'joan-os',
-    title: 'Joan OS',
-    description: 'Systeme d\'exploitation web simule',
-    texture: '/assets/paintings/joan-os.ktx2',
-    position: [-4.9, 1.8, 2],
+    id: '2lb-gestion',
+    title: '2LB Gestion',
+    description: "Application de gestion d'avis Google",
+    texture: '/images/pages/2Lb-gestion-avis-google.png',
+    position: [-3.8, 2, -4],
     rotation: [0, Math.PI / 2, 0],
-    size: [1.2, 0.9],
-    links: { demo: 'https://joan-os.vercel.app' },
+    size: [1.5, 1.1],
   },
-  // Mur droit (3 tableaux)
+  // Mur droit (X = +3.8, face vers -X) - 3 tableaux espaces sur Z
   {
-    id: 'joan-arcade-machine',
-    title: 'Joan Arcade Machine',
-    description: 'Borne d\'arcade retro avec jeux integres',
-    texture: '/assets/paintings/joan-arcade-machine.ktx2',
-    position: [4.9, 1.8, -2],
+    id: 'gt-vintage',
+    title: 'GT Vintage',
+    description: 'Site de voitures de collection',
+    texture: '/images/pages/GtVicntage1.png',
+    position: [3.8, 2, 2],
+    rotation: [0, -Math.PI / 2, 0], // Face vers -X
+    size: [1.5, 1.1],
+  },
+  {
+    id: 'neghome',
+    title: 'NegHome',
+    description: 'Plateforme immobiliere',
+    texture: '/images/pages/neghome.com.png',
+    position: [3.8, 2, -1],
     rotation: [0, -Math.PI / 2, 0],
-    size: [1.2, 0.9],
+    size: [1.5, 1.1],
+    links: { demo: 'https://neghome.com' },
   },
   {
-    id: 'apocalypse-now',
-    title: 'Apocalypse Now',
-    description: 'Jeu de survie post-apocalyptique',
-    texture: '/assets/paintings/apocalypse-now.ktx2',
-    position: [4.9, 1.8, 0],
+    id: 'mydata',
+    title: 'MyData Machine',
+    description: 'Solution de gestion de donnees',
+    texture: '/images/pages/MachineMydata5.webp',
+    position: [3.8, 2, -4],
     rotation: [0, -Math.PI / 2, 0],
-    size: [1.2, 0.9],
+    size: [1.5, 1.1],
   },
+  // Mur du fond (Z = -5.8, face vers +Z) - 1 tableau central
   {
-    id: 'starduster',
-    title: 'Starduster',
-    description: 'Shoot\'em up spatial arcade',
-    texture: '/assets/paintings/starduster.ktx2',
-    position: [4.9, 1.8, 2],
-    rotation: [0, -Math.PI / 2, 0],
-    size: [1.2, 0.9],
-  },
-  // Mur du fond (1 tableau)
-  {
-    id: 'break-in',
-    title: 'Break In',
-    description: 'Jeu de casse-briques moderne',
-    texture: '/assets/paintings/break-in.ktx2',
-    position: [0, 1.8, -4.9],
-    rotation: [0, 0, 0],
-    size: [1.2, 0.9],
+    id: 'carte-electronique',
+    title: 'Carte Electronique',
+    description: 'Projet de carte electronique',
+    texture: '/images/pages/CarteElectronique.jpg',
+    position: [0, 2, -5.8],
+    rotation: [0, 0, 0], // Face vers +Z
+    size: [2, 1.5],
   },
 ]
 
 /**
- * Composant interne pour charger et afficher la texture d'un tableau.
- */
-function PaintingTexture({ texturePath }: { texturePath: string }) {
-  const texture = useKTX2(texturePath, BASIS_PATH)
-
-  // Configurer la texture
-  useEffect(() => {
-    if (texture) {
-      texture.flipY = false
-      texture.colorSpace = THREE.SRGBColorSpace
-    }
-  }, [texture])
-
-  return (
-    <meshStandardMaterial
-      map={texture}
-      roughness={0.5}
-      metalness={0.1}
-    />
-  )
-}
-
-/**
- * Composant pour un seul tableau avec texture KTX2.
+ * Composant pour un seul tableau avec texture.
+ * Utilise useLoader de R3F pour charger les textures de maniere
+ * compatible avec le contexte RenderTexture.
  */
 function PaintingFrame({ config }: { config: PaintingConfig }) {
   const meshRef = useRef<THREE.Mesh>(null)
+
+  // useLoader de R3F est compatible avec RenderTexture
+  const texture = useLoader(TextureLoader, config.texture)
+
+  // Configurer la texture une seule fois via useMemo
+  useMemo(() => {
+    if (texture) {
+      texture.colorSpace = THREE.SRGBColorSpace
+      texture.needsUpdate = true
+    }
+  }, [texture])
 
   return (
     <group
@@ -143,18 +133,16 @@ function PaintingFrame({ config }: { config: PaintingConfig }) {
       rotation={config.rotation}
       name={`painting-${config.id}`}
     >
-      {/* Cadre */}
-      <mesh castShadow position={[0, 0, -0.02]}>
+      {/* Cadre dore */}
+      <mesh castShadow position={[0, 0, -0.03]}>
         <boxGeometry args={[config.size[0] + 0.15, config.size[1] + 0.15, 0.08]} />
-        <meshStandardMaterial color="#1a1a1a" roughness={0.3} metalness={0.8} />
+        <meshStandardMaterial color="#8B6914" roughness={0.3} metalness={0.7} />
       </mesh>
 
       {/* Toile avec texture */}
       <mesh ref={meshRef} userData={{ paintingId: config.id }}>
         <planeGeometry args={config.size} />
-        <Suspense fallback={<meshStandardMaterial color="#333333" />}>
-          <PaintingTexture texturePath={config.texture} />
-        </Suspense>
+        <meshBasicMaterial map={texture} />
       </mesh>
     </group>
   )

@@ -34,8 +34,11 @@ export function ArcadeScreen({ onHover, onSelect }: ArcadeScreenProps) {
   const setCurrentLevel = useGameStore((s) => s.setCurrentLevel)
   const isActive = currentStage === 'arcadeMachine'
 
-  // Cacher complètement en mode Rubik (Html de drei ignore visible=false du parent)
+  // Cacher complètement en mode Rubik (la scène entière est cachée)
   const isHidden = currentStage === 'rubikGroup'
+
+  // Cacher l'UI HTML en mode pingpong (le bureau reste visible mais l'écran arcade doit disparaître)
+  const hideHtmlContent = currentStage === 'pingpong'
 
   // Callback pour naviguer vers le Hub (level 0)
   const handleNavigateToHub = () => setCurrentLevel(0)
@@ -83,20 +86,22 @@ export function ArcadeScreen({ onHover, onSelect }: ArcadeScreenProps) {
         Pour que 1px HTML ≈ 0.00102 unité 3D (comme Joan):
         distanceFactor = 400 * 0.00102 ≈ 0.408
       */}
-      <Html
-        transform
-        position={ARCADE_POSITION}
-        rotation={[ROTATION_X, ROTATION_Y, 0, 'YXZ']}
-        distanceFactor={0.408}
-        style={{
-          width: `${ARCADE_SCREEN_SIZE.width}px`,
-          height: `${ARCADE_SCREEN_SIZE.height}px`,
-          overflow: 'hidden',
-          pointerEvents: isActive ? 'auto' : 'none',
-        }}
-      >
-        <ArcadeMachine onNavigateToHub={handleNavigateToHub} />
-      </Html>
+      {!hideHtmlContent && (
+        <Html
+          transform
+          position={ARCADE_POSITION}
+          rotation={[ROTATION_X, ROTATION_Y, 0, 'YXZ']}
+          distanceFactor={0.408}
+          style={{
+            width: `${ARCADE_SCREEN_SIZE.width}px`,
+            height: `${ARCADE_SCREEN_SIZE.height}px`,
+            overflow: 'hidden',
+            pointerEvents: isActive ? 'auto' : 'none',
+          }}
+        >
+          <ArcadeMachine onNavigateToHub={handleNavigateToHub} />
+        </Html>
+      )}
     </group>
   )
 }

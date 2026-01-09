@@ -17,6 +17,7 @@ export type PierreStage =
   | 'rightMonitor'   // Moniteur droit (Projects)
   | 'whiteboard'     // Tableau blanc
   | 'rubikGroup'     // Rubik's Cube (mode jeu, cube au centre)
+  | 'pingpong'       // Mini-jeu Ping-Pong
   | 'hubPortal'      // Portail vers le Hub
   | 'hub'            // Retour au Hub 3D principal
 

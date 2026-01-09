@@ -33,6 +33,7 @@ export function PierreBackButton({ onBack }: PierreBackButtonProps) {
     rightMonitor: 'Projets',
     hubPortal: 'Portail Hub',
     hub: '',
+    pingpong: 'Ping Pong',
   }
 
   return (

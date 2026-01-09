@@ -87,7 +87,7 @@ export function GalleryFPSApp({ onNavigateToHub: _onNavigateToHub, responsiveCon
 
           {/* Scène de la galerie */}
           <Suspense fallback={<GalleryLoadingScene />}>
-            <Physics gravity={[0, -20, 0]} timeStep="vary" paused={!isActive}>
+            <Physics gravity={[0, -20, 0]} timeStep="vary" paused={!isActive} debug>
               <GalleryFPSScene isActive={isActive} onExit={handleExit} isMobile={isMobile} />
             </Physics>
           </Suspense>
