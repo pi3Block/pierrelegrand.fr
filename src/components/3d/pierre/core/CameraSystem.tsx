@@ -52,7 +52,7 @@ const STAGE_PRESETS: Record<PierreStage, CameraPreset> = {
     target: [3.25776, 2.74209, 2.3009],
   },
   leftMonitor: {
-    position: [1.06738, 2.60725, -1.6],
+    position: [1.06738, 2.60725, -0.2],
     target: [1.06738, 2.50725, -4.23009],
   },
   rightMonitor: {
@@ -87,10 +87,10 @@ const STAGE_PRESETS: Record<PierreStage, CameraPreset> = {
  */
 const MOBILE_PRESETS: Partial<Record<PierreStage, CameraPreset>> = {
   default: {
-    // Vue globale plus proche sur mobile
-    position: [-18, 14, 18],
+    // Vue globale plus reculée sur mobile pour tout voir
+    position: [-28, 20, 28],
     target: [0, 2.5, 0],
-    fov: 25, // FOV légèrement plus large
+    fov: 22,
   },
   leftMonitor: {
     // Plus proche pour voir le contenu
@@ -129,7 +129,7 @@ const MOBILE_PRESETS: Partial<Record<PierreStage, CameraPreset>> = {
  */
 const CONTROLS_CONFIG = {
   minDistance: 2,
-  maxDistance: 35,
+  maxDistance: 50,
   minPolarAngle: Math.PI / 6,
   maxPolarAngle: Math.PI / 2,
   minAzimuthAngle: -Math.PI / 2,
@@ -255,8 +255,9 @@ export function CameraSystem({
       if (isInitializedRef.current) return
       isInitializedRef.current = true
 
-      // Utiliser initialPresetRef pour éviter la dépendance
-      const preset = initialPresetRef.current ?? STAGE_PRESETS.default
+      // Utiliser initialPresetRef ou le preset mobile/desktop par défaut
+      const isMobileInit = typeof window !== 'undefined' && window.innerWidth < 768
+      const preset = initialPresetRef.current ?? getPreset('default', isMobileInit)
 
       console.log('[CameraSystem] 🎬 INIT (once)', { position: preset.position, target: preset.target })
 
