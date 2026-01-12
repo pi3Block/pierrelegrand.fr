@@ -1,7 +1,7 @@
-import { Hono } from 'hono'
+import { Router } from 'express'
 import { pool } from '../db/mysql.js'
 
-const healthRouter = new Hono()
+const healthRouter = Router()
 
 interface HealthCheck {
   status: 'healthy' | 'degraded' | 'unhealthy'
@@ -11,7 +11,7 @@ interface HealthCheck {
   database: string
 }
 
-healthRouter.get('/', async (c) => {
+healthRouter.get('/', async (_req, res) => {
   const checks: HealthCheck = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -33,12 +33,12 @@ healthRouter.get('/', async (c) => {
   }
 
   const statusCode = checks.status === 'healthy' ? 200 : 503
-  return c.json(checks, statusCode)
+  res.status(statusCode).json(checks)
 })
 
 // Simple ping endpoint
-healthRouter.get('/ping', (c) => {
-  return c.text('pong')
+healthRouter.get('/ping', (_req, res) => {
+  res.send('pong')
 })
 
 export { healthRouter }

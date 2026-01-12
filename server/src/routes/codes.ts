@@ -1,10 +1,9 @@
-import { Hono } from 'hono'
+import { Router } from 'express'
 import { z } from 'zod'
-import { zValidator } from '@hono/zod-validator'
 import { pool } from '../db/mysql.js'
 import type { RowDataPacket, ResultSetHeader } from 'mysql2'
 
-const codesRouter = new Hono()
+const codesRouter = Router()
 
 // Validation schema
 const codeSchema = z.object({
@@ -21,12 +20,18 @@ interface CodeRow extends RowDataPacket {
   features: string | null
 }
 
-codesRouter.post('/validate', zValidator('json', codeSchema), async (c) => {
-  const { code } = c.req.valid('json')
+codesRouter.post('/validate', async (req, res) => {
+  // Validate input
+  const result = codeSchema.safeParse(req.body)
+  if (!result.success) {
+    res.status(400).json({ valid: false, error: result.error.errors[0]?.message || 'Données invalides' })
+    return
+  }
+
+  const { code } = result.data
   const codeUpper = code.toUpperCase()
 
   try {
-    // Find valid code
     const [rows] = await pool.execute<CodeRow[]>(
       `SELECT id, privilege_level, features
        FROM codes
@@ -37,7 +42,8 @@ codesRouter.post('/validate', zValidator('json', codeSchema), async (c) => {
     )
 
     if (rows.length === 0) {
-      return c.json({ valid: false, error: 'Code invalide ou expiré' }, 404)
+      res.status(404).json({ valid: false, error: 'Code invalide ou expiré' })
+      return
     }
 
     const codeData = rows[0]!
@@ -54,8 +60,8 @@ codesRouter.post('/validate', zValidator('json', codeSchema), async (c) => {
        VALUES (?, ?, ?)`,
       [
         codeData.id,
-        c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown',
-        (c.req.header('user-agent') || '').substring(0, 512),
+        req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || 'unknown',
+        (req.headers['user-agent'] || '').substring(0, 512),
       ]
     )
 
@@ -67,30 +73,29 @@ codesRouter.post('/validate', zValidator('json', codeSchema), async (c) => {
       features = []
     }
 
-    return c.json({
+    res.json({
       valid: true,
       level: codeData.privilege_level,
       features,
     })
   } catch (error) {
     console.error('Database error:', error)
-    return c.json({ valid: false, error: 'Erreur serveur' }, 500)
+    res.status(500).json({ valid: false, error: 'Erreur serveur' })
   }
 })
 
-// Admin endpoint to list codes (protected - requires level 3)
-codesRouter.get('/list', async (c) => {
-  // In production, add proper authentication here
+// Admin endpoint to list codes
+codesRouter.get('/list', async (_req, res) => {
   try {
     const [rows] = await pool.execute<CodeRow[]>(
       `SELECT id, code_key, privilege_level, features, created_at, expires_at, max_uses, use_count
        FROM codes
        ORDER BY created_at DESC`
     )
-    return c.json({ codes: rows })
+    res.json({ codes: rows })
   } catch (error) {
     console.error('Database error:', error)
-    return c.json({ error: 'Erreur serveur' }, 500)
+    res.status(500).json({ error: 'Erreur serveur' })
   }
 })
 
