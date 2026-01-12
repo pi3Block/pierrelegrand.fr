@@ -1,12 +1,14 @@
 /**
- * Whiteboard - Tableau blanc interactif pour dessiner.
+ * Whiteboard - Tableau blanc collaboratif interactif.
  *
  * Fonctionnalités:
  * - Dessin avec différentes couleurs (marqueurs)
  * - Gomme pour effacer
  * - Canvas 2D mappé sur une texture 3D
  * - Raycasting UV pour le positionnement précis
- * - Charge l'image texture_paint.png comme dessin initial (comme Joan)
+ * - Synchronisation collaborative avec le serveur
+ * - Sons de marqueur et gomme
+ * - Reset mensuel automatique
  */
 
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
@@ -14,6 +16,8 @@ import { useThree } from '@react-three/fiber'
 import { useGLTF, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { usePierreStore, type PierreStage } from '../stores/pierreStore'
+import { useWhiteboardStore } from '@stores/whiteboardStore'
+import { pierreAudioManager } from '../services/PierreAudioManager'
 import { PIERRE } from '@config/assetPaths'
 
 // Configuration
@@ -21,16 +25,16 @@ const WHITEBOARD_POSITION: [number, number, number] = [-3.3927, 3.18774, -4.6136
 const CANVAS_SIZE = { width: 2048, height: 1024 }
 const PLANE_SIZE = { width: 2.6, height: 1.82 }
 
-// Image initiale du whiteboard (comme Joan's portfolio)
+// Image initiale du whiteboard (fallback si serveur non disponible)
 const TEXTURE_PAINT_URL = PIERRE.TEXTURES.TEXTURE_PAINT
 
-// Couleurs des marqueurs
-const MARKER_COLORS: Record<string, { color: string; lineWidth: number }> = {
-  black: { color: 'black', lineWidth: 8 },
-  red: { color: 'red', lineWidth: 8 },
-  green: { color: 'darkgreen', lineWidth: 8 },
-  blue: { color: 'blue', lineWidth: 8 },
-  eraser: { color: 'white', lineWidth: 50 },
+// Couleurs des marqueurs avec leurs codes hex pour le serveur
+const MARKER_COLORS: Record<string, { color: string; hex: string; lineWidth: number }> = {
+  black: { color: 'black', hex: '#000000', lineWidth: 8 },
+  red: { color: 'red', hex: '#FF0000', lineWidth: 8 },
+  green: { color: 'darkgreen', hex: '#006400', lineWidth: 8 },
+  blue: { color: 'blue', hex: '#0000FF', lineWidth: 8 },
+  eraser: { color: 'white', hex: '#FFFFFF', lineWidth: 50 },
 }
 
 interface WhiteboardProps {
@@ -39,7 +43,7 @@ interface WhiteboardProps {
 }
 
 /**
- * Composant Whiteboard interactif.
+ * Composant Whiteboard collaboratif interactif.
  */
 export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
   const groupRef = useRef<THREE.Group>(null)
@@ -49,6 +53,9 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
   const contextRef = useRef<CanvasRenderingContext2D | null>(null)
   const textureRef = useRef<THREE.CanvasTexture | null>(null)
 
+  // Buffer pour les points du stroke en cours
+  const strokePointsRef = useRef<[number, number][]>([])
+
   const { camera, raycaster } = useThree()
   // Stocker camera et raycaster dans des refs pour éviter de les avoir dans les deps des callbacks
   const cameraRef = useRef(camera)
@@ -56,18 +63,25 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
   cameraRef.current = camera
   raycasterRef.current = raycaster
 
-  // États
-  const [isActive, setIsActive] = useState(false)
+  // États locaux
   const [isDrawing, setIsDrawing] = useState(false)
-  const [currentColor, setCurrentColor] = useState('black')
+  const [selectedColor, setSelectedColor] = useState('black')
   const drawStartPos = useRef(new THREE.Vector2(-1, -1))
   const pointer = useRef(new THREE.Vector2())
 
-  // Store
+  // Store Pierre
   const currentStage = usePierreStore((s) => s.currentStage)
+
+  // Store Whiteboard (sync collaborative)
+  const addStroke = useWhiteboardStore((s) => s.addStroke)
+  const loadState = useWhiteboardStore((s) => s.loadState)
+  const startPolling = useWhiteboardStore((s) => s.startPolling)
+  const stopPolling = useWhiteboardStore((s) => s.stopPolling)
+  const syncError = useWhiteboardStore((s) => s.error)
 
   // Cacher complètement en mode Rubik
   const isHidden = currentStage === 'rubikGroup'
+  const isActive = currentStage === 'whiteboard'
 
   // Charger le modèle du tableau
   const { scene } = useGLTF(PIERRE.MODELS.WHITEBOARD)
@@ -75,7 +89,7 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
   // Nommer la scène
   scene.name = 'whiteboard'
 
-  // Initialiser le canvas de dessin avec l'image texture_paint.png
+  // Initialiser le canvas de dessin
   useEffect(() => {
     // Créer le canvas de dessin (hors DOM)
     const canvas = document.createElement('canvas')
@@ -104,28 +118,47 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
     texture.generateMipmaps = true
     textureRef.current = texture
 
-    // Charger l'image texture_paint.png (comme Joan)
-    const image = new Image()
-    image.crossOrigin = 'anonymous'
-    image.onload = () => {
-      if (ctx) {
-        // Dessiner l'image sur le canvas
-        ctx.drawImage(image, 0, 0, CANVAS_SIZE.width, CANVAS_SIZE.height)
-        // Mettre à jour la texture
-        texture.needsUpdate = true
+    // Charger l'état depuis le serveur
+    loadState()
+
+    // Démarrer le polling pour les mises à jour
+    startPolling()
+
+    // Écouter les mises à jour du serveur
+    const handleServerUpdate = (e: CustomEvent<{ imageData: string }>) => {
+      if (ctx && e.detail.imageData) {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, CANVAS_SIZE.width, CANVAS_SIZE.height)
+          texture.needsUpdate = true
+        }
+        img.src = `data:image/png;base64,${e.detail.imageData}`
       }
     }
-    image.src = TEXTURE_PAINT_URL
+
+    window.addEventListener('whiteboard:update', handleServerUpdate as EventListener)
+
+    // Fallback: charger l'image locale si le serveur n'est pas disponible
+    const timeoutId = setTimeout(() => {
+      const image = new Image()
+      image.crossOrigin = 'anonymous'
+      image.onload = () => {
+        if (ctx) {
+          ctx.drawImage(image, 0, 0, CANVAS_SIZE.width, CANVAS_SIZE.height)
+          texture.needsUpdate = true
+        }
+      }
+      image.src = TEXTURE_PAINT_URL
+    }, 3000)
 
     return () => {
+      clearTimeout(timeoutId)
+      stopPolling()
       texture.dispose()
+      window.removeEventListener('whiteboard:update', handleServerUpdate as EventListener)
     }
-  }, [])
-
-  // Activer selon le stage
-  useEffect(() => {
-    setIsActive(currentStage === 'whiteboard')
-  }, [currentStage])
+  }, [loadState, startPolling, stopPolling])
 
   // Matériau avec texture canvas
   const material = useMemo(() => {
@@ -142,27 +175,42 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
     }
   }, [material])
 
-  // Fonction de dessin
+  // Gestion du changement de couleur avec son
+  const handleColorChange = useCallback((color: string) => {
+    setSelectedColor(color)
+
+    // Jouer le son approprié
+    if (color === 'eraser') {
+      pierreAudioManager.play('eraser', { volume: 0.3 })
+    } else {
+      pierreAudioManager.play('marker_open', { volume: 0.3 })
+    }
+  }, [])
+
+  // Fonction de dessin (rendu local immédiat)
   const draw = useCallback((x: number, y: number) => {
     const ctx = contextRef.current
     if (!ctx) return
-    
-    const config = MARKER_COLORS[currentColor] ?? { color: 'black', lineWidth: 8 }
-    ctx.strokeStyle = config.color
-    ctx.lineWidth = config.lineWidth
-    
+
+    const config = MARKER_COLORS[selectedColor] ?? MARKER_COLORS.black!
+    ctx.strokeStyle = config!.color
+    ctx.lineWidth = config!.lineWidth
+
     ctx.beginPath()
     ctx.moveTo(drawStartPos.current.x, drawStartPos.current.y)
     ctx.lineTo(x, y)
     ctx.stroke()
-    
+
     drawStartPos.current.set(x, y)
-    
+
+    // Ajouter le point au buffer de stroke
+    strokePointsRef.current.push([x, y])
+
     // Mettre à jour la texture
     if (textureRef.current) {
       textureRef.current.needsUpdate = true
     }
-  }, [currentColor])
+  }, [selectedColor])
 
   // Convertir coordonnées UV en coordonnées canvas
   const uvToCanvas = (uv: THREE.Vector2): THREE.Vector2 => {
@@ -173,14 +221,12 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
   }
 
   // Gestion des événements
-  // IMPORTANT: Utiliser cameraRef et raycasterRef pour éviter les re-renders
   const handlePointerMove = useCallback((e: PointerEvent) => {
     pointer.current.x = (e.clientX / window.innerWidth) * 2 - 1
     pointer.current.y = -(e.clientY / window.innerHeight) * 2 + 1
 
     if (!isActive || !meshRef.current) return
 
-    // Raycast pour trouver la position sur le whiteboard - utiliser les refs
     raycasterRef.current.setFromCamera(pointer.current, cameraRef.current)
     const intersects = raycasterRef.current.intersectObject(meshRef.current)
 
@@ -191,41 +237,61 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
         draw(canvasPos.x, canvasPos.y)
       }
     }
-  }, [isActive, isDrawing, draw]) // Supprimé camera et raycaster des deps
+  }, [isActive, isDrawing, draw])
 
   const handlePointerDown = useCallback(() => {
     if (!isActive || !meshRef.current) return
 
-    // Utiliser les refs au lieu des valeurs directes
     raycasterRef.current.setFromCamera(pointer.current, cameraRef.current)
     const intersects = raycasterRef.current.intersectObject(meshRef.current)
 
     if (intersects.length > 0 && intersects[0]?.uv) {
       const canvasPos = uvToCanvas(intersects[0].uv)
       drawStartPos.current.copy(canvasPos)
+
+      // Initialiser le buffer de stroke avec le premier point
+      strokePointsRef.current = [[canvasPos.x, canvasPos.y]]
+
       setIsDrawing(true)
 
       if (contextRef.current) {
         contextRef.current.beginPath()
       }
     }
-  }, [isActive]) // Supprimé camera et raycaster des deps
+  }, [isActive])
 
   const handlePointerUp = useCallback(() => {
+    if (!isDrawing) return
+
     setIsDrawing(false)
+
     if (contextRef.current) {
       contextRef.current.closePath()
     }
-  }, [])
+
+    // Envoyer le stroke au serveur si on a assez de points
+    const points = strokePointsRef.current
+    if (points.length >= 2) {
+      const config = MARKER_COLORS[selectedColor] ?? MARKER_COLORS.black!
+      addStroke({
+        color: config!.hex,
+        lineWidth: config!.lineWidth,
+        points: points as [number, number][],
+      })
+    }
+
+    // Réinitialiser le buffer
+    strokePointsRef.current = []
+  }, [isDrawing, selectedColor, addStroke])
 
   // Event listeners
   useEffect(() => {
     if (!isActive) return
-    
+
     window.addEventListener('pointermove', handlePointerMove)
     window.addEventListener('pointerdown', handlePointerDown)
     window.addEventListener('pointerup', handlePointerUp)
-    
+
     return () => {
       window.removeEventListener('pointermove', handlePointerMove)
       window.removeEventListener('pointerdown', handlePointerDown)
@@ -264,29 +330,62 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
         <Html position={[-3.4, 4.5, -4.6]} center>
           <div style={{
             display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
             gap: '8px',
-            background: 'rgba(0,0,0,0.7)',
-            padding: '8px 12px',
-            borderRadius: '8px',
           }}>
-            {Object.keys(MARKER_COLORS).map((color) => {
-              const config = MARKER_COLORS[color]
-              return (
-                <button
-                  key={color}
-                  onClick={() => setCurrentColor(color)}
-                  style={{
-                    width: '30px',
-                    height: '30px',
-                    borderRadius: '50%',
-                    border: currentColor === color ? '3px solid white' : '2px solid #666',
-                    background: color === 'eraser' ? '#f0f0f0' : config?.color ?? 'black',
-                    cursor: 'pointer',
-                  }}
-                  title={color === 'eraser' ? 'Gomme' : color}
-                />
-              )
-            })}
+            {/* Indicateur de sync */}
+            {syncError && (
+              <div style={{
+                background: 'rgba(255,100,100,0.9)',
+                color: 'white',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                marginBottom: '4px',
+              }}>
+                {syncError}
+              </div>
+            )}
+
+            {/* Palette de couleurs */}
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              background: 'rgba(0,0,0,0.7)',
+              padding: '8px 12px',
+              borderRadius: '8px',
+            }}>
+              {Object.keys(MARKER_COLORS).map((color) => {
+                const config = MARKER_COLORS[color]
+                return (
+                  <button
+                    key={color}
+                    onClick={() => handleColorChange(color)}
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      borderRadius: '50%',
+                      border: selectedColor === color ? '3px solid white' : '2px solid #666',
+                      background: color === 'eraser' ? '#f0f0f0' : config?.color ?? 'black',
+                      cursor: 'pointer',
+                      transition: 'transform 0.1s',
+                      transform: selectedColor === color ? 'scale(1.1)' : 'scale(1)',
+                    }}
+                    title={color === 'eraser' ? 'Gomme' : color.charAt(0).toUpperCase() + color.slice(1)}
+                  />
+                )
+              })}
+            </div>
+
+            {/* Info collaborative */}
+            <div style={{
+              color: 'rgba(255,255,255,0.6)',
+              fontSize: '10px',
+              textAlign: 'center',
+            }}>
+              Tableau collaboratif
+            </div>
           </div>
         </Html>
       )}
@@ -298,4 +397,3 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
 useGLTF.preload(PIERRE.MODELS.WHITEBOARD)
 
 export default Whiteboard
-

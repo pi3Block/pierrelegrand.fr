@@ -1,10 +1,11 @@
 /**
- * Paddle - Raquette contrôlée par la souris (kinematic).
+ * Paddle - Raquette contrôlée par la souris/joystick/gyroscope (kinematic).
  *
  * Utilise le modèle GLB pingpong.glb comme dans l'exemple original.
- * - Mouse raycasting pour la position
- * - Rotation basée sur position X souris
- * - Collision force pour audio et score
+ * - Mouse raycasting pour la position (desktop)
+ * - Joystick virtuel pour la position (mobile)
+ * - Gyroscope pour la rotation (mobile)
+ * - Collision force pour audio et score avec combo
  */
 
 import { useRef, useCallback } from 'react'
@@ -16,6 +17,9 @@ import * as THREE from 'three'
 import { easing } from 'maath'
 import { usePingPongStore } from '../stores/pingpongStore'
 import { PINGPONG, FONTS } from '@config/assetPaths'
+
+// Seuil de force réduit pour scoring (était 1000)
+const SCORING_THRESHOLD = 500
 
 export function Paddle() {
   const apiRef = useRef<RapierRigidBody>(null)
@@ -47,13 +51,16 @@ export function Paddle() {
 
   // Store
   const score = usePingPongStore((s) => s.score)
-  const incrementScore = usePingPongStore((s) => s.incrementScore)
+  const combo = usePingPongStore((s) => s.combo)
+  const registerHit = usePingPongStore((s) => s.registerHit)
   const setLastHitForce = usePingPongStore((s) => s.setLastHitForce)
   const isMobile = usePingPongStore((s) => s.isMobile)
   const paddleInput = usePingPongStore((s) => s.paddleInput)
+  const gyroRotation = usePingPongStore((s) => s.gyroRotation)
+  const isGyroEnabled = usePingPongStore((s) => s.isGyroEnabled)
 
   /**
-   * Callback de collision - joue le son et met à jour le score.
+   * Callback de collision - joue le son et met à jour le score avec combo.
    */
   const contactForce = useCallback(
     (payload: { totalForceMagnitude: number }) => {
@@ -65,22 +72,30 @@ export function Paddle() {
         modelRef.current.position.y = -payload.totalForceMagnitude / 10000
       }
 
-      // Score seulement si frappe assez forte (> 1000 unités brutes)
-      if (payload.totalForceMagnitude > 1000) {
-        incrementScore()
+      // Score avec combo si frappe assez forte (seuil réduit à 500)
+      if (payload.totalForceMagnitude > SCORING_THRESHOLD) {
+        registerHit()
       }
     },
-    [incrementScore, setLastHitForce]
+    [registerHit, setLastHitForce]
   )
 
   useFrame((_state, delta) => {
     if (!apiRef.current) return
 
+    let rotationZ = 0
+
     if (isMobile) {
-      // Mobile: utiliser le joystick
+      // Mobile: utiliser le joystick pour la position
       const x = paddleInput.x * 5
       const y = paddleInput.y * 3 + 2
       apiRef.current.setNextKinematicTranslation({ x, y, z: 0 })
+
+      // Gyroscope pour la rotation (gamma = inclinaison gauche/droite)
+      if (isGyroEnabled) {
+        // gamma va de -90 à 90, on normalise pour la rotation
+        rotationZ = (gyroRotation.gamma / 90) * (Math.PI / 6)
+      }
     } else {
       // Desktop: position basée sur la souris (coordonnées normalisées -1 à 1)
       // Multiplié par un facteur pour couvrir la zone de jeu
@@ -88,13 +103,16 @@ export function Paddle() {
       const y = pointer.y * 4 + 2
 
       apiRef.current.setNextKinematicTranslation({ x, y, z: 0 })
-      apiRef.current.setNextKinematicRotation({
-        x: 0,
-        y: 0,
-        z: (pointer.x * Math.PI) / 10,
-        w: 1,
-      })
+      rotationZ = (pointer.x * Math.PI) / 10
     }
+
+    // Appliquer la rotation
+    apiRef.current.setNextKinematicRotation({
+      x: 0,
+      y: 0,
+      z: rotationZ,
+      w: 1,
+    })
 
     // Retour progressif du modèle visuel à la position neutre
     if (modelRef.current) {
@@ -127,6 +145,21 @@ export function Paddle() {
         >
           {score}
         </Text>
+
+        {/* Combo affiché sous le score */}
+        {combo > 1 && (
+          <Text
+            anchorX="center"
+            anchorY="middle"
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[0, 1, 4]}
+            fontSize={5}
+            color="#FFA500"
+            font={FONTS.ROBOTO_LIGHT}
+          >
+            {`x${combo}`}
+          </Text>
+        )}
 
         {/* Main avec gant (du modèle GLB) */}
         <group rotation={[1.88, -0.35, 2.32]} scale={[2.97, 2.97, 2.97]}>

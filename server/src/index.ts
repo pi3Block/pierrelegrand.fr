@@ -4,6 +4,7 @@ import { secureHeaders } from 'hono/secure-headers'
 import { logger } from 'hono/logger'
 import { codesRouter } from './routes/codes.js'
 import { healthRouter } from './routes/health.js'
+import { whiteboardRouter } from './routes/whiteboard.js'
 
 const app = new Hono()
 
@@ -19,7 +20,7 @@ app.use(
   cors({
     origin: ['https://pierrelegrand.fr', 'http://localhost:5173'],
     allowMethods: ['GET', 'POST', 'OPTIONS'],
-    allowHeaders: ['Content-Type'],
+    allowHeaders: ['Content-Type', 'X-Session-Id'],
     maxAge: 86400,
   })
 )
@@ -49,6 +50,7 @@ app.use('/api/*', async (c, next) => {
 // Routes
 app.route('/api/codes', codesRouter)
 app.route('/api/health', healthRouter)
+app.route('/api/whiteboard', whiteboardRouter)
 
 // 404 handler
 app.notFound((c) => {

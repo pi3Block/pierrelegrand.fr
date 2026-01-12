@@ -62,10 +62,48 @@ export async function initDatabase(): Promise<void> {
     ('GOLD2024', 2, '["vip_zone"]')
   `
 
+  // Whiteboard collaborative tables
+  const createWhiteboardStateTable = `
+    CREATE TABLE IF NOT EXISTS whiteboard_state (
+      id INT PRIMARY KEY DEFAULT 1,
+      image_data MEDIUMBLOB NOT NULL,
+      image_hash CHAR(32) NOT NULL,
+      version INT UNSIGNED NOT NULL DEFAULT 1,
+      last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      last_reset TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `
+
+  const createWhiteboardStrokesTable = `
+    CREATE TABLE IF NOT EXISTS whiteboard_strokes (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      session_id CHAR(36) NOT NULL,
+      stroke_data JSON NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_session (session_id),
+      INDEX idx_created (created_at)
+    )
+  `
+
+  const createWhiteboardAuditTable = `
+    CREATE TABLE IF NOT EXISTS whiteboard_audit_log (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      action ENUM('draw', 'reset', 'load') NOT NULL,
+      ip_address VARCHAR(45),
+      user_agent VARCHAR(256),
+      metadata JSON,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_action_date (action, created_at)
+    )
+  `
+
   try {
     await pool.execute(createCodesTable)
     await pool.execute(createLogsTable)
     await pool.execute(insertDefaultCodes)
+    await pool.execute(createWhiteboardStateTable)
+    await pool.execute(createWhiteboardStrokesTable)
+    await pool.execute(createWhiteboardAuditTable)
     console.log('✅ Database tables initialized')
   } catch (error) {
     console.error('❌ Database initialization failed:', error)
