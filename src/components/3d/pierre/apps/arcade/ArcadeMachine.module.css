@@ -144,3 +144,183 @@
   margin: 30px auto;
   opacity: 0.5;
 }
+
+/* Pseudo Display */
+.pseudoDisplay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.pseudoLabel {
+  font-size: 28px;
+  color: #888;
+}
+
+.pseudoButton {
+  font-family: 'ArcadeFont', monospace;
+  font-size: 28px;
+  color: #ffcc00;
+  background: transparent;
+  border: 2px solid #ffcc00;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pseudoButton:hover {
+  background: rgba(255, 204, 0, 0.2);
+  box-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+}
+
+/* Pseudo Input Modal */
+.pseudoInputContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  margin: 40px 0;
+}
+
+.pseudoInput {
+  font-family: 'ArcadeFont', monospace;
+  font-size: 48px;
+  color: #00ff00;
+  background: transparent;
+  border: 3px solid #00ff00;
+  padding: 15px 25px;
+  text-align: center;
+  width: 300px;
+  outline: none;
+  text-transform: uppercase;
+}
+
+.pseudoInput::placeholder {
+  color: #006600;
+}
+
+.pseudoInput:focus {
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+}
+
+.pseudoError {
+  font-size: 24px;
+  color: #ff4444;
+}
+
+.pseudoHint {
+  font-size: 20px;
+  color: #666;
+}
+
+.pseudoSubmitButton {
+  font-family: 'ArcadeFont', monospace;
+  font-size: 32px;
+  color: #00ff00;
+  background: transparent;
+  border: 3px solid #00ff00;
+  padding: 12px 40px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pseudoSubmitButton:hover {
+  background: rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+/* Leaderboard */
+.leaderboardTabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.leaderboardTab {
+  font-family: 'ArcadeFont', monospace;
+  font-size: 24px;
+  color: #888;
+  background: transparent;
+  border: 2px solid #888;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.leaderboardTab:hover {
+  color: #00ff00;
+  border-color: #00ff00;
+}
+
+.leaderboardTabActive {
+  color: #00ff00;
+  border-color: #00ff00;
+  background: rgba(0, 255, 0, 0.1);
+}
+
+.leaderboardTable {
+  width: 100%;
+  max-width: 500px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 20px 0;
+}
+
+.leaderboardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: rgba(0, 255, 0, 0.05);
+  border: 1px solid rgba(0, 255, 0, 0.2);
+}
+
+.leaderboardRank {
+  font-size: 24px;
+  color: #ffcc00;
+  width: 60px;
+  text-align: left;
+}
+
+.leaderboardPseudo {
+  font-size: 24px;
+  color: #00ff00;
+  flex: 1;
+  text-align: center;
+}
+
+.leaderboardScore {
+  font-size: 24px;
+  color: #00ff00;
+  width: 100px;
+  text-align: right;
+}
+
+.leaderboardLoading,
+.leaderboardEmpty {
+  font-size: 28px;
+  color: #666;
+  text-align: center;
+  padding: 50px 0;
+}
+
+.leaderboardBackButton {
+  font-family: 'ArcadeFont', monospace;
+  font-size: 28px;
+  color: #00ff00;
+  background: transparent;
+  border: 2px solid #00ff00;
+  padding: 10px 30px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 20px;
+}
+
+.leaderboardBackButton:hover {
+  background: rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}

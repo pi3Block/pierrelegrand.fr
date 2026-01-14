@@ -10,6 +10,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { SnakeGame } from './SnakeGame'
 import { TetrisGame } from './TetrisGame'
 import { BreakoutGame } from './BreakoutGame'
+import {
+  submitScore,
+  getAllLeaderboards,
+  type GameType as ApiGameType,
+  type LeaderboardEntry,
+  type AllLeaderboardsResponse,
+} from '@api/scores'
 import styles from './ArcadeMachine.module.css'
 
 type GameType = 'snake' | 'tetris' | 'breakout' | null
@@ -235,6 +242,19 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [currentGame, setCurrentGame] = useState<GameType>(null)
 
+  // Pseudo state
+  const [pseudo, setPseudo] = useState<string>(() =>
+    localStorage.getItem('arcadePseudo') || ''
+  )
+  const [showPseudoInput, setShowPseudoInput] = useState(false)
+  const [pseudoError, setPseudoError] = useState<string | null>(null)
+
+  // Leaderboard state
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [leaderboardData, setLeaderboardData] = useState<AllLeaderboardsResponse | null>(null)
+  const [leaderboardTab, setLeaderboardTab] = useState<ApiGameType>('snake')
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false)
+
   // Refs pour les canvas
   const snakeCanvasRef = useRef<HTMLCanvasElement>(null)
   const tetrisCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -245,18 +265,37 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
   // Instance du jeu actif
   const gameInstanceRef = useRef<SnakeGame | TetrisGame | BreakoutGame | null>(null)
 
+  // Handle score submission
+  const handleGameOver = useCallback(
+    async (finalScore: number, game: ApiGameType) => {
+      const currentPseudo = localStorage.getItem('arcadePseudo')
+      if (!currentPseudo || finalScore <= 0) return
+
+      try {
+        await submitScore(game, currentPseudo, finalScore)
+      } catch (error) {
+        console.error('Score submission failed:', error)
+      }
+    },
+    []
+  )
+
   // Callbacks pour les jeux (sons/effets)
-  const gameCallbacks = {
-    onHit: () => {
-      // TODO: Jouer un son de hit
-    },
-    onDie: () => {
-      // TODO: Jouer un son de mort
-    },
-    onSelect: () => {
-      // TODO: Jouer un son de sélection
-    },
-  }
+  const createGameCallbacks = useCallback(
+    (game: ApiGameType) => ({
+      onHit: () => {
+        // TODO: Jouer un son de hit
+      },
+      onDie: () => {
+        // TODO: Jouer un son de mort
+      },
+      onSelect: () => {
+        // TODO: Jouer un son de sélection
+      },
+      onGameOver: (finalScore: number) => handleGameOver(finalScore, game),
+    }),
+    [handleGameOver]
+  )
 
   // Démarrer un jeu
   const startGame = useCallback((gameType: GameType) => {
@@ -276,7 +315,7 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
               canvas,
               scoreRef.current,
               maxScoreRef.current,
-              gameCallbacks
+              createGameCallbacks('snake')
             )
           }
           break
@@ -287,7 +326,7 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
               canvas,
               scoreRef.current,
               maxScoreRef.current,
-              gameCallbacks
+              createGameCallbacks('tetris')
             )
           }
           break
@@ -298,7 +337,7 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
               canvas,
               scoreRef.current,
               maxScoreRef.current,
-              gameCallbacks
+              createGameCallbacks('breakout')
             )
           }
           break
@@ -306,16 +345,32 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
 
       gameInstanceRef.current?.start()
     }, 50)
-  }, [])
+  }, [createGameCallbacks])
 
   // Retour au menu
   const backToMenu = useCallback(() => {
     gameInstanceRef.current?.destroy()
     gameInstanceRef.current = null
     setCurrentGame(null)
-    
-    
   }, [])
+
+  // Load leaderboard
+  const loadLeaderboard = useCallback(async () => {
+    setLeaderboardLoading(true)
+    try {
+      const data = await getAllLeaderboards()
+      setLeaderboardData(data)
+    } catch (error) {
+      console.error('Failed to load leaderboard:', error)
+    } finally {
+      setLeaderboardLoading(false)
+    }
+  }, [])
+
+  const handleShowLeaderboard = useCallback(() => {
+    setShowLeaderboard(true)
+    loadLeaderboard()
+  }, [loadLeaderboard])
 
   // Gestion du clavier
   useEffect(() => {
@@ -337,17 +392,22 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
         return
       }
 
-      // Navigation dans le menu
+      // Navigation dans le menu (games + leaderboard)
+      const menuLength = GAMES.length + 1 // +1 for leaderboard
       switch (e.key) {
         case 'ArrowUp':
-          setSelectedIndex((prev) => (prev === 0 ? GAMES.length - 1 : prev - 1))
+          setSelectedIndex((prev) => (prev === 0 ? menuLength - 1 : prev - 1))
           break
         case 'ArrowDown':
-          setSelectedIndex((prev) => (prev === GAMES.length - 1 ? 0 : prev + 1))
+          setSelectedIndex((prev) => (prev === menuLength - 1 ? 0 : prev + 1))
           break
         case ' ':
         case 'Enter':
-          GAMES[selectedIndex] && startGame(GAMES[selectedIndex].id)
+          if (selectedIndex < GAMES.length) {
+            GAMES[selectedIndex] && startGame(GAMES[selectedIndex].id)
+          } else {
+            handleShowLeaderboard()
+          }
           break
       }
     }
@@ -367,7 +427,7 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [currentGame, selectedIndex, startGame, backToMenu])
+  }, [currentGame, selectedIndex, startGame, backToMenu, handleShowLeaderboard])
 
   // Cleanup au démontage
   useEffect(() => {
@@ -380,11 +440,124 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
   const handleBack = useCallback(() => {
     if (currentGame) {
       backToMenu()
+    } else if (showLeaderboard) {
+      setShowLeaderboard(false)
+    } else if (showPseudoInput) {
+      setShowPseudoInput(false)
+      setPseudoError(null)
     } else {
       // Simuler Escape pour sortir de l'arcade
       simulateKeyEvent('Escape', 'keydown')
     }
-  }, [currentGame, backToMenu])
+  }, [currentGame, showLeaderboard, showPseudoInput, backToMenu])
+
+  // Pseudo validation and save
+  const handlePseudoSubmit = useCallback(() => {
+    const trimmedPseudo = pseudo.trim()
+    if (trimmedPseudo.length < 3) {
+      setPseudoError('Min 3 caractères')
+      return
+    }
+    if (trimmedPseudo.length > 12) {
+      setPseudoError('Max 12 caractères')
+      return
+    }
+    if (!/^[A-Za-z0-9]+$/.test(trimmedPseudo)) {
+      setPseudoError('Lettres et chiffres uniquement')
+      return
+    }
+    localStorage.setItem('arcadePseudo', trimmedPseudo)
+    setPseudo(trimmedPseudo)
+    setShowPseudoInput(false)
+    setPseudoError(null)
+  }, [pseudo])
+
+  // Rendu du modal pseudo
+  if (showPseudoInput) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.menuContainer}>
+          <div className={styles.title}>ENTER PSEUDO</div>
+
+          <div className={styles.pseudoInputContainer}>
+            <input
+              type="text"
+              className={styles.pseudoInput}
+              value={pseudo}
+              onChange={(e) => setPseudo(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handlePseudoSubmit()
+                if (e.key === 'Escape') {
+                  setShowPseudoInput(false)
+                  setPseudoError(null)
+                }
+              }}
+              maxLength={12}
+              placeholder="AAA"
+              autoFocus
+            />
+            {pseudoError && <div className={styles.pseudoError}>{pseudoError}</div>}
+            <div className={styles.pseudoHint}>3-12 characters (A-Z, 0-9)</div>
+            <button className={styles.pseudoSubmitButton} onClick={handlePseudoSubmit}>
+              CONFIRM
+            </button>
+          </div>
+
+          <TouchControls currentGame={currentGame} onBack={handleBack} />
+        </div>
+      </div>
+    )
+  }
+
+  // Rendu du leaderboard
+  if (showLeaderboard) {
+    const currentLeaderboard: LeaderboardEntry[] = leaderboardData?.[leaderboardTab] || []
+
+    return (
+      <div className={styles.container}>
+        <div className={styles.menuContainer}>
+          <div className={styles.title}>LEADERBOARD</div>
+
+          <div className={styles.leaderboardTabs}>
+            {(['snake', 'tetris', 'breakout'] as const).map((game) => (
+              <button
+                key={game}
+                className={`${styles.leaderboardTab} ${leaderboardTab === game ? styles.leaderboardTabActive : ''}`}
+                onClick={() => setLeaderboardTab(game)}
+              >
+                {game.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          <div className={styles.leaderboardTable}>
+            {leaderboardLoading ? (
+              <div className={styles.leaderboardLoading}>LOADING...</div>
+            ) : currentLeaderboard.length === 0 ? (
+              <div className={styles.leaderboardEmpty}>NO SCORES YET</div>
+            ) : (
+              currentLeaderboard.map((entry) => (
+                <div key={`${entry.rank}-${entry.pseudo}`} className={styles.leaderboardRow}>
+                  <span className={styles.leaderboardRank}>#{entry.rank}</span>
+                  <span className={styles.leaderboardPseudo}>{entry.pseudo}</span>
+                  <span className={styles.leaderboardScore}>{entry.score}</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <button
+            className={styles.leaderboardBackButton}
+            onClick={() => setShowLeaderboard(false)}
+          >
+            BACK
+          </button>
+
+          <TouchControls currentGame={currentGame} onBack={handleBack} />
+        </div>
+      </div>
+    )
+  }
 
   // Rendu du menu
   if (!currentGame) {
@@ -392,6 +565,17 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
       <div className={styles.container}>
         <div className={styles.menuContainer}>
           <div className={styles.title}>ARCADE VIDEOGAMES</div>
+
+          {/* Pseudo display/edit */}
+          <div className={styles.pseudoDisplay}>
+            <span className={styles.pseudoLabel}>PLAYER:</span>
+            <button
+              className={styles.pseudoButton}
+              onClick={() => setShowPseudoInput(true)}
+            >
+              {pseudo || 'SET PSEUDO'}
+            </button>
+          </div>
 
           <div className={styles.menu}>
             <ul className={styles.gameMenu}>
@@ -404,6 +588,12 @@ export function ArcadeMachine({ onNavigateToHub }: ArcadeMachineProps) {
                   {selectedIndex === index ? `> ${game.label} <` : game.label}
                 </li>
               ))}
+              <li
+                className={styles.gameOption}
+                onClick={handleShowLeaderboard}
+              >
+                {selectedIndex === GAMES.length ? '> LEADERBOARD <' : 'LEADERBOARD'}
+              </li>
             </ul>
           </div>
 

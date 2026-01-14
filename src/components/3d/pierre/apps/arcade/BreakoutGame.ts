@@ -316,6 +316,10 @@ export class BreakoutGame {
   }
 
   private resetLevel(): void {
+    // Submit score before resetting
+    if (this.currentScore > 0) {
+      this.callbacks.onGameOver?.(this.currentScore)
+    }
     this.currentScore = 0
     this.ball.speed = 4 // Reset vitesse initiale
     this.updateScore()

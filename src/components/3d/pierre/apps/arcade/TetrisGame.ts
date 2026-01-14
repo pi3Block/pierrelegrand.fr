@@ -266,6 +266,10 @@ export class TetrisGame {
 
   private showGameOver(): void {
     this.gameOver = true
+    // Submit score before resetting
+    if (this.currentScore > 0) {
+      this.callbacks.onGameOver?.(this.currentScore)
+    }
     this.currentScore = 0
     this.linesCleared = 0
     this.dropSpeed = 12 // Reset vitesse

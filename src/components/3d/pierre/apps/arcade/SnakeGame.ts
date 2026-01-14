@@ -7,6 +7,7 @@ export interface GameCallbacks {
   onHit?: () => void
   onDie?: () => void
   onSelect?: () => void
+  onGameOver?: (finalScore: number) => void
 }
 
 export class SnakeGame {
@@ -124,6 +125,10 @@ export class SnakeGame {
         const otherCell = this.snake.cells[i]
         if (otherCell && cell.x === otherCell.x && cell.y === otherCell.y) {
           this.callbacks.onDie?.()
+          // Submit score before resetting
+          if (this.currentScore > 0) {
+            this.callbacks.onGameOver?.(this.currentScore)
+          }
           this.currentScore = 0
           this.updateScore()
           this.snake.x = 160
