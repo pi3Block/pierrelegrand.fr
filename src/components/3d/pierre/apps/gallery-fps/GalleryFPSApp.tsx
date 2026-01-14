@@ -8,7 +8,7 @@
  */
 
 import { Suspense, useEffect } from 'react'
-import { RenderTexture, PerspectiveCamera } from '@react-three/drei'
+import { RenderTexture, PerspectiveCamera, Environment } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
 import { GalleryFPSScene } from './GalleryFPSScene'
 import { usePierreStore } from '../../stores/pierreStore'
@@ -83,8 +83,11 @@ export function GalleryFPSApp({ onNavigateToHub: _onNavigateToHub, responsiveCon
             position={[0, 1.6, 3]}
           />
 
-          {/* Couleur de fond */}
-          <color attach="background" args={['#1a1a2e']} />
+          {/* Couleur de fond - ton gris neutre */}
+          <color attach="background" args={['#a0a0a0']} />
+
+          {/* Environment pour les reflets sur les cadres dorés */}
+          <Environment preset="apartment" />
 
           {/* Scène de la galerie */}
           <Suspense fallback={<GalleryLoadingScene />}>

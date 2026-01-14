@@ -181,16 +181,11 @@ function NavigationText() {
 
 /**
  * Composant principal des textes muraux.
+ * Désactivé pour une galerie plus épurée.
  */
 export function WallText() {
-  return (
-    <group name="wall-texts">
-      {WALL_TEXTS.map((config) => (
-        <WallTextBlock key={config.id} config={config} />
-      ))}
-      <NavigationText />
-    </group>
-  )
+  // Retourne un groupe vide - textes désactivés
+  return <group name="wall-texts" />
 }
 
 export default WallText

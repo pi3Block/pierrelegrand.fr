@@ -64,6 +64,7 @@ export function Door({
 
 /**
  * Porte procédurale simple (cadre + porte).
+ * Positionnée à l'intérieur du mur pour éviter le z-fighting.
  */
 function DoorProcedural({
   position,
@@ -76,40 +77,42 @@ function DoorProcedural({
   width: number
   height: number
 }) {
-  const frameThickness = 0.1
-  const doorDepth = 0.08
+  const frameThickness = 0.08
+  const doorDepth = 0.06
+  // Décalage vers l'intérieur pour éviter le z-fighting avec le mur
+  const zOffset = -0.15
 
   return (
     <group name="door-procedural" position={position} rotation={rotation}>
-      {/* Cadre de porte (pas de collision, juste visuel) */}
+      {/* Cadre de porte */}
       {/* Montant gauche */}
-      <mesh position={[-width / 2 - frameThickness / 2, height / 2, 0]} castShadow>
-        <boxGeometry args={[frameThickness, height, frameThickness * 2]} />
-        <meshStandardMaterial color="#5c4033" />
+      <mesh position={[-width / 2 - frameThickness / 2, height / 2, zOffset]} castShadow>
+        <boxGeometry args={[frameThickness, height, frameThickness]} />
+        <meshStandardMaterial color="#4a3728" roughness={0.7} />
       </mesh>
 
       {/* Montant droit */}
-      <mesh position={[width / 2 + frameThickness / 2, height / 2, 0]} castShadow>
-        <boxGeometry args={[frameThickness, height, frameThickness * 2]} />
-        <meshStandardMaterial color="#5c4033" />
+      <mesh position={[width / 2 + frameThickness / 2, height / 2, zOffset]} castShadow>
+        <boxGeometry args={[frameThickness, height, frameThickness]} />
+        <meshStandardMaterial color="#4a3728" roughness={0.7} />
       </mesh>
 
       {/* Linteau (haut) */}
-      <mesh position={[0, height + frameThickness / 2, 0]} castShadow>
-        <boxGeometry args={[width + frameThickness * 2, frameThickness, frameThickness * 2]} />
-        <meshStandardMaterial color="#5c4033" />
+      <mesh position={[0, height + frameThickness / 2, zOffset]} castShadow>
+        <boxGeometry args={[width + frameThickness * 2, frameThickness, frameThickness]} />
+        <meshStandardMaterial color="#4a3728" roughness={0.7} />
       </mesh>
 
-      {/* Panneau de porte (légèrement enfoncé) */}
-      <mesh position={[0, height / 2, -doorDepth / 2]} castShadow receiveShadow>
-        <boxGeometry args={[width - 0.05, height - 0.05, doorDepth]} />
-        <meshStandardMaterial color="#8B4513" />
+      {/* Panneau de porte */}
+      <mesh position={[0, height / 2, zOffset]} castShadow receiveShadow>
+        <boxGeometry args={[width, height, doorDepth]} />
+        <meshStandardMaterial color="#8B5A2B" roughness={0.6} />
       </mesh>
 
       {/* Poignée */}
-      <mesh position={[width / 2 - 0.15, height / 2, doorDepth / 2 + 0.02]} castShadow>
-        <boxGeometry args={[0.08, 0.04, 0.06]} />
-        <meshStandardMaterial color="#C0C0C0" metalness={0.8} roughness={0.2} />
+      <mesh position={[width / 2 - 0.15, height / 2, zOffset + doorDepth / 2 + 0.02]} castShadow>
+        <sphereGeometry args={[0.04, 16, 16]} />
+        <meshStandardMaterial color="#C0C0C0" metalness={0.9} roughness={0.1} />
       </mesh>
     </group>
   )

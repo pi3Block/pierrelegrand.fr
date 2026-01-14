@@ -22,6 +22,7 @@ import { Paintings } from './components/Paintings'
 import { Door } from './components/Door'
 import { PaintingInfo3D } from './components/PaintingInfo3D'
 import { WallText } from './components/WallText'
+import { Vases } from './components/Vases'
 import { PauseMenu3D } from './ui/PauseMenu3D'
 import { FONTS } from '@config/assetPaths'
 
@@ -449,6 +450,9 @@ export function GalleryFPSScene({ isActive, onExit, isMobile = false }: GalleryF
 
       {/* Porte de sortie (position depuis galleryConfig) */}
       <Door />
+
+      {/* Vases cassables sur les piédestaux */}
+      <Vases />
 
       {/* Animation camera (mode apercu - quand non actif) */}
       <CameraAnimation isActive={isActive} />

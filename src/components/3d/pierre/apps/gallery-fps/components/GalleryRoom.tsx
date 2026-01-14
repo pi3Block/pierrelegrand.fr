@@ -13,6 +13,41 @@ import { RigidBody } from '@react-three/rapier'
 import { GALLERY_CONFIG } from '../galleryConfig'
 
 /**
+ * Spots encastrés visuels au plafond.
+ */
+function CeilingSpots() {
+  const { room } = GALLERY_CONFIG
+  const spotPositions: [number, number, number][] = [
+    [-3, room.height - 0.01, 2.5],
+    [-3, room.height - 0.01, 0],
+    [-3, room.height - 0.01, -2.5],
+    [3, room.height - 0.01, 2.5],
+    [3, room.height - 0.01, 0],
+    [3, room.height - 0.01, -2.5],
+    [0, room.height - 0.01, -2],
+  ]
+
+  return (
+    <group name="ceiling-spots">
+      {spotPositions.map((pos, i) => (
+        <group key={i} position={pos}>
+          {/* Anneau du spot */}
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.08, 0.12, 16]} />
+            <meshStandardMaterial color="#333333" metalness={0.8} roughness={0.2} />
+          </mesh>
+          {/* Ampoule LED */}
+          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+            <circleGeometry args={[0.07, 16]} />
+            <meshBasicMaterial color="#fffbe6" />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+
+/**
  * Composant principal de la galerie procédurale.
  */
 export function GalleryRoom() {
@@ -28,7 +63,7 @@ export function GalleryRoom() {
           receiveShadow
         >
           <planeGeometry args={[room.width, room.depth]} />
-          <meshStandardMaterial color={colors.floor} />
+          <meshStandardMaterial color={colors.floor} roughness={0.8} />
         </mesh>
       </RigidBody>
 
@@ -38,7 +73,7 @@ export function GalleryRoom() {
         rotation={[Math.PI / 2, 0, 0]}
       >
         <planeGeometry args={[room.width, room.depth]} />
-        <meshStandardMaterial color={colors.ceiling} />
+        <meshStandardMaterial color={colors.ceiling} roughness={0.9} />
       </mesh>
 
       {/* Murs */}
@@ -46,6 +81,9 @@ export function GalleryRoom() {
 
       {/* Piédestaux */}
       <Pedestals />
+
+      {/* Spots encastrés visuels */}
+      <CeilingSpots />
 
       {/* Éclairage */}
       <GalleryLighting />
@@ -203,34 +241,45 @@ function Pedestals() {
 }
 
 /**
- * Éclairage de la galerie.
+ * Éclairage de la galerie - Style musée moderne.
+ * Utilise des pointLights proches des tableaux pour un éclairage ciblé.
  */
 function GalleryLighting() {
   const { room } = GALLERY_CONFIG
 
   return (
     <>
-      {/* Lumière ambiante */}
-      <ambientLight intensity={0.5} />
+      {/* Lumière ambiante modérée */}
+      <ambientLight intensity={0.4} color="#ffffff" />
 
-      {/* Lumière directionnelle principale */}
-      <directionalLight
-        position={[5, room.height + 2, 5]}
-        intensity={0.8}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-camera-far={50}
-        shadow-camera-left={-10}
-        shadow-camera-right={10}
-        shadow-camera-top={10}
-        shadow-camera-bottom={-10}
+      {/* Lumière hémisphérique douce */}
+      <hemisphereLight
+        args={['#ffffff', '#888888', 0.3]}
+        position={[0, room.height, 0]}
       />
 
-      {/* Points lumineux pour ambiance galerie */}
-      <pointLight position={[0, room.height - 0.5, 0]} intensity={0.4} color="#fff5e6" />
-      <pointLight position={[-4, room.height - 0.5, 0]} intensity={0.3} color="#e6f0ff" />
-      <pointLight position={[4, room.height - 0.5, 0]} intensity={0.3} color="#e6f0ff" />
-      <pointLight position={[0, room.height - 0.5, -3]} intensity={0.3} color="#ffe6f0" />
+      {/* Lumière directionnelle douce */}
+      <directionalLight
+        position={[2, room.height + 2, 2]}
+        intensity={0.3}
+        color="#ffffff"
+      />
+
+      {/* === Spots pour le mur Ouest (X-) === */}
+      <pointLight position={[-4, 3, 2.5]} intensity={1.2} color="#fff8e7" distance={5} decay={2} />
+      <pointLight position={[-4, 3, 0]} intensity={1.2} color="#fff8e7" distance={5} decay={2} />
+      <pointLight position={[-4, 3, -2.5]} intensity={1.2} color="#fff8e7" distance={5} decay={2} />
+
+      {/* === Spots pour le mur Est (X+) === */}
+      <pointLight position={[4, 3, 2.5]} intensity={1.2} color="#fff8e7" distance={5} decay={2} />
+      <pointLight position={[4, 3, 0]} intensity={1.2} color="#fff8e7" distance={5} decay={2} />
+      <pointLight position={[4, 3, -2.5]} intensity={1.2} color="#fff8e7" distance={5} decay={2} />
+
+      {/* === Spot pour le mur Nord (Z-) === */}
+      <pointLight position={[0, 3, -3]} intensity={1.5} color="#fff8e7" distance={6} decay={2} />
+
+      {/* === Éclairage général du plafond === */}
+      <pointLight position={[0, room.height - 0.5, 0]} intensity={0.5} color="#ffffff" distance={10} decay={2} />
     </>
   )
 }

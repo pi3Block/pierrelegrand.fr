@@ -85,12 +85,12 @@ export const GALLERY_CONFIG: GalleryConfig = {
   // Position de départ du joueur
   playerSpawn: [0, 1.6, 3],
 
-  // Couleurs des éléments
+  // Couleurs des éléments - Style galerie moderne
   colors: {
-    floor: '#d0d0d0',     // Gris clair
-    ceiling: '#ffffff',    // Blanc
-    walls: '#f5f5f5',      // Blanc cassé
-    pedestals: '#e8e8e8',  // Gris très clair
+    floor: '#8a8a8a',     // Gris moyen (béton ciré)
+    ceiling: '#e0e0e0',   // Gris très clair
+    walls: '#c8c8c8',     // Gris clair
+    pedestals: '#9a9a9a', // Gris moyen
   },
 }
 

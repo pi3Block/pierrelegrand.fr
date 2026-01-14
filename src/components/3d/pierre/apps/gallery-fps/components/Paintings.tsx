@@ -127,14 +127,21 @@ function PaintingFrame({ config }: { config: PaintingConfig }) {
   // Charger la texture avec useTexture de drei
   const texture = useTexture(config.texture)
 
-  // Configurer la texture pour un rendu correct
+  // Configurer la texture pour un rendu correct dans RenderTexture
   useMemo(() => {
     if (texture) {
       texture.colorSpace = THREE.SRGBColorSpace
+      texture.minFilter = THREE.LinearFilter
+      texture.magFilter = THREE.LinearFilter
+      texture.generateMipmaps = false
       texture.needsUpdate = true
-      console.log(`[Paintings] Texture chargée: ${config.id}`, texture)
     }
-  }, [texture, config.id])
+  }, [texture])
+
+  // Dimensions du cadre
+  const frameWidth = config.size[0] + 0.1
+  const frameHeight = config.size[1] + 0.1
+  const frameDepth = 0.05
 
   return (
     <group
@@ -143,15 +150,22 @@ function PaintingFrame({ config }: { config: PaintingConfig }) {
       name={`painting-${config.id}`}
     >
       {/* Cadre doré */}
-      <mesh castShadow position={[0, 0, -0.03]}>
-        <boxGeometry args={[config.size[0] + 0.15, config.size[1] + 0.15, 0.08]} />
-        <meshStandardMaterial color="#8B6914" roughness={0.3} metalness={0.7} />
+      <mesh castShadow position={[0, 0, -0.025]}>
+        <boxGeometry args={[frameWidth, frameHeight, frameDepth]} />
+        <meshStandardMaterial
+          color="#B8860B"
+          roughness={0.3}
+          metalness={0.8}
+        />
       </mesh>
 
-      {/* Toile avec texture */}
-      <mesh userData={{ paintingId: config.id }}>
+      {/* Toile avec texture - meshBasicMaterial pour couleurs correctes */}
+      <mesh userData={{ paintingId: config.id }} position={[0, 0, 0.001]}>
         <planeGeometry args={config.size} />
-        <meshBasicMaterial map={texture} toneMapped={false} />
+        <meshBasicMaterial
+          map={texture}
+          toneMapped={false}
+        />
       </mesh>
     </group>
   )
