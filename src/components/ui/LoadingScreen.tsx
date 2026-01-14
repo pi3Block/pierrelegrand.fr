@@ -6,7 +6,7 @@ export function LoadingScreen() {
   const [smoothProgress, setSmoothProgress] = useState(0)
   const [isRevealing, setIsRevealing] = useState(false)
   const [isHidden, setIsHidden] = useState(false)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number>(0)
   const targetProgressRef = useRef(0)
 
   // Smooth progress animation to avoid jerky updates
