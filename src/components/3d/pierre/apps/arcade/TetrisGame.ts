@@ -30,7 +30,7 @@ export class TetrisGame {
   private tetromino: Tetromino | null = null
   private count: number = 0
   private callbacks: GameCallbacks
-  private dropSpeed: number = 12 // Vitesse de chute initiale (plus bas = plus rapide)
+  private dropSpeed: number = 6 // Vitesse de chute initiale (plus bas = plus rapide)
   private linesCleared: number = 0 // Pour calculer l'accélération
 
   private tetrominos: Record<TetrominoName, number[][]> = {
@@ -239,10 +239,10 @@ export class TetrisGame {
 
     if (numClears > 0) {
       this.callbacks.onHit?.()
-      // Accélération progressive : chaque 5 lignes, on accélère
+      // Accélération progressive : chaque ligne accélère
       this.linesCleared += numClears
-      // Vitesse minimale de 4 (très rapide), diminue de 1 tous les 3 lignes
-      this.dropSpeed = Math.max(4, 12 - Math.floor(this.linesCleared / 3))
+      // Vitesse minimale de 2 (très rapide), diminue de 1 toutes les 2 lignes
+      this.dropSpeed = Math.max(2, 6 - Math.floor(this.linesCleared / 2))
     } else {
       this.callbacks.onSelect?.()
     }
@@ -272,7 +272,7 @@ export class TetrisGame {
     }
     this.currentScore = 0
     this.linesCleared = 0
-    this.dropSpeed = 12 // Reset vitesse
+    this.dropSpeed = 6 // Reset vitesse
     this.updateScore()
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height)
     this.clearPlayfield()

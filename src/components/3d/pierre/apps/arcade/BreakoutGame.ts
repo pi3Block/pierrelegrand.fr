@@ -200,9 +200,9 @@ export class BreakoutGame {
             break
         }
 
-        // Accélération progressive : +0.1 à chaque brique cassée (max 8)
-        const speedIncrease = 0.2
-        const maxSpeed = 12
+        // Accélération progressive : +0.3 à chaque brique cassée (max 14)
+        const speedIncrease = 0.3
+        const maxSpeed = 14
         const currentSpeedMagnitude = Math.sqrt(this.ball.dx * this.ball.dx + this.ball.dy * this.ball.dy)
         if (currentSpeedMagnitude < maxSpeed) {
           const factor = (currentSpeedMagnitude + speedIncrease) / currentSpeedMagnitude
@@ -267,6 +267,9 @@ export class BreakoutGame {
   }
 
   private checkBallPaddleCollision(): void {
+    // Calculer la vitesse actuelle pour la conserver
+    const currentSpeed = Math.sqrt(this.ball.dx * this.ball.dx + this.ball.dy * this.ball.dy)
+
     const outsideLeft = {
       x: this.paddle.x + this.paddle.width / 2 - 24,
       y: this.paddle.y,
@@ -298,20 +301,30 @@ export class BreakoutGame {
       height: 32,
     }
 
+    // Angles de rebond selon la zone du paddle (en conservant la vitesse)
+    // Centre: angle vertical (ratio 1:2)
+    // Inner: angle moyen (ratio 1:1)
+    // Outside: angle rasant (ratio 2:1)
     if (this.collides(this.ball, innerCenter)) {
       this.callbacks.onHit?.()
-      this.ball.dx = this.ball.dx < 0 ? -1 : 1
-      this.ball.dy = this.ball.dy < 0 ? 2 : -2
+      // Angle vertical: dx faible, dy fort (ratio 1:2)
+      const ratio = Math.sqrt(1 + 4) // sqrt(1² + 2²)
+      this.ball.dx = (this.ball.dx < 0 ? -1 : 1) * (currentSpeed / ratio)
+      this.ball.dy = -2 * (currentSpeed / ratio)
       this.ball.y = this.paddle.y - this.ball.height
     } else if (this.collides(this.ball, innerRight) || this.collides(this.ball, innerLeft)) {
       this.callbacks.onHit?.()
-      this.ball.dx = this.ball.dx < 0 ? -2 : 2
-      this.ball.dy = this.ball.dy < 0 ? 2 : -2
+      // Angle moyen: dx = dy (ratio 1:1)
+      const component = currentSpeed / Math.sqrt(2)
+      this.ball.dx = this.ball.dx < 0 ? -component : component
+      this.ball.dy = -component
       this.ball.y = this.paddle.y - this.ball.height
     } else if (this.collides(this.ball, outsideRight) || this.collides(this.ball, outsideLeft)) {
       this.callbacks.onHit?.()
-      this.ball.dx = this.ball.dx < 0 ? -2 : 2
-      this.ball.dy = this.ball.dy < 0 ? 1 : -1
+      // Angle rasant: dx fort, dy faible (ratio 2:1)
+      const ratio = Math.sqrt(4 + 1) // sqrt(2² + 1²)
+      this.ball.dx = (this.ball.dx < 0 ? -2 : 2) * (currentSpeed / ratio)
+      this.ball.dy = -1 * (currentSpeed / ratio)
       this.ball.y = this.paddle.y - this.ball.height
     }
   }
