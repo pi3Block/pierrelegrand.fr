@@ -52,6 +52,7 @@ export class BreakoutGame {
   private isKeyLeftPressing: boolean = false
   private isKeyRightPressing: boolean = false
   private callbacks: GameCallbacks
+  private touchAccumulator: number = 0
 
   private colorMap: Record<string, string> = {
     R: '#a40600',
@@ -99,7 +100,7 @@ export class BreakoutGame {
       y: 300,
       width: 16,
       height: 16,
-      speed: 4, // Vitesse initiale augmentée (était 2)
+      speed: 6, // Vitesse initiale augmentée (était 2)
       dx: 0,
       dy: 0,
     }
@@ -200,8 +201,8 @@ export class BreakoutGame {
         }
 
         // Accélération progressive : +0.1 à chaque brique cassée (max 8)
-        const speedIncrease = 0.1
-        const maxSpeed = 8
+        const speedIncrease = 0.2
+        const maxSpeed = 12
         const currentSpeedMagnitude = Math.sqrt(this.ball.dx * this.ball.dx + this.ball.dy * this.ball.dy)
         if (currentSpeedMagnitude < maxSpeed) {
           const factor = (currentSpeedMagnitude + speedIncrease) / currentSpeedMagnitude
@@ -361,5 +362,41 @@ export class BreakoutGame {
     this.ball.dx = 4 // Vitesse initiale augmentée
     this.ball.dy = 4
     this.loopId = setInterval(this.loop, this.loopInterval)
+  }
+
+  /**
+   * Handle continuous touch drag for paddle control
+   * @param deltaX - Horizontal movement in pixels
+   */
+  handleTouchMove = (deltaX: number): void => {
+    // Convert screen pixels to game paddle movement
+    const canvasRect = this.canvas.getBoundingClientRect()
+    const scale = this.canvas.width / canvasRect.width
+
+    // Apply movement with sensitivity factor
+    this.touchAccumulator += deltaX * scale * 0.8
+
+    // Update paddle dx for smooth movement
+    this.paddle.dx = Math.sign(this.touchAccumulator) * Math.min(Math.abs(this.touchAccumulator), 6)
+  }
+
+  /**
+   * Handle touch end - stop paddle
+   */
+  handleTouchEnd = (): void => {
+    this.paddle.dx = 0
+    this.touchAccumulator = 0
+  }
+
+  /**
+   * Handle quick swipe for instant paddle nudge
+   */
+  handleSwipe = (direction: 'left' | 'right'): void => {
+    const nudgeAmount = 30
+    if (direction === 'left') {
+      this.paddle.x = Math.max(0, this.paddle.x - nudgeAmount)
+    } else {
+      this.paddle.x = Math.min(this.canvas.width - this.paddle.width, this.paddle.x + nudgeAmount)
+    }
   }
 }

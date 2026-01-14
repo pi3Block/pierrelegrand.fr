@@ -326,4 +326,47 @@ export class TetrisGame {
       this.tetromino.row = row
     }
   }
+
+  /**
+   * Handle swipe input for touch controls
+   */
+  handleSwipe = (direction: 'up' | 'down' | 'left' | 'right'): void => {
+    if (!this.tetromino) return
+
+    switch (direction) {
+      case 'left': {
+        const col = this.tetromino.col - 1
+        if (this.isValidMove(this.tetromino.matrix, this.tetromino.row, col)) {
+          this.tetromino.col = col
+        }
+        break
+      }
+      case 'right': {
+        const col = this.tetromino.col + 1
+        if (this.isValidMove(this.tetromino.matrix, this.tetromino.row, col)) {
+          this.tetromino.col = col
+        }
+        break
+      }
+      case 'up': {
+        // Rotate
+        const matrix = this.rotate(this.tetromino.matrix)
+        if (this.isValidMove(matrix, this.tetromino.row, this.tetromino.col)) {
+          this.tetromino.matrix = matrix
+        }
+        break
+      }
+      case 'down': {
+        // Soft drop
+        const row = this.tetromino.row + 1
+        if (!this.isValidMove(this.tetromino.matrix, row, this.tetromino.col)) {
+          this.tetromino.row = row - 1
+          this.placeTetromino()
+          return
+        }
+        this.tetromino.row = row
+        break
+      }
+    }
+  }
 }

@@ -174,6 +174,63 @@ export class SnakeGame {
     }, this.loopInterval)
   }
 
+  /**
+   * Handle swipe input for touch controls
+   */
+  handleSwipe = (direction: 'up' | 'down' | 'left' | 'right'): void => {
+    if (!this.keyDownAllowed) {
+      // Queue the swipe as a fake key event
+      const keyMap: Record<string, string> = {
+        up: 'ArrowUp',
+        down: 'ArrowDown',
+        left: 'ArrowLeft',
+        right: 'ArrowRight',
+      }
+      const fakeEvent = { key: keyMap[direction] } as KeyboardEvent
+      this.keysPressedQueue.push(fakeEvent)
+      return
+    }
+
+    this.processDirection(direction)
+    this.keyDownAllowed = false
+    setTimeout(() => {
+      this.keyDownAllowed = true
+      while (this.keysPressedQueue.length > 0) {
+        const keyEvent = this.keysPressedQueue.shift()
+        if (keyEvent) this.processKeyEvent(keyEvent)
+      }
+    }, this.loopInterval)
+  }
+
+  private processDirection(direction: 'up' | 'down' | 'left' | 'right'): void {
+    switch (direction) {
+      case 'left':
+        if (this.snake.dx === 0) {
+          this.snake.dx = -this.grid
+          this.snake.dy = 0
+        }
+        break
+      case 'right':
+        if (this.snake.dx === 0) {
+          this.snake.dx = this.grid
+          this.snake.dy = 0
+        }
+        break
+      case 'up':
+        if (this.snake.dy === 0) {
+          this.snake.dy = -this.grid
+          this.snake.dx = 0
+        }
+        break
+      case 'down':
+        if (this.snake.dy === 0) {
+          this.snake.dy = this.grid
+          this.snake.dx = 0
+        }
+        break
+    }
+  }
+
   private processKeyEvent(e: KeyboardEvent): void {
     if (e.key === 'ArrowLeft' && this.snake.dx === 0) {
       this.snake.dx = -this.grid
