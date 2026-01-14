@@ -1,10 +1,12 @@
 import { create } from 'zustand'
 import {
   getWhiteboardState,
-  submitStrokes,
+  submitStroke,
   pollWhiteboardUpdates,
   initWhiteboard,
-  type Stroke,
+  getCurrentSessionId,
+  type StrokeData,
+  type ServerStroke,
 } from '@api/whiteboard'
 
 interface WhiteboardState {
@@ -12,35 +14,29 @@ interface WhiteboardState {
   isLoading: boolean
   isConnected: boolean
   version: number
-  imageHash: string | null
-  localStrokes: Stroke[]
-  pendingStrokes: Stroke[]
+  serverStrokes: ServerStroke[]
+  pendingStroke: StrokeData | null
   error: string | null
 
   // Drawing tools
-  currentTool: 'marker' | 'eraser'
+  currentTool: 'pen' | 'eraser'
   currentColor: string
+  currentWidth: number
 
   // Polling control
   isPolling: boolean
-  pollAbortController: AbortController | null
-
-  // Sync debounce
-  syncTimeoutId: ReturnType<typeof setTimeout> | null
 
   // Actions
-  addStroke: (stroke: Stroke) => void
-  setTool: (tool: 'marker' | 'eraser', color?: string) => void
+  addStroke: (stroke: StrokeData) => void
+  setTool: (tool: 'pen' | 'eraser') => void
   setColor: (color: string) => void
+  setWidth: (width: number) => void
   loadState: () => Promise<void>
-  syncStrokes: () => Promise<void>
+  addNewStrokes: (strokes: ServerStroke[]) => void
   startPolling: () => void
   stopPolling: () => void
   reset: () => void
 }
-
-// Debounce delay for syncing strokes
-const SYNC_DEBOUNCE_MS = 150
 
 // Polling backoff configuration
 const POLL_BASE_DELAY_MS = 1000
@@ -52,56 +48,64 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
   isLoading: true,
   isConnected: false,
   version: 0,
-  imageHash: null,
-  localStrokes: [],
-  pendingStrokes: [],
+  serverStrokes: [],
+  pendingStroke: null,
   error: null,
-  currentTool: 'marker',
+  currentTool: 'pen',
   currentColor: '#000000',
+  currentWidth: 3,
   isPolling: false,
-  pollAbortController: null,
-  syncTimeoutId: null,
 
-  addStroke: (stroke) => {
-    set((state) => ({
-      localStrokes: [...state.localStrokes, stroke],
-    }))
+  addStroke: async (stroke) => {
+    set({ pendingStroke: stroke })
 
-    // Debounce sync
-    const { syncTimeoutId } = get()
-    if (syncTimeoutId) {
-      clearTimeout(syncTimeoutId)
+    const response = await submitStroke(stroke)
+
+    if (!response.success) {
+      set({
+        pendingStroke: null,
+        error: response.error || 'Erreur lors de l\'envoi',
+      })
+
+      // Clear error after 3s
+      setTimeout(() => set({ error: null }), 3000)
+      return
     }
 
-    const newTimeoutId = setTimeout(() => {
-      get().syncStrokes()
-    }, SYNC_DEBOUNCE_MS)
-
-    set({ syncTimeoutId: newTimeoutId })
+    // Success - update version, clear pending
+    set((state) => ({
+      version: response.version || state.version + 1,
+      pendingStroke: null,
+      error: null,
+    }))
   },
 
-  setTool: (tool, color) => {
-    set({
-      currentTool: tool,
-      currentColor: tool === 'eraser' ? '#FFFFFF' : (color || get().currentColor),
-    })
+  setTool: (tool) => {
+    set({ currentTool: tool })
   },
 
   setColor: (color) => {
     set({
       currentColor: color,
-      currentTool: 'marker',
+      currentTool: 'pen',
     })
+  },
+
+  setWidth: (width) => {
+    set({ currentWidth: Math.max(1, Math.min(50, width)) })
   },
 
   loadState: async () => {
     set({ isLoading: true, error: null })
 
     // Initialize whiteboard if needed
-    await initWhiteboard()
+    const initResponse = await initWhiteboard()
+    if (!initResponse.success && initResponse.error) {
+      set({ isLoading: false, error: initResponse.error })
+      return
+    }
 
-    const { imageHash } = get()
-    const response = await getWhiteboardState(imageHash || undefined)
+    const response = await getWhiteboardState()
 
     // No changes (304)
     if (response === null) {
@@ -116,77 +120,37 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
 
     set({
       version: response.version,
-      imageHash: response.imageData ? hashString(response.imageData) : null,
+      serverStrokes: response.strokes,
       isLoading: false,
       isConnected: true,
       error: null,
     })
 
-    // Emit event for canvas update
+    // Emit event for canvas to redraw all strokes
     window.dispatchEvent(
-      new CustomEvent('whiteboard:update', {
-        detail: { imageData: response.imageData },
+      new CustomEvent('whiteboard:load', {
+        detail: { strokes: response.strokes },
       })
     )
   },
 
-  syncStrokes: async () => {
-    const { localStrokes, version, pendingStrokes } = get()
+  addNewStrokes: (strokes) => {
+    // Filter out strokes from current session (already drawn locally)
+    const currentSession = getCurrentSessionId()
+    const newStrokes = strokes.filter(s => s.sessionId !== currentSession)
 
-    // Nothing to sync
-    if (localStrokes.length === 0) {
-      return
-    }
+    if (newStrokes.length === 0) return
 
-    // Already syncing
-    if (pendingStrokes.length > 0) {
-      return
-    }
+    set((state) => ({
+      serverStrokes: [...state.serverStrokes, ...newStrokes],
+    }))
 
-    const strokesToSync = [...localStrokes]
-    set({ localStrokes: [], pendingStrokes: strokesToSync })
-
-    const response = await submitStrokes(strokesToSync, version)
-
-    if (response.action === 'reload') {
-      // Version conflict - reload state
-      set({ pendingStrokes: [] })
-      await get().loadState()
-      return
-    }
-
-    if (response.retryAfter) {
-      // Rate limited - re-add strokes and wait
-      set((state) => ({
-        localStrokes: [...strokesToSync, ...state.localStrokes],
-        pendingStrokes: [],
-        error: response.error || 'Rate limit atteint',
-      }))
-
-      // Clear error after delay
-      setTimeout(() => {
-        set({ error: null })
-      }, response.retryAfter * 1000)
-      return
-    }
-
-    if (!response.success) {
-      // Generic error - re-add strokes for retry
-      set((state) => ({
-        localStrokes: [...strokesToSync, ...state.localStrokes],
-        pendingStrokes: [],
-        error: response.error || 'Erreur de sync',
-      }))
-      return
-    }
-
-    // Success
-    set({
-      version: response.newVersion || version + 1,
-      imageHash: response.newHash || null,
-      pendingStrokes: [],
-      error: null,
-    })
+    // Emit event for canvas to draw new strokes
+    window.dispatchEvent(
+      new CustomEvent('whiteboard:newStrokes', {
+        detail: { strokes: newStrokes },
+      })
+    )
   },
 
   startPolling: () => {
@@ -229,9 +193,10 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
       // Success - reset error count
       errorCount = 0
 
-      if (response.hasUpdate) {
-        // Fetch the new state
-        await get().loadState()
+      if (response.hasUpdate && response.newStrokes) {
+        // Update version and add new strokes
+        set({ version: response.version })
+        get().addNewStrokes(response.newStrokes)
       }
 
       // Continue polling if still active
@@ -246,34 +211,15 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
   },
 
   stopPolling: () => {
-    const { syncTimeoutId } = get()
-    if (syncTimeoutId) {
-      clearTimeout(syncTimeoutId)
-    }
-    set({ isPolling: false, syncTimeoutId: null })
+    set({ isPolling: false })
   },
 
   reset: () => {
-    const { syncTimeoutId } = get()
-    if (syncTimeoutId) {
-      clearTimeout(syncTimeoutId)
-    }
     set({
-      localStrokes: [],
-      pendingStrokes: [],
+      serverStrokes: [],
+      pendingStroke: null,
       error: null,
-      syncTimeoutId: null,
+      version: 0,
     })
   },
 }))
-
-// Simple hash function for comparing image data
-function hashString(str: string): string {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = ((hash << 5) - hash) + char
-    hash = hash & hash // Convert to 32bit integer
-  }
-  return hash.toString(16)
-}

@@ -10,14 +10,23 @@ function getSessionId(): string {
   return sessionId
 }
 
-export interface Stroke {
+// New stroke format for server-side storage
+export interface StrokeData {
+  points: { x: number; y: number }[]
   color: string
-  lineWidth: number
-  points: [number, number][]
+  width: number
+  tool: 'pen' | 'eraser'
+}
+
+// Stroke with server metadata
+export interface ServerStroke extends StrokeData {
+  id: number
+  sessionId: string
+  createdAt: string
 }
 
 export interface WhiteboardStateResponse {
-  imageData: string // base64
+  strokes: ServerStroke[]
   version: number
   lastModified: string
   error?: string
@@ -25,29 +34,53 @@ export interface WhiteboardStateResponse {
 
 export interface StrokeResponse {
   success: boolean
-  newVersion?: number
-  newHash?: string
+  strokeId?: number
+  version?: number
   error?: string
-  action?: 'reload'
-  serverVersion?: number
-  retryAfter?: number
 }
 
 export interface PollResponse {
   hasUpdate: boolean
   version: number
-  hash?: string
+  newStrokes?: ServerStroke[]
+  error?: string
+}
+
+export interface InitResponse {
+  success: boolean
+  version: number
   error?: string
 }
 
 /**
- * Fetch current whiteboard state with ETag support
+ * Initialize whiteboard
  */
-export async function getWhiteboardState(currentHash?: string): Promise<WhiteboardStateResponse | null> {
+export async function initWhiteboard(): Promise<InitResponse> {
+  try {
+    const response = await fetch(`${API_URL}/whiteboard/init`, {
+      method: 'POST',
+    })
+
+    if (!response.ok) {
+      const data = await response.json()
+      return { success: false, version: 0, error: data.error || 'Erreur serveur' }
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Whiteboard init error:', error)
+    return { success: false, version: 0, error: 'Erreur de connexion' }
+  }
+}
+
+/**
+ * Fetch current whiteboard state (all strokes since last reset)
+ */
+export async function getWhiteboardState(currentVersion?: number): Promise<WhiteboardStateResponse | null> {
   try {
     const headers: HeadersInit = {}
-    if (currentHash) {
-      headers['If-None-Match'] = `"${currentHash}"`
+    if (currentVersion !== undefined) {
+      headers['If-None-Match'] = `"v${currentVersion}"`
     }
 
     const response = await fetch(`${API_URL}/whiteboard/state`, { headers })
@@ -59,38 +92,36 @@ export async function getWhiteboardState(currentHash?: string): Promise<Whiteboa
 
     if (!response.ok) {
       const data = await response.json()
-      return { imageData: '', version: 0, lastModified: '', error: data.error || 'Erreur serveur' }
+      return { strokes: [], version: 0, lastModified: '', error: data.error || 'Erreur serveur' }
     }
 
     return await response.json()
   } catch (error) {
     console.error('Whiteboard state error:', error)
-    return { imageData: '', version: 0, lastModified: '', error: 'Erreur de connexion' }
+    return { strokes: [], version: 0, lastModified: '', error: 'Erreur de connexion' }
   }
 }
 
 /**
- * Submit drawing strokes to the server
+ * Submit a single stroke to the server
  */
-export async function submitStrokes(strokes: Stroke[], clientVersion: number): Promise<StrokeResponse> {
+export async function submitStroke(stroke: StrokeData): Promise<StrokeResponse> {
   try {
     const response = await fetch(`${API_URL}/whiteboard/stroke`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Session-Id': getSessionId(),
       },
-      body: JSON.stringify({ strokes, clientVersion }),
+      body: JSON.stringify({
+        sessionId: getSessionId(),
+        stroke,
+      }),
     })
 
     const data = await response.json()
 
     if (response.status === 429) {
-      return { success: false, error: data.error, retryAfter: data.retryAfter || 60 }
-    }
-
-    if (response.status === 409) {
-      return { success: false, error: data.error, action: 'reload', serverVersion: data.serverVersion }
+      return { success: false, error: data.error || 'Trop de requêtes' }
     }
 
     if (!response.ok) {
@@ -126,16 +157,8 @@ export async function pollWhiteboardUpdates(clientVersion: number, timeout = 300
 }
 
 /**
- * Initialize whiteboard (called once on first load)
+ * Get current session ID (for filtering own strokes)
  */
-export async function initWhiteboard(): Promise<boolean> {
-  try {
-    const response = await fetch(`${API_URL}/whiteboard/init`, {
-      method: 'POST',
-    })
-    return response.ok
-  } catch (error) {
-    console.error('Whiteboard init error:', error)
-    return false
-  }
+export function getCurrentSessionId(): string {
+  return getSessionId()
 }

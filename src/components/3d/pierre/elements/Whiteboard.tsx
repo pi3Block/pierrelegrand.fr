@@ -6,9 +6,8 @@
  * - Gomme pour effacer
  * - Canvas 2D mappé sur une texture 3D
  * - Raycasting UV pour le positionnement précis
- * - Synchronisation collaborative avec le serveur
+ * - Synchronisation collaborative avec le serveur (strokes JSON)
  * - Sons de marqueur et gomme
- * - Reset mensuel automatique
  */
 
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
@@ -19,6 +18,7 @@ import { usePierreStore, type PierreStage } from '../stores/pierreStore'
 import { useWhiteboardStore } from '@stores/whiteboardStore'
 import { pierreAudioManager } from '../services/PierreAudioManager'
 import { PIERRE } from '@config/assetPaths'
+import type { ServerStroke, StrokeData } from '@api/whiteboard'
 
 // Configuration
 const WHITEBOARD_POSITION: [number, number, number] = [-3.3927, 3.18774, -4.61366]
@@ -28,18 +28,44 @@ const PLANE_SIZE = { width: 2.6, height: 1.82 }
 // Image initiale du whiteboard (fallback si serveur non disponible)
 const TEXTURE_PAINT_URL = PIERRE.TEXTURES.TEXTURE_PAINT
 
-// Couleurs des marqueurs avec leurs codes hex pour le serveur
-const MARKER_COLORS: Record<string, { color: string; hex: string; lineWidth: number }> = {
-  black: { color: 'black', hex: '#000000', lineWidth: 8 },
-  red: { color: 'red', hex: '#FF0000', lineWidth: 8 },
-  green: { color: 'darkgreen', hex: '#006400', lineWidth: 8 },
-  blue: { color: 'blue', hex: '#0000FF', lineWidth: 8 },
-  eraser: { color: 'white', hex: '#FFFFFF', lineWidth: 50 },
+// Couleurs des marqueurs
+const MARKER_COLORS: Record<string, { color: string; hex: string; width: number }> = {
+  black: { color: 'black', hex: '#000000', width: 8 },
+  red: { color: 'red', hex: '#FF0000', width: 8 },
+  green: { color: 'darkgreen', hex: '#006400', width: 8 },
+  blue: { color: 'blue', hex: '#0000FF', width: 8 },
+  eraser: { color: 'white', hex: '#FFFFFF', width: 50 },
 }
 
 interface WhiteboardProps {
   onHover: (objects: THREE.Object3D[]) => void
   onSelect: (stage: PierreStage) => void
+}
+
+/**
+ * Dessine un stroke sur le canvas
+ */
+function drawStrokeOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  stroke: StrokeData | ServerStroke
+) {
+  if (stroke.points.length < 2) return
+
+  ctx.strokeStyle = stroke.tool === 'eraser' ? '#FFFFFF' : stroke.color
+  ctx.lineWidth = stroke.width
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+
+  ctx.beginPath()
+  const firstPoint = stroke.points[0]!
+  ctx.moveTo(firstPoint.x, firstPoint.y)
+
+  for (let i = 1; i < stroke.points.length; i++) {
+    const point = stroke.points[i]!
+    ctx.lineTo(point.x, point.y)
+  }
+
+  ctx.stroke()
 }
 
 /**
@@ -54,10 +80,9 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
   const textureRef = useRef<THREE.CanvasTexture | null>(null)
 
   // Buffer pour les points du stroke en cours
-  const strokePointsRef = useRef<[number, number][]>([])
+  const strokePointsRef = useRef<{ x: number; y: number }[]>([])
 
   const { camera, raycaster } = useThree()
-  // Stocker camera et raycaster dans des refs pour éviter de les avoir dans les deps des callbacks
   const cameraRef = useRef(camera)
   const raycasterRef = useRef(raycaster)
   cameraRef.current = camera
@@ -85,13 +110,10 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
 
   // Charger le modèle du tableau
   const { scene } = useGLTF(PIERRE.MODELS.WHITEBOARD)
-
-  // Nommer la scène
   scene.name = 'whiteboard'
 
   // Initialiser le canvas de dessin
   useEffect(() => {
-    // Créer le canvas de dessin (hors DOM)
     const canvas = document.createElement('canvas')
     canvas.width = CANVAS_SIZE.width
     canvas.height = CANVAS_SIZE.height
@@ -124,22 +146,35 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
     // Démarrer le polling pour les mises à jour
     startPolling()
 
-    // Écouter les mises à jour du serveur
-    const handleServerUpdate = (e: CustomEvent<{ imageData: string }>) => {
-      if (ctx && e.detail.imageData) {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, CANVAS_SIZE.width, CANVAS_SIZE.height)
-          texture.needsUpdate = true
+    // Écouter le chargement initial des strokes
+    const handleLoad = (e: CustomEvent<{ strokes: ServerStroke[] }>) => {
+      if (ctx && e.detail.strokes) {
+        // Effacer et redessiner tous les strokes
+        ctx.fillStyle = 'white'
+        ctx.fillRect(0, 0, CANVAS_SIZE.width, CANVAS_SIZE.height)
+
+        for (const stroke of e.detail.strokes) {
+          drawStrokeOnCanvas(ctx, stroke)
         }
-        img.src = `data:image/png;base64,${e.detail.imageData}`
+
+        texture.needsUpdate = true
       }
     }
 
-    window.addEventListener('whiteboard:update', handleServerUpdate as EventListener)
+    // Écouter les nouveaux strokes (polling)
+    const handleNewStrokes = (e: CustomEvent<{ strokes: ServerStroke[] }>) => {
+      if (ctx && e.detail.strokes) {
+        for (const stroke of e.detail.strokes) {
+          drawStrokeOnCanvas(ctx, stroke)
+        }
+        texture.needsUpdate = true
+      }
+    }
 
-    // Fallback: charger l'image locale si le serveur n'est pas disponible
+    window.addEventListener('whiteboard:load', handleLoad as EventListener)
+    window.addEventListener('whiteboard:newStrokes', handleNewStrokes as EventListener)
+
+    // Fallback: charger l'image locale si le serveur n'est pas disponible après 5s
     const timeoutId = setTimeout(() => {
       const image = new Image()
       image.crossOrigin = 'anonymous'
@@ -150,13 +185,14 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
         }
       }
       image.src = TEXTURE_PAINT_URL
-    }, 3000)
+    }, 5000)
 
     return () => {
       clearTimeout(timeoutId)
       stopPolling()
       texture.dispose()
-      window.removeEventListener('whiteboard:update', handleServerUpdate as EventListener)
+      window.removeEventListener('whiteboard:load', handleLoad as EventListener)
+      window.removeEventListener('whiteboard:newStrokes', handleNewStrokes as EventListener)
     }
   }, [loadState, startPolling, stopPolling])
 
@@ -193,8 +229,8 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
     if (!ctx) return
 
     const config = MARKER_COLORS[selectedColor] ?? MARKER_COLORS.black!
-    ctx.strokeStyle = config!.color
-    ctx.lineWidth = config!.lineWidth
+    ctx.strokeStyle = config.color
+    ctx.lineWidth = config.width
 
     ctx.beginPath()
     ctx.moveTo(drawStartPos.current.x, drawStartPos.current.y)
@@ -204,7 +240,7 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
     drawStartPos.current.set(x, y)
 
     // Ajouter le point au buffer de stroke
-    strokePointsRef.current.push([x, y])
+    strokePointsRef.current.push({ x, y })
 
     // Mettre à jour la texture
     if (textureRef.current) {
@@ -250,7 +286,7 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
       drawStartPos.current.copy(canvasPos)
 
       // Initialiser le buffer de stroke avec le premier point
-      strokePointsRef.current = [[canvasPos.x, canvasPos.y]]
+      strokePointsRef.current = [{ x: canvasPos.x, y: canvasPos.y }]
 
       setIsDrawing(true)
 
@@ -273,11 +309,13 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
     const points = strokePointsRef.current
     if (points.length >= 2) {
       const config = MARKER_COLORS[selectedColor] ?? MARKER_COLORS.black!
-      addStroke({
-        color: config!.hex,
-        lineWidth: config!.lineWidth,
-        points: points as [number, number][],
-      })
+      const strokeData: StrokeData = {
+        points: points,
+        color: config.hex,
+        width: config.width,
+        tool: selectedColor === 'eraser' ? 'eraser' : 'pen',
+      }
+      addStroke(strokeData)
     }
 
     // Réinitialiser le buffer
