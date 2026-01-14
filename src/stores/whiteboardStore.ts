@@ -42,6 +42,11 @@ interface WhiteboardState {
 // Debounce delay for syncing strokes
 const SYNC_DEBOUNCE_MS = 150
 
+// Polling backoff configuration
+const POLL_BASE_DELAY_MS = 1000
+const POLL_MAX_DELAY_MS = 60000
+const POLL_MAX_ERRORS = 10
+
 export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
   // Initial state
   isLoading: true,
@@ -190,11 +195,39 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
 
     set({ isPolling: true })
 
+    let errorCount = 0
+
     const poll = async () => {
       const { isPolling: stillPolling, version } = get()
       if (!stillPolling) return
 
       const response = await pollWhiteboardUpdates(version, 30000)
+
+      // Handle errors with exponential backoff
+      if (response.error) {
+        errorCount++
+
+        // Stop polling after too many consecutive errors
+        if (errorCount >= POLL_MAX_ERRORS) {
+          set({ isPolling: false, error: 'Connexion au serveur perdue' })
+          return
+        }
+
+        // Exponential backoff: 1s, 2s, 4s, 8s... up to 60s
+        const backoffDelay = Math.min(
+          POLL_BASE_DELAY_MS * Math.pow(2, errorCount - 1),
+          POLL_MAX_DELAY_MS
+        )
+
+        const { isPolling: continuePolling } = get()
+        if (continuePolling) {
+          setTimeout(poll, backoffDelay)
+        }
+        return
+      }
+
+      // Success - reset error count
+      errorCount = 0
 
       if (response.hasUpdate) {
         // Fetch the new state
