@@ -1,41 +1,105 @@
 import { useProgress } from '@react-three/drei'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export function LoadingScreen() {
   const { progress, active } = useProgress()
-  const [show, setShow] = useState(true)
+  const [smoothProgress, setSmoothProgress] = useState(0)
+  const [isRevealing, setIsRevealing] = useState(false)
+  const [isHidden, setIsHidden] = useState(false)
+  const animationRef = useRef<number>()
+  const targetProgressRef = useRef(0)
 
+  // Smooth progress animation to avoid jerky updates
   useEffect(() => {
-    if (!active && progress === 100) {
-      // Delay hiding for smooth transition
-      const timeout = setTimeout(() => setShow(false), 500)
-      return () => clearTimeout(timeout)
-    }
-  }, [active, progress])
+    targetProgressRef.current = progress
 
-  if (!show) return null
+    const animate = () => {
+      setSmoothProgress((current) => {
+        const target = targetProgressRef.current
+        const diff = target - current
+        // Ease towards target, faster when far, slower when close
+        const step = Math.max(0.5, Math.abs(diff) * 0.1)
+        if (Math.abs(diff) < 0.5) return target
+        return current + Math.sign(diff) * step
+      })
+      animationRef.current = requestAnimationFrame(animate)
+    }
+
+    animationRef.current = requestAnimationFrame(animate)
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current)
+    }
+  }, [progress])
+
+  // Trigger reveal animation when loading complete
+  useEffect(() => {
+    if (!active && progress === 100 && smoothProgress >= 99) {
+      // Start reveal animation
+      const revealTimeout = setTimeout(() => {
+        setIsRevealing(true)
+      }, 300)
+
+      // Hide completely after animation
+      const hideTimeout = setTimeout(() => {
+        setIsHidden(true)
+      }, 1300) // 300ms delay + 1000ms animation
+
+      return () => {
+        clearTimeout(revealTimeout)
+        clearTimeout(hideTimeout)
+      }
+    }
+  }, [active, progress, smoothProgress])
+
+  if (isHidden) return null
+
+  const displayProgress = Math.round(smoothProgress)
 
   return (
-    <div
-      className="loading-screen"
-      style={{
-        opacity: active ? 1 : 0,
-        transition: 'opacity 0.5s ease',
-        pointerEvents: active ? 'auto' : 'none',
-      }}
-    >
-      <h1 style={{ fontSize: '24px', fontWeight: 300, letterSpacing: '4px' }}>
-        PIERRE LEGRAND
-      </h1>
-      <div className="loading-bar">
-        <div
-          className="loading-bar-fill"
-          style={{ width: `${progress}%` }}
-        />
+    <>
+      {/* Top panel - slides up */}
+      <div
+        className="loading-panel loading-panel-top"
+        style={{
+          transform: isRevealing ? 'translateY(-100%)' : 'translateY(0)',
+        }}
+      >
+        <div className="loading-content">
+          <div className="loading-logo">
+            <span className="loading-logo-text">PIERRE LEGRAND</span>
+            <span className="loading-logo-subtitle">Creative Developer</span>
+          </div>
+        </div>
       </div>
-      <p style={{ marginTop: '12px', color: 'var(--color-text-muted)', fontSize: '14px' }}>
-        {Math.round(progress)}%
-      </p>
-    </div>
+
+      {/* Bottom panel - slides down */}
+      <div
+        className="loading-panel loading-panel-bottom"
+        style={{
+          transform: isRevealing ? 'translateY(100%)' : 'translateY(0)',
+        }}
+      >
+        <div className="loading-content loading-content-bottom">
+          <div className="loading-progress-container">
+            <div className="loading-progress-bar">
+              <div
+                className="loading-progress-fill"
+                style={{ width: `${smoothProgress}%` }}
+              />
+            </div>
+            <span className="loading-progress-text">{displayProgress}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Center line that expands */}
+      <div
+        className="loading-center-line"
+        style={{
+          transform: isRevealing ? 'scaleX(0)' : 'scaleX(1)',
+          opacity: isRevealing ? 0 : 1,
+        }}
+      />
+    </>
   )
 }
