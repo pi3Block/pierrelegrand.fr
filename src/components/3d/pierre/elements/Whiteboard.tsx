@@ -140,6 +140,10 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
     texture.generateMipmaps = true
     textureRef.current = texture
 
+    // Track if server load succeeded (to cancel fallback)
+    let serverLoadSucceeded = false
+    let fallbackTimeoutId: ReturnType<typeof setTimeout> | null = null
+
     // Charger l'état depuis le serveur
     loadState()
 
@@ -149,6 +153,13 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
     // Écouter le chargement initial des strokes
     const handleLoad = (e: CustomEvent<{ strokes: ServerStroke[] }>) => {
       if (ctx && e.detail.strokes) {
+        // Server load succeeded - cancel fallback
+        serverLoadSucceeded = true
+        if (fallbackTimeoutId) {
+          clearTimeout(fallbackTimeoutId)
+          fallbackTimeoutId = null
+        }
+
         // Effacer et redessiner tous les strokes
         ctx.fillStyle = 'white'
         ctx.fillRect(0, 0, CANVAS_SIZE.width, CANVAS_SIZE.height)
@@ -175,11 +186,15 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
     window.addEventListener('whiteboard:newStrokes', handleNewStrokes as EventListener)
 
     // Fallback: charger l'image locale si le serveur n'est pas disponible après 5s
-    const timeoutId = setTimeout(() => {
+    fallbackTimeoutId = setTimeout(() => {
+      // Only load fallback if server didn't respond
+      if (serverLoadSucceeded) return
+
       const image = new Image()
       image.crossOrigin = 'anonymous'
       image.onload = () => {
-        if (ctx) {
+        // Double-check server hasn't loaded in the meantime
+        if (ctx && !serverLoadSucceeded) {
           ctx.drawImage(image, 0, 0, CANVAS_SIZE.width, CANVAS_SIZE.height)
           texture.needsUpdate = true
         }
@@ -188,7 +203,7 @@ export function Whiteboard({ onHover, onSelect }: WhiteboardProps) {
     }, 5000)
 
     return () => {
-      clearTimeout(timeoutId)
+      if (fallbackTimeoutId) clearTimeout(fallbackTimeoutId)
       stopPolling()
       texture.dispose()
       window.removeEventListener('whiteboard:load', handleLoad as EventListener)
